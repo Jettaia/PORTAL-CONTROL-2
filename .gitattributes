@@ -1,0 +1,2 @@
+# Preserve bytes, including SQL files verified by SHA-256 in the manifest.
+* -text

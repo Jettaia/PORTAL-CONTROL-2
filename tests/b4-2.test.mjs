@@ -1,0 +1,3 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {input,uuid,text,utc} from '../src/b4-2.js';
+test('B4.2 decisões recusam ator, MFA e campos injetados pelo cliente',()=>{assert.throws(()=>input({decisao:true,ator:1},'decisao'));assert.throws(()=>input(null,'decisao'));assert.deepEqual(input({decisao:true},'decisao'),{decisao:true});});
+test('B4.2 motivo, UUID e horário UTC estritos',()=>{for(const v of ['',null,'  '])assert.throws(()=>text(v));assert.equal(text(' Revisão '),'Revisão');assert.throws(()=>uuid('1'));assert.throws(()=>utc('2026-02-30T10:00:00.000Z'));assert.throws(()=>utc('2026-10-21T10:00'));assert.equal(utc('2026-10-21T10:00:00.000Z'),'2026-10-21T10:00:00.000Z');});

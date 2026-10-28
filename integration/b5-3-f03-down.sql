@@ -1,0 +1,11 @@
+IF LEN(DB_NAME())<>34 OR LEFT(DB_NAME(),22)<>'JETTA_CONTROL_B3_TEST_' OR RIGHT(DB_NAME(),12) COLLATE Latin1_General_100_BIN2 LIKE '%[^a-f0-9]%' THROW 55300,N'Somente laboratorio F03',1;
+IF EXISTS(SELECT 1 FROM Financeiro.ProntidaoVersao WHERE Tipo='CONTRATACAO') OR EXISTS(SELECT 1 FROM Financeiro.RegraFuncional WHERE Tipo IN('MODALIDADE','CORRESPONDENCIA','COMPETENCIA')) THROW 55301,N'Down preserva dados F03; arquivamento e plano especifico exigidos',1;
+DROP TRIGGER IF EXISTS Financeiro.F03_DossieFonte;
+IF EXISTS(SELECT 1 FROM sys.check_constraints WHERE name='CK_F03_DossieTipo') ALTER TABLE Financeiro.ProntidaoVersao DROP CONSTRAINT CK_F03_DossieTipo;
+IF NOT EXISTS(SELECT 1 FROM sys.check_constraints WHERE name='CK_F03_DossieOriginal') ALTER TABLE Financeiro.ProntidaoVersao ADD CONSTRAINT CK_F03_DossieOriginal CHECK(Tipo IN('BENEFICIARIO','POLITICA'));
+IF EXISTS(SELECT 1 FROM sys.check_constraints WHERE name='CK_F03_Abrangencia') ALTER TABLE Financeiro.RegraFuncional DROP CONSTRAINT CK_F03_Abrangencia;
+IF EXISTS(SELECT 1 FROM sys.check_constraints WHERE name='CK_F03_RegraTipo') ALTER TABLE Financeiro.RegraFuncional DROP CONSTRAINT CK_F03_RegraTipo;
+IF NOT EXISTS(SELECT 1 FROM sys.check_constraints WHERE name='CK_F03_RegraOriginal') ALTER TABLE Financeiro.RegraFuncional ADD CONSTRAINT CK_F03_RegraOriginal CHECK(Tipo IN('VENCIMENTO','ALCADA'));
+IF COL_LENGTH('Financeiro.RegraFuncional','FilialEscopoId') IS NOT NULL BEGIN ALTER TABLE Financeiro.RegraFuncional DROP CONSTRAINT FK_F03_Filial;ALTER TABLE Financeiro.RegraFuncional DROP COLUMN FilialEscopoId;END;
+IF COL_LENGTH('Financeiro.RegraFuncional','Abrangencia') IS NOT NULL BEGIN ALTER TABLE Financeiro.RegraFuncional DROP CONSTRAINT DF_F03_Abrangencia;ALTER TABLE Financeiro.RegraFuncional DROP COLUMN Abrangencia;END;
+ALTER TABLE Financeiro.RegraFuncional ALTER COLUMN DepositoId bigint NOT NULL;

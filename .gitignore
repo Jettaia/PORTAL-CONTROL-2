@@ -1,0 +1,57 @@
+# Ambiente privado: nunca versionar valores, nem exemplos sem revisao
+.env
+.env.*
+*.env
+*.env.*
+node_modules/
+coverage/
+.cache/
+*.log
+*.tmp
+*.temp
+*.bak
+*.bak_*
+*.bak.*
+* - Copia.*
+* - Cópia.*
+BACKUP*/
+backup*/
+backups/
+secrets/
+credentials/
+*.zip
+*.7z
+*.rar
+*.pfx
+*.p12
+*.pem
+*.key
+*.cer
+*.crt
+*.trn
+*.mdf
+*.ldf
+.DS_Store
+Thumbs.db
+# Arquivos vivos de operacao: as evidencias estaticas sao preservadas nos manifestos.
+docs/final-lab/demo-session.json
+docs/final-lab/laboratories.ndjson
+docs/final-lab/commit-attestation.json
+# Artefatos privados e gerados
+*.dump
+*.sql.gz
+*.sqlite
+*.sqlite3
+*.db
+*.bkp
+*.bacpac
+*.dacpac
+output/
+exports/
+artifacts/
+playwright-report/
+test-results/
+pilot-local/*.json
+!pilot-local/sql/manifest.json
+pilot-local/*.txt
+pilot-local/*.png

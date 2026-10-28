@@ -1,0 +1,53 @@
+{
+  "name": "jetta-control-api",
+  "version": "7.0.0-lab.2",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "check": "node scripts/check-all.mjs",
+    "test": "node scripts/test-all.mjs",
+    "bootstrap:admin": "node scripts/criar-admin.cjs",
+    "test:b3": "node --test integration/b3.integration.mjs",
+    "gate:b3": "node scripts/run-b3.mjs",
+    "gate:b3.2": "node scripts/run-b3-2.mjs",
+    "test:b3.2": "node --test integration/b3-2.integration.mjs",
+    "gate:b3.3": "node scripts/run-b3-3.mjs",
+    "test:b3.3": "node --test integration/b3-3.integration.mjs",
+    "gate:b3.4": "node scripts/run-b3-4.mjs",
+    "gate:b4.2": "node scripts/run-b4-2.mjs",
+    "test:b4.2": "node --test integration/b4-2.integration.mjs",
+    "gate:b4.1": "node scripts/run-b4-1.mjs",
+    "test:b4.1": "node --test integration/b4-1.integration.mjs",
+    "test:b3.4": "node --test integration/b3-4.integration.mjs",
+    "gate:b4.3": "node scripts/run-b4-3.mjs",
+    "test:b4.3": "node --test integration/b4-3.integration.mjs",
+    "gate:b5.1": "node scripts/run-b5-1.mjs",
+    "test:b5.1": "node --test integration/b5-1.integration.mjs",
+    "gate:b5.2": "node scripts/run-b5-2.mjs",
+    "test:b5.2": "node --test integration/b5-2.integration.mjs",
+    "gate:b5.2a": "node scripts/run-b5-2a.mjs",
+    "test:b5.2a": "node --test integration/b5-2a.integration.mjs",
+    "gate:b5.2b": "node scripts/run-b5-2b.mjs",
+    "test:b5.2b": "node --test integration/b5-2b.integration.mjs integration/b5-2b-additional.integration.mjs",
+    "gate:b5.2c": "node scripts/run-b5-2c.mjs",
+    "test:b5.2c": "node --test integration/b5-2c.integration.mjs",
+    "gate:b5.3-f01": "node scripts/run-b5-3-f01.mjs",
+    "test:b5.3-f01": "node --test integration/b5-3-f01.integration.mjs integration/b5-3-f01-additional.integration.mjs",
+    "gate:b6.1": "node scripts/run-b6-1.mjs",
+    "demo:b6.1": "node scripts/demo-b6-1.mjs --synthetic-lab",
+    "gate:final": "node scripts/run-final-lab.mjs",
+    "demo:final": "node scripts/demo-final-lab.mjs --synthetic-lab",
+    "gate:uat": "node scripts/run-final-lab.mjs --uat"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "odbc": "^2.4.9",
+    "dotenv": "^16.4.7",
+    "express-rate-limit": "^7.5.0"
+  }
+}

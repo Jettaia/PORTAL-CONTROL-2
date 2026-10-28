@@ -1,0 +1,47 @@
+import {intLiteral as n,nvarcharLiteral as s} from './auth-db.js';
+import {tx,lock,explicit,authorize} from './b4.js';
+import {PlanningError,scope} from './b3.js';
+import {financialAuthorize,financialScope,filters,rowDb} from './b5-1.js';
+import {detailFromRow} from './b5-2.js';
+import {previewDb} from './b5-3-f03.js';
+import {hash,json} from './b4-3.js';
+import {provision,summarize,draftReceipt,stages} from './b6-1-model.js';
+import {tableWorkbook} from './b5-xlsx.js';
+const fail=(c,status=409)=>{throw new PlanningError(c,status);};
+export function queryFilters(query={}){if(!query||Object.values(query).some(v=>typeof v!=='string')||Object.keys(query).some(k=>!['inicio','fim','filialId','depositoId','prestadorId','situacao','competencia','versaoRecorte'].includes(k)))fail('FILTROS_INVALIDOS',400);const {situacao='',competencia='',versaoRecorte,...base}=query;if(situacao&&!stages.includes(situacao))fail('SITUACAO_INVALIDA',400);if(competencia&&!/^20\d{2}-(0[1-9]|1[0-2])$/.test(competencia))fail('COMPETENCIA_INVALIDA',400);if(versaoRecorte&&!/^[a-f0-9]{64}$/.test(versaoRecorte))fail('VERSAO_INVALIDA',400);return {...filters(base),situacao,competencia,...(versaoRecorte?{versaoRecorte}:{})};}
+async function access(db,actor){const user=(await db.query(`SELECT Perfil FROM Seguranca.Usuario WHERE UsuarioId=${n(actor)} AND Ativo=1`))[0];if(user?.Perfil==='FINANCEIRO'){await financialAuthorize(db,actor,'financeiro.carteira.consultar');return 'FINANCEIRO';}if(user?.Perfil==='GESTOR'&&(await db.query(`SELECT 1 V WHERE ${explicit(actor,'operacao.fechamento.visualizar')}`)).length)return 'GESTOR';fail('PERMISSAO_PROVISIONAMENTO_NEGADA',403);}
+async function has(db,actor,key){return !!(await db.query(`SELECT 1 V WHERE ${explicit(actor,key)}`)).length;}
+// Cache only identical deterministic SELECTs inside this read-only SERIALIZABLE scope.
+// SQL read locks remain held; mutations/export audit use the original connection afterwards.
+function portfolioReads(connection){const reads=new Map();return new Proxy(connection,{get(target,key){if(key!=='query'){const value=Reflect.get(target,key);return typeof value==='function'?value.bind(target):value;}return async(sql,...args)=>{if(args.length||!/^SELECT\s/i.test(sql.trim())||/SYSUTCDATETIME|GETDATE|NEWID|CHANGE_TRACKING|@@/i.test(sql))return target.query(sql,...args);if(!reads.has(sql)){const pending=target.query(sql);reads.set(sql,pending);try{return await pending;}catch(e){reads.delete(sql);throw e;}}return reads.get(sql);};}});}
+export async function portfolioDb(db,cfg,actor,query,onlyId=null){
+ db=portfolioReads(db);
+ const role=await access(db,actor);await lock(db,'B51-ESCRITA-AUDITADA','Shared');
+ const cs=[financialScope(actor),"(p.Status='CONFIRMADA' OR EXISTS(SELECT 1 FROM Operacao.FechamentoParticipacao f WHERE f.ParticipacaoId=p.ParticipacaoId))"];
+ if(role==='GESTOR')cs.push(scope(actor),'a.GestorUsuarioId='+n(actor));
+ if(query.depositoId){if(role==='GESTOR')await authorize(db,actor,query.depositoId,'operacao.fechamento.visualizar');else await financialAuthorize(db,actor,'financeiro.carteira.consultar',query.depositoId);}
+ if(query.filialId&&!(await db.query(`SELECT 1 V FROM Cadastro.Deposito d WHERE d.FilialId=${n(query.filialId)} AND ${financialScope(actor)}`)).length)fail('ABRANGENCIA_FINANCEIRA_NEGADA',403);
+ for(const [k,col]of [['filialId','d.FilialId'],['depositoId','d.DepositoId'],['prestadorId','p.PrestadorId']])if(query[k])cs.push(col+'='+n(query[k]));
+ if(query.inicio)cs.push('a.DataServico>='+s(query.inicio));if(query.fim)cs.push('a.DataServico<='+s(query.fim));if(onlyId!==null)cs.push('p.ParticipacaoId='+n(onlyId));
+ const ids=await db.query(`/*JETTA:B61_KEYS*/ SELECT TOP(101) p.ParticipacaoId FROM Operacao.Participacao p JOIN Operacao.Atividade a ON a.AtividadeId=p.AtividadeId JOIN Cadastro.Deposito d ON d.DepositoId=a.DepositoId WHERE ${cs.join(' AND ')} ORDER BY p.ParticipacaoId`);
+ if(ids.length>100)fail('CONSULTA_EXIGE_RECORTE_100',422);if(onlyId!==null&&!ids.length)fail('PARTICIPACAO_INDISPONIVEL',403);
+ // Concurrent portfolios share participant locks; writers retain exclusive locks.
+ for(const r of ids)await lock(db,'P'+n(r.ParticipacaoId),'Shared');
+ const auth=role==='FINANCEIRO'&&await has(db,actor,'financeiro.autorizacao.consultar'),f03=role==='FINANCEIRO'&&cfg.b53f03&&await has(db,actor,'financeiro.f03.consultar');
+ if(query.competencia&&!f03)fail('CONSULTA_COMPETENCIA_SEM_PERMISSAO',403);
+ const lines=[];for(const id of ids){const row=await rowDb(db,actor,id.ParticipacaoId,{readOnly:true}),ci=(await db.query(`SELECT CONVERT(varchar(36),c.Versao) Versao,CONVERT(varchar(40),c.ValorOriginal) Valor,c.Origem,(SELECT MIN(AuditoriaId) FROM Seguranca.Auditoria WHERE Entidade='Participacao' AND EntidadeId=c.ParticipacaoId AND Acao='CONFIRMAR') AuditoriaConfirmacao FROM Operacao.ContratoIndividual c WHERE c.ParticipacaoId=${n(id.ParticipacaoId)}`))[0];
+ const contract=ci?{versao:ci.Versao,valor:ci.Valor,origem:ci.Origem,verificado:ci.Origem==='CONFIRMACAO_TRANSACIONAL'&&!!ci.AuditoriaConfirmacao,auditoriaConfirmacao:ci.AuditoriaConfirmacao?String(ci.AuditoriaConfirmacao):null}:null;
+ const proposal=f03?await previewDb(db,actor,id.ParticipacaoId,row.operacional.previsao.data,null,row):null;
+ const line=provision(row,contract,auth?await detailFromRow(db,id.ParticipacaoId,row):null,proposal);
+ if(query.situacao&&!line.etapas[query.situacao]||query.competencia&&line.competencia.sugerida!==query.competencia)continue;lines.push(line);}
+ const result={schemaVersao:'B6.1-1.0.0',filtros:query,escopo:'RECORTE_COMPLETO_LIMITADO_100',linhas:lines,indicadores:summarize(lines),perfil:role,limite:100,obrigacaoCriada:false,pagamentoRealizado:false,quitacaoRealizada:false};
+ return {...result,versaoRecorte:hash([String(actor),query.inicio,query.fim,query.filialId,query.depositoId,query.prestadorId,query.situacao,query.competencia,lines])};
+}
+function enabled(cfg){if(!cfg.b61||!cfg.b53f01||!cfg.b52)fail('B61_INDISPONIVEL',404);}
+export async function portfolio(cfg,actor,query={}){enabled(cfg);const f=queryFilters(query);return tx(cfg,db=>portfolioDb(db,cfg,actor,f));}
+export async function provisioningCatalog(cfg,actor){enabled(cfg);return tx(cfg,async db=>{const role=await access(db,actor),deposits=await db.query(`SELECT d.DepositoId,d.Nome,d.FilialId,f.Nome Filial FROM Cadastro.Deposito d JOIN Cadastro.Filial f ON f.FilialId=d.FilialId WHERE ${financialScope(actor)} ${role==='GESTOR'?`AND EXISTS(SELECT 1 FROM Seguranca.GestorDeposito gd WHERE gd.GestorUsuarioId=${n(actor)} AND gd.DepositoId=d.DepositoId AND gd.RevogadoEm IS NULL)`:''} ORDER BY d.DepositoId`),providers=await db.query(`SELECT DISTINCT TOP(201) pr.PrestadorId,pr.Nome FROM Cadastro.Prestador pr JOIN Operacao.Participacao p ON p.PrestadorId=pr.PrestadorId JOIN Operacao.Atividade a ON a.AtividadeId=p.AtividadeId JOIN Cadastro.Deposito d ON d.DepositoId=a.DepositoId WHERE ${financialScope(actor)} ${role==='GESTOR'?'AND '+scope(actor)+' AND a.GestorUsuarioId='+n(actor):''} ORDER BY pr.PrestadorId`);return {depositos:Array.from(deposits),prestadores:Array.from(providers).slice(0,200),prestadoresTruncados:providers.length>200};});}
+export async function serviceDetail(cfg,actor,id){enabled(cfg);return tx(cfg,async db=>(await portfolioDb(db,cfg,actor,{},id)).linhas[0]);}
+export async function receiptDraft(cfg,actor,id){return draftReceipt(await serviceDetail(cfg,actor,id));}
+export async function exportPortfolio(cfg,actor,query={}){enabled(cfg);const f=queryFilters(query);if(!f.versaoRecorte)fail('VERSAO_RECORTE_OBRIGATORIA',400);return tx(cfg,async db=>{await financialAuthorize(db,actor,'financeiro.carteira.consultar');await financialAuthorize(db,actor,'financeiro.carteira.exportar');await lock(db,'B51-ESCRITA-AUDITADA');const data=await portfolioDb(db,cfg,actor,f);if(f.versaoRecorte!==data.versaoRecorte)fail('RECORTE_ALTERADO');const a=(await db.query(`INSERT Seguranca.Auditoria(Entidade,EntidadeId,Acao,AtorUsuarioId,DetalhesJson) OUTPUT inserted.AuditoriaId VALUES(N'ProvisionamentoGerencial',NULL,N'B61_EXPORTADO',${n(actor)},${s(json({filtros:f,quantidade:data.linhas.length,versao:data.versaoRecorte,escopo:data.escopo,obrigacaoCriada:false}),'max')})`))[0].AuditoriaId;
+ const rows=data.linhas.map(r=>[r.participacaoId,r.atividadeId,r.prestador.nome,r.identificacao?.documentoMascarado??'',r.filial.nome,r.deposito.nome,r.servico.nome,r.previsao.data,r.previsao.inicio,r.previsao.fim,r.horarios.find(e=>e.tipo==='ENTRADA')?.instanteUtc??'',r.horarios.find(e=>e.tipo==='SAIDA')?.instanteUtc??'',r.valorContratado,r.contrato?.versao,r.valorGerencial,r.situacoes.join(' | '),r.conferencia?.Decisao??'PENDENTE',r.fechamento.estado,r.origem.comprovanteId,r.autorizacao.estado,r.competencia.sugerida,r.vencimento.proposto,r.pendencias.join(' | ')]);
+ return {buffer:tableWorkbook('JETTA CONTROL - Provisionamento gerencial - NÃO É OBRIGAÇÃO NEM PAGAMENTO',[`Recorte completo limitado a 100; auditoria ${a}; versão ${data.versaoRecorte}`,JSON.stringify(f)],['Participação','Atividade','Prestador','Identificação autorizada','Filial','Depósito','Serviço','Data prevista','Turno início','Turno fim','Entrada UTC','Saída UTC','Contratado original BRL','Versão contrato','Candidato gerencial BRL','Situações sobrepostas','Conferência','Fechamento','Comprovante','Autorização B5.2','Competência proposta','Vencimento proposto','Pendências'],rows),auditoriaId:String(a),quantidade:rows.length};});}

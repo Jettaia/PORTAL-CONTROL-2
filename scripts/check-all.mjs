@@ -1,0 +1,2 @@
+import fs from 'node:fs';import {spawnSync} from 'node:child_process';let count=0;
+for(const dir of ['src','public','scripts','tests','integration'])for(const file of fs.readdirSync(dir).filter(f=>/\.(js|mjs|cjs)$/.test(f))){const r=spawnSync(process.execPath,['--check',dir+'/'+file],{stdio:'inherit'});if(r.error)throw r.error;if(r.status!==0)process.exit(r.status||1);count++;}console.log(JSON.stringify({syntaxFiles:count,failures:0}));

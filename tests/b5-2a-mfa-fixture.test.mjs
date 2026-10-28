@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {hotp,verifyTotp} from '../src/totp.js';
+test('B5.2A fixture com código do passo anterior cruza fronteira e falha sem mudar MFA',()=>{const secret=Buffer.alloc(20,7),step=100000,code=hotp(secret,step-1);assert.equal(verifyTotp(secret,code,step*30000+29999,-1).valid,true);assert.equal(verifyTotp(secret,code,(step+1)*30000,-1).valid,false);});

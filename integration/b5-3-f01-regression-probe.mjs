@@ -1,0 +1,2 @@
+import assert from 'node:assert/strict';
+export async function valueMutationProbe(q,id,sql){const fixed=(await q(`SELECT 1 V FROM Operacao.ContratoIndividual WHERE ParticipacaoId=${id}`)).length;if(!fixed)return q(sql);await assert.rejects(()=>q(sql),e=>e.odbcErrors?.some(x=>x.code===55210));return q(`UPDATE Operacao.Atividade SET FimPrevisto=DATEADD(minute,1,FimPrevisto) WHERE AtividadeId=(SELECT AtividadeId FROM Operacao.Participacao WHERE ParticipacaoId=${id})`);}

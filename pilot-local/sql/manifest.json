@@ -1,0 +1,131 @@
+{
+  "version": "1.0.0-pilot.rc1",
+  "purpose": "PILOTO_LOCAL_FINANCEIRO_SIMULADO",
+  "files": [
+    {
+      "file": "01-b3-common.sql",
+      "source": "b3-common.sql",
+      "sourceSha256": "bf05baa3a01aa87fa1dc5f307932044c8cb4643e58c1dbb497538a3672c5d7e9",
+      "sha256": "522e43535af942f818d62d909844be7987db8caf8e61c29670456f251c95d79c"
+    },
+    {
+      "file": "02-b3-rbac.sql",
+      "source": "b3-rbac.sql",
+      "sourceSha256": "65fad027d281091e386ef9c64b32d77447c56e097fe6cddd5c749f0747df6f5a",
+      "sha256": "65fad027d281091e386ef9c64b32d77447c56e097fe6cddd5c749f0747df6f5a"
+    },
+    {
+      "file": "03-b3-operation.sql",
+      "source": "b3-operation.sql",
+      "sourceSha256": "aa65062970b7fe1850b0d94466128b334dcf610710ba8850f92a54d1edfd413f",
+      "sha256": "0d0a7f677af593c05eb36968f02ad65812e8170b135d76f279a68c9896aa0dfb"
+    },
+    {
+      "file": "04-b3-mfa.sql",
+      "source": "b3-mfa.sql",
+      "sourceSha256": "a41d14099264a39e6724f05dd93f6430339da47e4684d6dca84469de1e34869f",
+      "sha256": "654b828a21701cb4d1d925dd609a6ec5dbbafe0ebb95bd553561b9de77361790"
+    },
+    {
+      "file": "05-b3-2-patch.sql",
+      "source": "b3-2-patch.sql",
+      "sourceSha256": "14e04c625022b36af75b9f0e771d72e6cb7dc2bccd4dc9f94fefafc17ce6ddd7",
+      "sha256": "a936e511ccf657c73201e694d011c76cfac37836e8774e5ebc15b77242836b55"
+    },
+    {
+      "file": "06-b3-3-availability.sql",
+      "source": "b3-3-availability.sql",
+      "sourceSha256": "376be4dfda2e012366eddca326ba7241b4e27fada985133aa7a8141ccf42b95d",
+      "sha256": "44eccfbd605e5c26de6cae15c439e8d2abd6d84d4c381a4f6e3952a063d38a65"
+    },
+    {
+      "file": "07-b3-3-patch.sql",
+      "source": "b3-3-patch.sql",
+      "sourceSha256": "ded1eaeb3f72c2e01cdba055bea7ee7769392525bada416850a95270f137fca0",
+      "sha256": "5a0a4638b238de9af4676fbe4e39747142bdfb408588c99267b2fdf2aa288907"
+    },
+    {
+      "file": "08-b4-1-schema.sql",
+      "source": "b4-1-schema.sql",
+      "sourceSha256": "4259336a08bff1008d750b79273868a7814a2687caec62784f388cb8e46934e9",
+      "sha256": "961434c09db9ff5224e25caf45206ecf4feef30cfad0368bfc06ec2e990d68ce"
+    },
+    {
+      "file": "09-b4-2-schema.sql",
+      "source": "b4-2-schema.sql",
+      "sourceSha256": "c7648fa6482ac701609fdbd91c61577787199ba3c12e7816d1c165c6601b92fe",
+      "sha256": "cff43583e7c1fe0c8996b7e47a94a0ce2a2fc02d5dcc059fe2e3b63a6b01f1e9"
+    },
+    {
+      "file": "10-b4-3-schema.sql",
+      "source": "b4-3-schema.sql",
+      "sourceSha256": "4391b0947b249691b840c51883ddfcb55427d09c909e27f1075982e0a259feeb",
+      "sha256": "338b3c655806b7ba3f367e4bfd19973663281618f2de78b010c0dad7ae5a69a8"
+    },
+    {
+      "file": "11-b5-1-schema.sql",
+      "source": "b5-1-schema.sql",
+      "sourceSha256": "74684e32167f04fbb07e516d1652dcdcb17301bcb59b5e2cd0735d7daf1e210a",
+      "sha256": "8de8009d0a29fd1b0dd48ddf9dc27f9a8f3ef1640d721856e5e12d653bde9c95"
+    },
+    {
+      "file": "12-b5-2-schema.sql",
+      "source": "b5-2-schema.sql",
+      "sourceSha256": "d5fa1adce2967df2dbfa15c56ed4158b105350bdd77b5595048c39731636367a",
+      "sha256": "c8b7092e35710bd018b316eb368d979db1e46cc628602d5e89d9def035065797"
+    },
+    {
+      "file": "13-b5-2a-schema.sql",
+      "source": "b5-2a-schema.sql",
+      "sourceSha256": "c8bfca30fcc864314942d30118ad660195a40050dc462b1efc40d2d9c88bc192",
+      "sha256": "cbb2c62db6bbe262f97c5bc817086e163e784655968ff3891312a26b37903885"
+    },
+    {
+      "file": "14-b5-2b-schema.sql",
+      "source": "b5-2b-schema.sql",
+      "sourceSha256": "a974f62376958f553176ebf00d49d7d4116398b0fa0c6416f322a205354da28b",
+      "sha256": "f28c65c36ad97daf3aa2c9676b4f300b9abba9edf24bb7a4130b9eb0de745c82"
+    },
+    {
+      "file": "15-b5-2c-schema.sql",
+      "source": "b5-2c-schema.sql",
+      "sourceSha256": "79dbcbc3da3f48c14864d6ba59f04a99226dedcb29606711be39184c93bc2aad",
+      "sha256": "e5a825fc5d27e1075d05efd44a204ecf1f3671cae7c90d13e4b7d7039cc1124c"
+    },
+    {
+      "file": "16-b5-3-f01-schema.sql",
+      "source": "b5-3-f01-schema.sql",
+      "sourceSha256": "fca5b6c4fc304de3d1cd3f06ffb3d45fce91624eb5b045a2fcf540a59519f441",
+      "sha256": "c45256562722edf4ef465b4d2d008b9d911cb8d89474f400e3599b0962335743"
+    },
+    {
+      "file": "17-b5-3-f03-schema.sql",
+      "source": "b5-3-f03-schema.sql",
+      "sourceSha256": "c71ea88952e3a62159d2bc19cb06f499b65dc55b04eb9543d5798cef21545f8e",
+      "sha256": "19b55f6394535eae5757769346e552ac715e2a55b86eb61dd5e7f5075f91a391"
+    },
+    {
+      "file": "18-final-lab-schema.sql",
+      "source": "final-lab-schema.sql",
+      "sourceSha256": "dd231cdbe0443a7f80bef7645f3197c0927bc93004c971df6599476370077aa4",
+      "sha256": "d7fd2151bdb4975b35ff7836dce89e31518675725bb8242e7e5d2c950dbd4128"
+    },
+    {
+      "file": "19-b6-1-uat-cadastro.sql",
+      "source": "b6-1-uat-cadastro.sql",
+      "sourceSha256": "641c53047ecbbb96f23dbc152cc144f4d0034773446aaa9249c59ffee54063f3",
+      "sha256": "57da10ed75574d2d72127cb4ff9d0840fe0d6b0967e9a1ee26a3583002f09872"
+    },
+    {
+      "file": "20-final-lab-admin.sql",
+      "source": "final-lab-admin.sql",
+      "sourceSha256": "2e314663eec00d8b18266f3ab76b2e2a1a133b122e470e6bb2292c6b3b3459ea",
+      "sha256": "a333c5e47dbea413bfcdffe9da001d86909ff710430610b5b432944d1c0c27ef"
+    },
+    {
+      "file": "21-pilot-operational.sql",
+      "source": "pilot-local/operational.sql",
+      "sha256": "b5ae65b300ffa13d478571b66b82fadd4bd8c3ee612b9600fcef2fda4b59ce8f"
+    }
+  ]
+}

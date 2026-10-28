@@ -1,0 +1,1 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {sqlTrue} from '../src/rbac.js';test('SQL bit em ODBC tipado',()=>{for(const x of [true,1,1n,'1'])assert.equal(sqlTrue(x),true);for(const x of [false,0,0n,'0',null,undefined,'true'])assert.equal(sqlTrue(x),false)});

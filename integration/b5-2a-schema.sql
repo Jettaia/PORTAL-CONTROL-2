@@ -1,0 +1,23 @@
+IF LEN(DB_NAME())<>34 OR LEFT(DB_NAME(),22)<>'JETTA_CONTROL_B3_TEST_' OR RIGHT(DB_NAME(),12) COLLATE Latin1_General_100_BIN2 LIKE '%[^a-f0-9]%' THROW 54900,N'Somente laboratorio',1;
+IF NOT EXISTS(SELECT 1 FROM sys.change_tracking_databases WHERE database_id=DB_ID()) BEGIN DECLARE @ddl nvarchar(max)=N'ALTER DATABASE '+QUOTENAME(DB_NAME())+N' SET CHANGE_TRACKING=ON(CHANGE_RETENTION=2 DAYS,AUTO_CLEANUP=ON)';EXEC(@ddl);END;
+GO
+IF NOT EXISTS(SELECT 1 FROM sys.change_tracking_tables WHERE object_id=OBJECT_ID('Operacao.Participacao')) ALTER TABLE Operacao.Participacao ENABLE CHANGE_TRACKING WITH(TRACK_COLUMNS_UPDATED=OFF);
+IF NOT EXISTS(SELECT 1 FROM sys.change_tracking_tables WHERE object_id=OBJECT_ID('Operacao.Atividade')) ALTER TABLE Operacao.Atividade ENABLE CHANGE_TRACKING WITH(TRACK_COLUMNS_UPDATED=OFF);
+IF NOT EXISTS(SELECT 1 FROM sys.change_tracking_tables WHERE object_id=OBJECT_ID('Operacao.EventoApontamento')) ALTER TABLE Operacao.EventoApontamento ENABLE CHANGE_TRACKING WITH(TRACK_COLUMNS_UPDATED=OFF);
+IF NOT EXISTS(SELECT 1 FROM sys.change_tracking_tables WHERE object_id=OBJECT_ID('Operacao.ConferenciaApontamento')) ALTER TABLE Operacao.ConferenciaApontamento ENABLE CHANGE_TRACKING WITH(TRACK_COLUMNS_UPDATED=OFF);
+IF NOT EXISTS(SELECT 1 FROM sys.change_tracking_tables WHERE object_id=OBJECT_ID('Operacao.CorrecaoApontamento')) ALTER TABLE Operacao.CorrecaoApontamento ENABLE CHANGE_TRACKING WITH(TRACK_COLUMNS_UPDATED=OFF);
+IF NOT EXISTS(SELECT 1 FROM sys.change_tracking_tables WHERE object_id=OBJECT_ID('Operacao.DecisaoCorrecaoApontamento')) ALTER TABLE Operacao.DecisaoCorrecaoApontamento ENABLE CHANGE_TRACKING WITH(TRACK_COLUMNS_UPDATED=OFF);
+IF NOT EXISTS(SELECT 1 FROM sys.change_tracking_tables WHERE object_id=OBJECT_ID('Operacao.OcorrenciaParticipacao')) ALTER TABLE Operacao.OcorrenciaParticipacao ENABLE CHANGE_TRACKING WITH(TRACK_COLUMNS_UPDATED=OFF);
+IF NOT EXISTS(SELECT 1 FROM sys.change_tracking_tables WHERE object_id=OBJECT_ID('Operacao.AjusteApontamento')) ALTER TABLE Operacao.AjusteApontamento ENABLE CHANGE_TRACKING WITH(TRACK_COLUMNS_UPDATED=OFF);
+IF NOT EXISTS(SELECT 1 FROM sys.change_tracking_tables WHERE object_id=OBJECT_ID('Operacao.FechamentoParticipacao')) ALTER TABLE Operacao.FechamentoParticipacao ENABLE CHANGE_TRACKING WITH(TRACK_COLUMNS_UPDATED=OFF);
+IF NOT EXISTS(SELECT 1 FROM sys.change_tracking_tables WHERE object_id=OBJECT_ID('Operacao.ComprovanteServico')) ALTER TABLE Operacao.ComprovanteServico ENABLE CHANGE_TRACKING WITH(TRACK_COLUMNS_UPDATED=OFF);
+IF NOT EXISTS(SELECT 1 FROM sys.change_tracking_tables WHERE object_id=OBJECT_ID('Financeiro.SolicitacaoAutorizacao')) ALTER TABLE Financeiro.SolicitacaoAutorizacao ENABLE CHANGE_TRACKING WITH(TRACK_COLUMNS_UPDATED=OFF);
+IF NOT EXISTS(SELECT 1 FROM sys.change_tracking_tables WHERE object_id=OBJECT_ID('Financeiro.DecisaoAutorizacao')) ALTER TABLE Financeiro.DecisaoAutorizacao ENABLE CHANGE_TRACKING WITH(TRACK_COLUMNS_UPDATED=OFF);
+IF NOT EXISTS(SELECT 1 FROM sys.change_tracking_tables WHERE object_id=OBJECT_ID('Financeiro.AvaliacaoCarteira')) ALTER TABLE Financeiro.AvaliacaoCarteira ENABLE CHANGE_TRACKING WITH(TRACK_COLUMNS_UPDATED=OFF);
+IF NOT EXISTS(SELECT 1 FROM sys.change_tracking_tables WHERE object_id=OBJECT_ID('Financeiro.ReferenciaCarteira')) ALTER TABLE Financeiro.ReferenciaCarteira ENABLE CHANGE_TRACKING WITH(TRACK_COLUMNS_UPDATED=OFF);
+IF NOT EXISTS(SELECT 1 FROM sys.change_tracking_tables WHERE object_id=OBJECT_ID('Cadastro.Prestador')) ALTER TABLE Cadastro.Prestador ENABLE CHANGE_TRACKING WITH(TRACK_COLUMNS_UPDATED=OFF);
+IF NOT EXISTS(SELECT 1 FROM sys.change_tracking_tables WHERE object_id=OBJECT_ID('Cadastro.TipoServico')) ALTER TABLE Cadastro.TipoServico ENABLE CHANGE_TRACKING WITH(TRACK_COLUMNS_UPDATED=OFF);
+IF NOT EXISTS(SELECT 1 FROM sys.change_tracking_tables WHERE object_id=OBJECT_ID('Cadastro.Deposito')) ALTER TABLE Cadastro.Deposito ENABLE CHANGE_TRACKING WITH(TRACK_COLUMNS_UPDATED=OFF);
+IF NOT EXISTS(SELECT 1 FROM sys.change_tracking_tables WHERE object_id=OBJECT_ID('Cadastro.Filial')) ALTER TABLE Cadastro.Filial ENABLE CHANGE_TRACKING WITH(TRACK_COLUMNS_UPDATED=OFF);
+IF NOT EXISTS(SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID('Operacao.Atividade') AND name='IX_B52A_DepositoData') CREATE INDEX IX_B52A_DepositoData ON Operacao.Atividade(DepositoId,DataServico,AtividadeId);
+GO

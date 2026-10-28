@@ -1,0 +1,54 @@
+/* Jetta Control UX-01 Refinado v1.1.0 - visual only; no RBAC/backend changes */
+:root {--navy:#082a4d;--navy-deep:#062341;--ink:#0d3056;--orange:#f28a1d;--border:#dfebf6;--soft:#f3f7fd; font-family: 'Segoe UI',Inter,Arial,sans-serif}
+body{background:var(--soft);color:var(--ink)}
+.sidebar{background:linear-gradient(162deg,#0c345d 0%,#052343 90%);width:284px;flex-basis:284px;padding:9px 12px 13px;box-shadow:3px 0 18px #092a4b12}
+.brand{padding:0 8px 19px}.brand img{background:none!important;width:181px;height:106px;object-fit:contain;filter:brightness(0) invert(1);padding:0;margin:0 auto -6px;display:block}
+/* Original brand color remains identifiable from orange block via colored asset; don't force white on logo */
+.brand img{filter:none;}
+.brand b{font-size:18px;line-height:1.1;font-weight:760;margin-top:2px;letter-spacing:.1px}.brand small{color:#c0d6eb;font-size:10.5px;margin-top:5px}
+#mainNav{gap:4px;scrollbar-width:thin;scrollbar-color:#416483 transparent}
+#mainNav button,#mainNav summary{display:flex;align-items:center;gap:12px;padding:12px 14px;min-height:44px;font-size:13.5px;font-weight:620;line-height:1.2}
+#mainNav summary{position:relative;padding-right:30px}
+#mainNav summary:after{position:absolute;right:12px;font-size:17px;font-weight:400}
+#mainNav .nav-icon,#mainNav [data-ico]{height:18px;width:18px;flex:0 0 18px;display:inline-flex;align-items:center;justify-content:center}
+svg.jc-icon{height:100%;width:100%;display:block;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#mainNav button.selected{background:#214f80;box-shadow:inset 4px 0 var(--orange);color:#ff9830}
+.subitems{border-color:#446688;margin-left:25px;padding-left:12px}.subitems button{min-height:32px;padding:7px 9px!important;font-weight:450!important;letter-spacing:.04px}
+.subitems button::before{content:'•';color:#7190b0;font-size:12px;margin-right:3px}
+.subitems button.selected::before{color:var(--orange)}
+.toolbar{height:72px;box-shadow:0 1px 10px #1a3a5a0a}.toolbar-search{height:44px;max-width:590px;width:min(540px,47vw)}
+.toolbar .icon-button{display:grid;place-items:center;width:34px;height:36px}
+.toolbar .icon-button svg{height:23px;width:23px}
+.toolbar-search [data-ico]{width:20px;height:20px;color:#1a5588}.bell{height:22px;width:22px;display:flex;align-items:center}
+.environment{background:#e6f8ef;color:#137248}.environment::first-letter{color:#12a875}
+.workspace main{max-width:none;padding:30px 32px 35px}
+/* a single headline: dashboard title is in hero, internal pages retain page heading */
+body.jc-dashboard .page-title{display:none}
+body.jc-dashboard #homePage>.welcome{min-height:236px;position:relative;border:0;border-radius:0 0 0 0;background:none!important;padding:38px 36px;isolation:isolate;overflow:hidden;box-shadow:none;margin:0 -32px 18px}
+body.jc-dashboard #homePage>.welcome::before{content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,#f7fbff 0%,#f8fbffef 27%,#ffffff80 52%,#ffffff00 82%),url('/jetta-cenario-aprovado.jpg') right center/cover no-repeat;}
+body.jc-dashboard #homePage>.welcome::after{content:'';position:absolute;inset:0;z-index:-2;background:#f1f7fd}
+.welcome .eyebrow{font-size:13px;font-weight:750;letter-spacing:1.3px;color:#486789;margin-bottom:2px}
+.welcome h2{font-size:clamp(38px,4vw,54px);font-weight:840;line-height:1.13;letter-spacing:-1.7px;margin:6px 0 6px;color:#0b2b51}
+.welcome h2 em{color:#1556a2}.welcome p{font-size:16px;color:#5b7392;margin:0}
+.kpi-grid{margin:14px 0 18px;gap:15px}.kpi{border-radius:13px;min-height:140px;align-items:center;gap:15px;padding:21px 19px;box-shadow:0 6px 23px #0f31570a}
+.kpi strong{font-size:13px}.kpi small{font-size:12px}.kpi-value{font-size:30px;margin:2px 0 5px}
+.kpi-icon{width:62px;height:62px;flex:0 0 62px}.kpi-icon svg{width:32px;height:32px}
+.dashboard-lower{grid-template-columns:1.05fr 1fr;gap:16px}.dashboard-lower>.panel{padding:22px;border-radius:14px;min-width:0}
+.panel-title{margin-bottom:18px}.panel-title h2{font-size:20px}.panel-title p{font-size:12.5px}
+.title-icon svg{width:27px;height:27px}
+.journey>div{margin-bottom:17px}.journey b{background:#ffedda;color:#ed7a15}
+.module-list>div{background:#fff;box-shadow:0 3px 9px #1b3b5805;padding:10px 12px}
+.module-list small{background:#edf5ff;color:#316ca2;padding:7px 9px;border-radius:7px;white-space:nowrap}
+.notice{background:#eaf4ff;border:0;border-radius:12px}
+.rbac-toolbar{margin-bottom:20px}.rbac-toolbar h2{font-size:23px}.rbac-grid{grid-template-columns: minmax(0, 1.02fr) minmax(0, 1fr);gap:17px}
+.rbac-grid .panel{border-radius:14px;box-shadow:0 6px 24px #15395408}
+.permission-section summary{font-size:14px}.profile-row{padding:15px 12px}.profile-row.active{background:#e7f2ff;border-left:3px solid #1782e8}
+.rbac-toolbar button,.new-role button,.advanced-permission button{font-weight:650}
+.side-foot{border-color:#295073}.account-actions{margin:18px 0}.account-actions button{border-radius:9px}
+.sidebar.collapsed{width:82px;flex-basis:82px}.sidebar.collapsed .brand img{width:56px;height:56px}.sidebar.collapsed #mainNav summary{font-size:0}.sidebar.collapsed #mainNav summary svg{width:21px;height:21px}.sidebar.collapsed #mainNav .nav-link{font-size:0}
+@media(max-width:1200px){.dashboard-lower,.rbac-grid{grid-template-columns:1fr}.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.sidebar{width:100%;position:relative;height:auto}.workspace main{padding:18px}.kpi-grid{grid-template-columns:1fr}body.jc-dashboard #homePage>.welcome{margin:0 -18px 14px;min-height:220px;padding:28px 20px}.welcome h2{font-size:34px}.toolbar-search{display:none}}
+
+@media(max-width:760px){.sidebar{width:100%;flex:0 0 auto;padding:8px 12px}.sidebar .brand{padding:0;display:flex;align-items:center;justify-content:center;gap:12px}.sidebar .brand img{width:90px;height:45px;margin:0}.sidebar .brand b{font-size:14px;margin:0}.sidebar .brand small,.sidebar .side-foot{display:none}.sidebar:not(.mobile-open) #mainNav{display:none}.sidebar.mobile-open #mainNav{max-height:60vh;overflow:auto;margin-top:10px}.toolbar{gap:12px}.toolbar .environment{padding:7px 9px}.top-user{min-width:0;white-space:normal;overflow-wrap:anywhere}.toolbar .icon-button{flex-shrink:0}.module-list>div{flex-wrap:wrap}.module-list small{margin-left:0}}
+.profile-dot,.bell,.environment{flex-shrink:0}.toolbar-search{min-width:0}.toolbar-search kbd{white-space:nowrap}
+@media(max-width:1100px){.toolbar-search{display:none}}

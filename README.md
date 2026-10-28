@@ -1,0 +1,34 @@
+# Portal Control
+
+Portal mais recente da Jetta, preservado na branch `main`. A branch `antigo` contém a versão anterior B2.5. O código desta branch veio de `Jetta_Control_B2_2_v1.0.0/lab-b4-2`, versão declarada `7.0.0-lab.2`.
+
+## Conteúdo
+
+- `src/` e `public/`: API e interface.
+- `package.json` e `package-lock.json`: comandos e dependências Node.
+- `tests/`, `integration/` e `scripts/`: testes, schemas de origem e ferramentas existentes.
+- `pilot-local/`: aplicação do piloto, instalador, gerador de schema e catálogo de permissões.
+- `sql/`: scripts legados; não representam uma instalação completa do portal.
+- [Banco de dados](docs/BANCO-DE-DADOS.md): requisitos, ordem de instalação e limitações.
+
+## Desenvolvimento
+
+Requer Node.js >=20. Após instalar as dependências com `npm ci`, os comandos sem banco são:
+
+```powershell
+npm run check
+npm test
+node --test pilot-local/unit.test.mjs
+```
+
+O pacote `odbc` também exige o ambiente nativo compatível. O acesso ao SQL Server requer Microsoft ODBC Driver 18.
+
+`npm start` executa o servidor legado, com configuração `.env` e destino `JETTA_CONTROL`; não é o iniciador do piloto mais recente. O piloto instalado usa `node pilot-local/start.mjs`, configuração privada em `secrets/pilot-local/runtime.json`, acesso local em `127.0.0.1:3211` e efeitos financeiros simulados. Não copie configurações privadas de outra máquina nem execute o instalador como roteiro de produção.
+
+## Limites desta entrega
+
+Este repositório preserva os fontes, sem dados operacionais, credenciais, dependências instaladas, backups, capturas ou relatórios de execução locais. O instalador exige evidências de liberação que não são transportadas: `pilot-local/release.json`, `integration-evidence.json` e um relatório de regressão. A geração e validação dessas evidências, assim como a configuração da instância SQL, precisam ser tratadas antes de uma nova instalação. Nenhum gate foi removido ou contornado.
+
+Ferramentas históricas de relatório, UAT e regressão podem depender da antiga estrutura de pastas, arquivos gerados, caminhos locais e commits do repositório de origem. Não há garantia de execução desses comandos no clone limpo. Os testes unitários são verificados separadamente; homologação SQL e navegador não fazem parte da preparação do commit.
+
+O histórico anterior não foi importado. Os arquivos de aplicação foram copiados sem alterações de lógica. A mensagem do commit inicial é `Inicial`.

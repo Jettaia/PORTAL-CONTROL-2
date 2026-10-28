@@ -1,0 +1,2 @@
+import fs from 'node:fs';import {backupAndVerify} from './recovery.mjs';import {pilotConfig} from './runtime-config.mjs';
+const privateConfig=JSON.parse(fs.readFileSync(new URL('../secrets/pilot-local/runtime.json',import.meta.url),'utf8'));pilotConfig(privateConfig);const result=await backupAndVerify(privateConfig);console.log(JSON.stringify({status:'PASS',backup:result.file,verified:result.verifyOnly,tables:result.tables.length}));

@@ -1,0 +1,7 @@
+import fs from 'node:fs';import {spawnSync} from 'node:child_process';
+if(process.env.JETTA_B3_RUN_SQL_TESTS!=='YES'||!process.env.JETTA_PLAYWRIGHT_ROOT)throw Error('Gate exige laboratorio B3 e runtime Playwright');
+process.env.JETTA_B32_EVIDENCE='YES';fs.mkdirSync('docs/b3-2',{recursive:true});
+const report={utc:new Date().toISOString(),scope:'B3.2 confirmacao e excecoes em laboratorio',principalAccesses:0,b2dInstalled:false,mfaFlagsChanged:false,steps:[]};
+const steps=[['unit',['scripts/test-all.mjs']],['syntax',['scripts/check-all.mjs']],['regression',['--test','integration/b3.integration.mjs']],['contracts',['--test','integration/b3-2.integration.mjs']],['migration',['--test','integration/b3-2-migration.integration.mjs']],['visual-regression',['integration/b3.visual.mjs']],['visual',['integration/b3-2.visual.mjs']]];
+for(const [name,args] of steps){console.log('GATE B3.2: '+name);const r=spawnSync(process.execPath,args,{encoding:'utf8',windowsHide:true,maxBuffer:20*1024*1024});const output=(r.stdout||'')+(r.stderr||'');fs.writeFileSync('docs/b3-2/'+name+'.txt',output);process.stdout.write(output);report.steps.push({name,exitCode:r.status,pass:Number(output.match(/\bpass (\d+)/)?.[1]||0),fail:Number(output.match(/\bfail (\d+)/)?.[1]||0)});if(r.error||r.status!==0){report.status='FAIL';fs.writeFileSync('docs/b3-2/gate-run.json',JSON.stringify(report,null,2)+'\n');process.exit(r.status||1);}}
+report.status='PASS_LAB_B3_2_NOT_DEPLOYED';fs.writeFileSync('docs/b3-2/gate-run.json',JSON.stringify(report,null,2)+'\n');

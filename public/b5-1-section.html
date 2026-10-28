@@ -1,0 +1,17 @@
+<section id="b51Page" class="view-section panel" hidden>
+ <h2>Carteira pré-financeira</h2><p>Valores contratuais e elegibilidade operacional. Candidata à autorização não significa pagamento aprovado. Nenhuma obrigação financeira é criada.</p>
+ <p id="b51Message" role="status" aria-live="polite"></p>
+ <form id="b51Filters" class="b51-grid">
+  <label>Filial<select id="b51Branch" name="filialId"><option value="">Todas autorizadas</option></select></label>
+  <label>Depósito<select id="b51Depot" name="depositoId"><option value="">Todos autorizados</option></select></label>
+  <label>Prestador<select id="b51Provider" name="prestadorId"><option value="">Todos autorizados</option></select></label>
+  <label>Serviço<select id="b51Service" name="servicoId"><option value="">Todos autorizados</option></select></label>
+  <label>Data prevista desde<input type="date" name="inicio"></label><label>Até<input type="date" name="fim"></label>
+  <label>Situação<select name="situacao"><option value="">Todas</option><option value="CANDIDATA_AUTORIZACAO">Candidata à autorização</option><option value="BLOQUEADA">Elegibilidade bloqueada</option><option value="NAO_FECHADO">Aguardando fechamento</option><option value="FECHADO_REGULAR">Fechado regular</option><option value="FECHADO_DESATUALIZADO">Fechado desatualizado</option></select></label>
+  <label>Pendências<select name="pendencia"><option value="">Todas</option><option value="COM">Com impedimentos</option><option value="SEM">Sem impedimentos</option></select></label>
+  <button>Consultar carteira</button><button id="b51Export" type="button">Exportar Excel autorizado</button>
+ </form>
+ <div id="b51Indicators" class="b51-indicators"></div><div id="b51Rows" class="b51-table"></div>
+ <section id="b51Detail" aria-label="Detalhe da carteira"></section><button id="b51Evaluate" type="button" hidden>Registrar avaliação com MFA de ação</button>
+ <button id="b51ProofButton" type="button" hidden>Consultar comprovante operacional</button><article id="b51Proof"></article>
+</section>

@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';import crypto from 'node:crypto';
+import {policyInput,availabilityInput,dateInput} from '../src/b3-operations.js';
+const policy={modo:'DIAS_CONTRATADOS',limiteDias:2,janelaDias:30,vigenteDesde:'2026-01-01',vigenteAte:null};
+test('B3.3 parametros consistentes e datas de calendario',()=>{assert.equal(policyInput(policy).limiteDias,2);for(const value of ['2026-02-29',"2026-01-01';--",null])assert.throws(()=>dateInput(value));});
+test('B3.3 DIAS_CORRIDOS, numeros invalidos e edicao implicita recusados',()=>{for(const patch of [{modo:'DIAS_CORRIDOS'},{limiteDias:0},{janelaDias:1},{janelaDias:36501},{limiteDias:'2'},{vigenteAte:'2025-01-01'},{politicaId:1}])assert.throws(()=>policyInput({...policy,...patch}));});
+test('B3.3 declaracao explicita, intervalo e chave idempotente validados',()=>{const v={prestadorId:1,depositoId:1,inicio:'2026-11-01T08:00',fim:'2026-11-01T10:00',estado:'DISPONIVEL',requisicaoId:crypto.randomUUID()};assert.equal(availabilityInput(v).estado,'DISPONIVEL');for(const patch of [{estado:'CONFLITO'},{estado:'NAO_INFORMADA'},{fim:v.inicio},{inicio:'2026-02-30T08:00'},{requisicaoId:"';DROP"},{ator:1}])assert.throws(()=>availabilityInput({...v,...patch}));});

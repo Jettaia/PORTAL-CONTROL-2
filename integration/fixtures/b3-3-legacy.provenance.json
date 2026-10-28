@@ -1,0 +1,6 @@
+{
+  "commit": "74de755",
+  "path": "public/b3.js",
+  "sha256": "2501d9882668830469e92aeb6a9ba380ddc2a6c324ef63d2f86442eb7d2f8d91",
+  "purpose": "Reproduzir perda do resultado apos commit na regressao B3.4, sem depender do repositorio Git de origem"
+}

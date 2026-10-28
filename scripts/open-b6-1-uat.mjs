@@ -1,0 +1,10 @@
+// Navegadores novos e exclusivos do LAB; nunca usa o perfil pessoal do Edge.
+import fs from 'node:fs';import path from 'node:path';import {createRequire} from 'node:module';import {pathToFileURL} from 'node:url';
+const require=createRequire(import.meta.url),{chromium}=require(path.join(process.env.JETTA_PLAYWRIGHT_ROOT,'playwright')),access=JSON.parse(fs.readFileSync('secrets/b6-1-uat/acessos-privados.json')),contexts=[],closed=[];
+const card=pathToFileURL(path.resolve('secrets/b6-1-uat/acessos-locais.html')).href;let gestor;
+for(const [name,role,position]of [['gestor','Gestor Norte LAB','40,40'],['financeiro','Financeiro Consolidado LAB','100,80'],['tablet',null,'180,120']]){
+ const context=await chromium.launchPersistentContext(path.resolve('secrets/b6-1-uat/browser-'+name),{headless:false,channel:'msedge',viewport:null,args:['--window-size=1280,900','--window-position='+position,'--no-first-run']});contexts.push(context);closed.push(new Promise(resolve=>context.once('close',resolve)));
+ if(role){const profile=access.profiles.find(p=>p.nome===role),help=context.pages()[0];await help.goto(card);const page=await context.newPage();await page.goto(access.url);await page.locator('#email').fill(profile.email);await page.locator('#senha').fill(profile.senha);await page.locator('#loginForm button').click();await page.locator('#dashboard').waitFor({state:'visible'});await page.evaluate(role=>window.dispatchEvent(new CustomEvent('jetta:go',{detail:role==='Gestor Norte LAB'?'jornada':'provisionamentos'})),role);if(name==='gestor')gestor=page;await page.bringToFront();}
+ else await context.pages()[0].goto(access.url+'tablet.html');
+}
+await gestor.bringToFront();const report={status:'JANELAS_ISOLADAS_ABERTAS',url:access.url,perfisAbertos:['Gestor Norte LAB','Financeiro Consolidado LAB','Tablet sem sessão administrativa'],perfilPessoalUsado:false,mfaObrigatorioAlterado:false,aprovacaoUsuario:'PENDENTE'};fs.writeFileSync('docs/b6-1-uat/navegadores.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));await Promise.all(closed);

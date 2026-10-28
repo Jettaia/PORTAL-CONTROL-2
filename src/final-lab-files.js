@@ -1,0 +1,10 @@
+import {Worker} from 'node:worker_threads';import {createHash} from 'node:crypto';import {fields} from './b5-2b-model.js';import {fail,id} from './final-lab-model.js';import {uuid} from './b4-2.js';
+export const binaryHash=b=>createHash('sha256').update(b).digest('hex');
+export async function fileInput(cfg,x){fields(x,'participacaoId,versao,requisicaoId,finalidade,reciboId,nome,mime,base64,sha256,sintetico');id(x.participacaoId);uuid(x.requisicaoId);if(!Number.isSafeInteger(x.versao)||x.versao<1||x.sintetico!==true)fail('SOMENTE_ANEXO_SINTETICO',400);
+ if(!/^[A-Za-z0-9][A-Za-z0-9 _.-]{0,110}\.(?:pdf|png|jpg|jpeg)$/i.test(x.nome)||x.nome.includes('..'))fail('NOME_ANEXO_INVALIDO',400);
+ if(!['application/pdf','image/png','image/jpeg'].includes(x.mime))fail('TIPO_ANEXO_NAO_PERMITIDO',400);const ext=x.nome.toLowerCase().split('.').at(-1);if(({pdf:'application/pdf',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg'})[ext]!==x.mime)fail('EXTENSAO_MIME_DIVERGENTE',400);
+ if(typeof x.base64!=='string'||x.base64.length>2796204||! /^[A-Za-z0-9+/]*={0,2}$/.test(x.base64))fail('ANEXO_TAMANHO_OU_BASE64_INVALIDO',400);const buffer=Buffer.from(x.base64,'base64');if(buffer.length<16||buffer.length>2097152||buffer.toString('base64')!==x.base64)fail('ANEXO_TAMANHO_OU_BASE64_INVALIDO',400);if(binaryHash(buffer)!==x.sha256)fail('HASH_ANEXO_DIVERGENTE',400);
+ if(!cfg.finalLabToolsRoot)fail('VALIDADOR_ARQUIVO_INDISPONIVEL',503);
+ const meta=await new Promise((resolve,reject)=>{const worker=new Worker(new URL('./final-lab-file-worker.js',import.meta.url),{workerData:{bytes:buffer,mime:x.mime,toolsRoot:cfg.finalLabToolsRoot},resourceLimits:{maxOldGenerationSizeMb:128,maxYoungGenerationSizeMb:32}});const timer=setTimeout(()=>{worker.terminate();reject(Error('LIMIT'));},3000);let done=false;worker.once('message',r=>{done=true;clearTimeout(timer);worker.terminate();r.ok?resolve(r.meta):reject(Error('INVALID'));});worker.once('error',()=>{clearTimeout(timer);reject(Error('INVALID'));});worker.once('exit',()=>{clearTimeout(timer);if(!done)reject(Error('INVALID'));});}).catch(()=>fail('CONTEUDO_ANEXO_INVALIDO_OU_INSEGURO',400));
+ return {...x,buffer,meta};
+}

@@ -1,0 +1,9 @@
+<section id="b43Page" class="view-section panel" hidden>
+ <h2>Fechamento operacional</h2><p>Encerramento individual com conferência. Não gera obrigação financeira, pagamento ou recibo financeiro.</p>
+ <form id="b43Lookup" class="b3-grid"><label>Participação<input id="b43Part" type="number" min="1" required></label><button>Consultar fechamento</button></form>
+ <p id="b43Message" role="status" aria-live="polite"></p><div id="b43Detail"></div>
+ <button id="b43Close" type="button" hidden>Fechar participação com MFA recente</button>
+ <form id="b43Occurrence" class="b3-grid" hidden><h3 class="b3-wide">Registrar ocorrência</h3><label>Tipo<select id="b43OccurrenceType" required><option value="">Selecione</option><option value="AUSENCIA_APONTAMENTO">Ausência de apontamento</option><option value="FALHA_CONEXAO">Falha de conexão</option><option value="CODIGO_PERDIDO_EXPIRADO">Código perdido ou expirado</option><option value="DIVERGENCIA_HORARIO">Divergência de horário</option><option value="DIVERGENCIA_EXECUCAO">Divergência na execução</option></select></label><label>Descrição<textarea id="b43OccurrenceText" maxlength="800" required></textarea></label><p class="b3-wide">Ocorrências não geram horários. Tratamento e resolução dependem de política aprovada.</p><button>Registrar ocorrência auditada</button></form>
+ <button id="b43ReceiptButton" type="button" hidden>Consultar comprovante de serviço</button><button id="b43Print" type="button" hidden>Imprimir comprovante operacional</button>
+ <article id="b43Receipt" aria-label="Comprovante operacional"></article>
+</section>

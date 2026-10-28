@@ -1,0 +1,4 @@
+import fs from 'node:fs';
+const files=['b5-2a.integration.mjs','b5-2a-migration.integration.mjs','b5-2a.visual.mjs',...fs.readdirSync('integration').filter(n=>n.startsWith('b5-2a-regression-')&&n.endsWith('.mjs'))];
+for(const f of files){let c=fs.readFileSync('integration/'+f,'utf8').replaceAll('docs/b5-2a','docs/b5-2b/regression');if(!f.includes('migration'))c=c.replaceAll("schema_id=SCHEMA_ID('Financeiro')\"))[0].N),5)","schema_id=SCHEMA_ID('Financeiro')\"))[0].N),7)");fs.writeFileSync('integration/b5-2b-regression-'+f,c.trimEnd()+'\n');}
+for(const dir of ['planning','contracts','operations','ddl','contracts-ui','operations-ui'])fs.mkdirSync('docs/b5-2b/regression/regression/b5-2/regression/b5-1/regression/b4-3/regression/b4-2/regression/b4-1/regression/b3-4/consolidated/'+dir,{recursive:true});

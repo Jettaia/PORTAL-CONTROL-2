@@ -1,0 +1,1 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {permissions} from '../src/b24b.js';test('permissoes independentes',()=>{assert.equal(permissions.criar,'tiposprestador.cadastrar');assert.notEqual(permissions.vincular,'prestadores.cadastrar');});

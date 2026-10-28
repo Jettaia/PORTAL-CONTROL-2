@@ -1,0 +1,13 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {gateDecision,validateKeyConfig} from '../src/mfa-policy.js';
+const dec=(x)=>gateDecision({enforce:true,privileged:true,route:'/api/b23/catalogo',method:'GET',...x});
+test('MFA desativado nao muda comportamento',()=>assert.equal(dec({enforce:false}).allow,true));
+test('MFA sem cadastro nega rota administrativa',()=>assert.equal(dec({mfa:{enrolled:false}}).allow,false));
+test('MFA sem validacao na sessao nega',()=>assert.equal(dec({mfa:{enrolled:true,verified:false}}).allow,false));
+test('MFA confirmado permite leitura administrativa',()=>assert.equal(dec({mfa:{enrolled:true,verified:true,stepUp:false}}).allow,true));
+test('Escrita administrativa exige step-up',()=>assert.equal(dec({method:'POST',mfa:{enrolled:true,verified:true,stepUp:false}}).allow,false));
+test('Escrita com step-up permite',()=>assert.equal(dec({method:'POST',mfa:{enrolled:true,verified:true,stepUp:true}}).allow,true));
+test('Rota MFA permanece acessivel antes do cadastro',()=>assert.equal(dec({route:'/api/mfa/enroll'}).allow,true));
+test('Nao-privilegiado nao sofre gate adicional de leitura',()=>assert.equal(dec({privileged:false}).allow,true));
+test('Nao permite habilitar gate sem chave',()=>assert.throws(()=>validateKeyConfig({JETTA_MFA_REQUIRE_PRIVILEGED:'true',JETTA_MFA_ENFORCE_CRITICAL:'true'})));
+test('Nao permite gate sem protecao de escrita',()=>assert.throws(()=>validateKeyConfig({JETTA_MFA_REQUIRE_PRIVILEGED:'true',JETTA_MFA_KEY_HEX:'a'.repeat(64)})));
