@@ -1,3 +1,4 @@
+import {roleSql,globalFinanceSql} from './access-policy.js';
 import {intLiteral as n,nvarcharLiteral as s} from './auth-db.js';
 import {PlanningError} from './b3.js';
 import {tx,lock,explicit,assertMfa} from './b4.js';
@@ -7,9 +8,9 @@ import {workbook} from './b5-xlsx.js';
 const fail=(code,status=409)=>{throw new PlanningError(code,status);};
 const MAX_ROWS=100;
 function enabled(cfg){if(cfg.b51!==true||cfg.b43!==true)fail('B51_INDISPONIVEL',404);}
-export function financialScope(actor,alias='d'){return `EXISTS(SELECT 1 FROM Seguranca.UsuarioDeposito ud WHERE ud.UsuarioId=${n(actor)} AND ud.DepositoId=${alias}.DepositoId AND ud.RevogadoEmUtc IS NULL)`;}
+export function financialScope(actor,alias='d'){return `(${globalFinanceSql(n(actor))} OR EXISTS(SELECT 1 FROM Seguranca.UsuarioDeposito ud WHERE ud.UsuarioId=${n(actor)} AND ud.DepositoId=${alias}.DepositoId AND ud.RevogadoEmUtc IS NULL))`;}
 export async function financialAuthorize(db,actor,permission,depot){
- if(!(await db.query(`SELECT 1 V FROM Seguranca.Usuario u WHERE u.UsuarioId=${n(actor)} AND u.Ativo=1 AND u.Perfil='FINANCEIRO' AND ${explicit(actor,permission)}`)).length)fail('PERMISSAO_FINANCEIRA_NEGADA',403);
+ if(!(await db.query(`SELECT 1 V FROM Seguranca.Usuario u WHERE u.UsuarioId=${n(actor)} AND u.Ativo=1 AND ${roleSql('u.UsuarioId','FINANCEIRO')} AND ${explicit(actor,permission)}`)).length)fail('PERMISSAO_FINANCEIRA_NEGADA',403);
  if(depot!==undefined&&!(await db.query(`SELECT 1 V FROM Cadastro.Deposito d WHERE d.DepositoId=${n(depot)} AND ${financialScope(actor)}`)).length)fail('ABRANGENCIA_FINANCEIRA_NEGADA',403);
 }
 export function filters(value={}){

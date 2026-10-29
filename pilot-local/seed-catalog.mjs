@@ -1,3 +1,4 @@
+import {seedPc01Catalog} from './pc01-catalog.mjs';
 import fs from 'node:fs';import path from 'node:path';import {fileURLToPath} from 'node:url';
 const here=path.dirname(fileURLToPath(import.meta.url));
 const gestor=['atividades.visualizar','atividades.criar','atividades.confirmar','apontamentos.emitir','apontamentos.visualizar','apontamentos.conferir','apontamentos.correcao.solicitar','apontamentos.tablet.gerir','operacao.fechamento.visualizar','operacao.fechamento.encerrar','operacao.comprovante.visualizar','operacao.ocorrencia.registrar','prestadores.visualizar','prestadores.cadastrar','filiais.visualizar','servicos.visualizar','depositos.visualizar','tiposprestador.visualizar'];
@@ -15,5 +16,6 @@ export async function seedCatalog(db){
   await db.query(`INSERT Seguranca.PerfilAcesso(Codigo,Nome,Sistema,Ativo) VALUES('PILOTO_${role}',N'Piloto - ${role}',1,1)`);
   for(const key of permissions)await db.query(`INSERT Seguranca.PerfilPermissao(PerfilId,PermissaoId) SELECT pa.PerfilId,p.PermissaoId FROM Seguranca.PerfilAcesso pa CROSS JOIN Seguranca.Permissao p WHERE pa.Codigo='PILOTO_${role}' AND p.Chave='${key}'`);
  }
- return {roles:Object.keys(roles).length,permissions:keys.size};
+ await seedPc01Catalog(db);
+ return {roles:Object.keys(roles).length+3,permissions:keys.size};
 }

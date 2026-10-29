@@ -1,3 +1,4 @@
+import {roleSql} from './access-policy.js';
 import {intLiteral as n,nvarcharLiteral as s} from './auth-db.js';
 import {tx,lock,explicit,authorize} from './b4.js';
 import {PlanningError,scope} from './b3.js';
@@ -9,7 +10,7 @@ import {provision,summarize,draftReceipt,stages} from './b6-1-model.js';
 import {tableWorkbook} from './b5-xlsx.js';
 const fail=(c,status=409)=>{throw new PlanningError(c,status);};
 export function queryFilters(query={}){if(!query||Object.values(query).some(v=>typeof v!=='string')||Object.keys(query).some(k=>!['inicio','fim','filialId','depositoId','prestadorId','situacao','competencia','versaoRecorte'].includes(k)))fail('FILTROS_INVALIDOS',400);const {situacao='',competencia='',versaoRecorte,...base}=query;if(situacao&&!stages.includes(situacao))fail('SITUACAO_INVALIDA',400);if(competencia&&!/^20\d{2}-(0[1-9]|1[0-2])$/.test(competencia))fail('COMPETENCIA_INVALIDA',400);if(versaoRecorte&&!/^[a-f0-9]{64}$/.test(versaoRecorte))fail('VERSAO_INVALIDA',400);return {...filters(base),situacao,competencia,...(versaoRecorte?{versaoRecorte}:{})};}
-async function access(db,actor){const user=(await db.query(`SELECT Perfil FROM Seguranca.Usuario WHERE UsuarioId=${n(actor)} AND Ativo=1`))[0];if(user?.Perfil==='FINANCEIRO'){await financialAuthorize(db,actor,'financeiro.carteira.consultar');return 'FINANCEIRO';}if(user?.Perfil==='GESTOR'&&(await db.query(`SELECT 1 V WHERE ${explicit(actor,'operacao.fechamento.visualizar')}`)).length)return 'GESTOR';fail('PERMISSAO_PROVISIONAMENTO_NEGADA',403);}
+async function access(db,actor){const user=(await db.query(`SELECT Perfil,CASE WHEN ${roleSql(n(actor),'FINANCEIRO')} THEN 1 ELSE 0 END Financeiro,CASE WHEN ${roleSql(n(actor),'GESTOR')} THEN 1 ELSE 0 END Gestor FROM Seguranca.Usuario WHERE UsuarioId=${n(actor)} AND Ativo=1`))[0];if(Number(user?.Financeiro)===1){await financialAuthorize(db,actor,'financeiro.carteira.consultar');return 'FINANCEIRO';}if(Number(user?.Gestor)===1&&(await db.query(`SELECT 1 V WHERE ${explicit(actor,'operacao.fechamento.visualizar')}`)).length)return 'GESTOR';fail('PERMISSAO_PROVISIONAMENTO_NEGADA',403);}
 async function has(db,actor,key){return !!(await db.query(`SELECT 1 V WHERE ${explicit(actor,key)}`)).length;}
 // Cache only identical deterministic SELECTs inside this read-only SERIALIZABLE scope.
 // SQL read locks remain held; mutations/export audit use the original connection afterwards.

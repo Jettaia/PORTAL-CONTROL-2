@@ -1,0 +1,30 @@
+// Production portal shell and paid-contract UI. Synthetic HTTP does not certify SQL/auth.
+import assert from 'node:assert/strict';
+import express from 'express';
+import {createRequire} from 'node:module';
+import path from 'node:path';
+const require=createRequire(import.meta.url),runtime=process.env.JETTA_PLAYWRIGHT_ROOT||'C:/Users/Jetta/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules';
+const {chromium}=require(path.join(runtime,'playwright'));
+const app=express();app.use(express.json());const writes=[];let enabled=true;
+const row={ContratacaoId:7,Numero:17,FilialId:1,PrestadorId:7,TipoServicoId:1,Prestador:'Pessoa Norte',Filial:'Norte',Tipo:'Descarga',DataServico:'2026-10-01',InicioPrevisto:'2026-10-01T08:00',FimPrevisto:'2026-10-01T12:00',EntradaReal:'2026-10-01T08:00',SaidaReal:'2026-10-01T12:00',Valor:'150.00',ValorLiberado:'150.00',Status:'LIBERADA',Versao:2,CriadoPor:1,ConferidoPor:1,GestorResponsavelId:1,GestorResponsavel:'Gestor Norte',PagoEmUtc:'2026-10-02T10:00'};
+app.all('/api/auth/:action',(_req,res)=>res.json({usuario:{id:1,nome:'ADM Teste',perfil:'ADMIN',funcoes:['ADMIN','GESTOR','FINANCEIRO'],pc01:true,pc02:true,pc03:true,pc04:true,pc08:true,pc10:enabled}}));
+app.get('/api/mfa/status',(_req,res)=>res.json({enrolled:true,verified:true,stepUp:true}));
+app.get('/api/pc04/catalogo',(_req,res)=>res.json({podeOperar:true,filiais:[{FilialId:1,Nome:'Norte'}],tipos:[{TipoServicoId:1,Nome:'Descarga'}],prestadores:[{PrestadorId:7,Nome:'Pessoa Norte',CPF:'12345678901',FilialId:1}],gestores:[{UsuarioId:1,Nome:'Gestor Norte',FilialId:1}]}));
+app.get('/api/pc04/contratacoes',(_req,res)=>res.json({registros:[row],proximaPagina:null}));
+app.get('/api/pc04/contratacoes/7',(_req,res)=>res.json({registro:row,eventos:[],podeOperar:true,pc10:enabled}));
+app.post('/api/pc04/contratacoes/7/:action',(req,res)=>{assert.equal(req.body.versao,row.Versao);writes.push({action:req.params.action,body:req.body});if(req.params.action==='revisar')Object.assign(row,{Valor:req.body.valor,Status:'ABERTA',ValorLiberado:null});if(req.params.action==='conferir')Object.assign(row,{ValorLiberado:row.Valor,Status:'LIBERADA'});if(req.params.action==='cancelar')Object.assign(row,{Status:'CANCELADA',ValorLiberado:null});row.Versao++;res.json({ok:true,resultado:row});});
+app.get('/api/pc10/contratacoes/7',(_req,res)=>res.json({registro:row,saldo:'25.00',podeRegularizar:true,movimentos:[],documentos:[],pagamentosEstornaveis:[]}));
+app.all('/api/*',(_req,res)=>res.status(403).json({erro:'Fora do recorte'}));app.use(express.static('public'));
+const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const browser=await chromium.launch({channel:'msedge',headless:true});
+try{
+ const page=await browser.newPage({viewport:{width:1440,height:1100}}),errors=[];page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(6000);await page.goto(`http://127.0.0.1:${server.address().port}`);await page.locator('#dashboard').waitFor({state:'visible'});
+ await page.locator('#mainNav summary').filter({hasText:'Financeiro'}).click();await page.locator('[data-page=ajustes]').click();const panel=page.locator('#pc10Page');await panel.waitFor({state:'visible'});await panel.getByLabel('Contratação (código)').fill('7');await panel.getByRole('button',{name:'Consultar',exact:true}).click();await panel.locator('#pc10Balance').filter({hasText:'25,00 a pagar'}).waitFor();assert.equal(await page.locator('#pageHeading').innerText(),'Correções e ajustes');
+ await page.locator('#mainNav summary').filter({hasText:'Operação'}).click();await page.locator('[data-page=contratacoes]').click();const contracts=page.locator('#pc04Panel');await contracts.getByRole('button',{name:'Abrir 17',exact:true}).click();await contracts.getByRole('heading',{name:'Contratação 17',exact:true}).waitFor();
+ assert.equal(await contracts.getByRole('button',{name:'Salvar horários manuais',exact:true}).count(),0);assert.equal(await contracts.getByRole('button',{name:'Revisar valor',exact:true}).isEnabled(),true);assert.equal(await contracts.getByRole('button',{name:'Cancelar contratação',exact:true}).isEnabled(),true);
+ await page.locator('#pc04_novoValor').fill('175,00');await page.locator('#pc04_motivoRevisao').fill('Complemento após pagamento');await contracts.getByRole('button',{name:'Revisar valor',exact:true}).click();await contracts.getByText('Valor revisado. Faça nova conferência.',{exact:true}).waitFor();assert.equal(row.Status,'ABERTA');assert.ok(row.PagoEmUtc);assert.equal(await contracts.getByRole('button',{name:'Salvar horários manuais',exact:true}).count(),0);assert.equal(await contracts.getByRole('button',{name:'Conferir e liberar',exact:true}).isEnabled(),true);
+ await contracts.getByRole('button',{name:'Conferir e liberar',exact:true}).click();await contracts.getByText('Contratação conferida e liberada.',{exact:true}).waitFor();assert.equal(row.ValorLiberado,'175.00');assert.ok(row.PagoEmUtc);
+ await page.locator('#pc04_motivoCancelamento').fill('Serviço cancelado após pagamento');await contracts.getByRole('button',{name:'Cancelar contratação',exact:true}).click();await contracts.getByText('Contratação cancelada. Histórico preservado.',{exact:true}).waitFor();assert.equal(row.Status,'CANCELADA');assert.ok(row.PagoEmUtc);assert.deepEqual(writes.map(w=>w.action),['revisar','conferir','cancelar']);
+ // Feature disabled preserves the existing paid-contract protection.
+ enabled=false;row.Status='LIBERADA';await contracts.getByRole('button',{name:'Abrir 17',exact:true}).click();await contracts.getByRole('heading',{name:'Contratação 17',exact:true}).waitFor();assert.equal(await contracts.getByRole('button',{name:'Revisar valor',exact:true}).count(),0);assert.equal(await contracts.getByRole('button',{name:'Cancelar contratação',exact:true}).count(),0);
+ assert.deepEqual(errors,[]);console.log('PASS PC10 shell: menu real/consulta e contratação paga revisão → conferência → cancelamento, horários protegidos, flag desligada preserva bloqueio. HTTP sintético.');
+}finally{await browser.close();await new Promise(r=>server.close(r));}

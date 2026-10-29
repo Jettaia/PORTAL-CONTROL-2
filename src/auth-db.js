@@ -50,7 +50,7 @@ export async function login(cfg,email,password){
    const token=newToken();
    await db.query(`INSERT Seguranca.SessaoWeb(UsuarioId,TokenHash,ExpiraEmUtc) VALUES(${intLiteral(row.UsuarioId)},${tokenHashLiteral(hashToken(token))},DATEADD(hour,8,SYSUTCDATETIME()))`);
    await db.commit();
-   return {token,user:{id:row.UsuarioId,nome:row.Nome,email:row.Email,perfil:row.Perfil},mfa:false};
+   return {token,user:await accountContext(db,cfg,{id:row.UsuarioId,nome:row.Nome,email:row.Email,perfil:row.Perfil}),mfa:false};
   }catch(e){try{await db.rollback();}catch{}throw e;}
  });
 }
@@ -58,7 +58,7 @@ export async function findSession(cfg,token){
  if(cfg.b34)return findSessionConsistent(cfg,token);
  return withDb(cfg,async db=>{const rows=await db.query(`SELECT TOP 1 u.UsuarioId AS id,u.Nome AS nome,u.Email AS email,u.Perfil AS perfil
   FROM Seguranca.SessaoWeb s JOIN Seguranca.Usuario u ON u.UsuarioId=s.UsuarioId
-  WHERE s.TokenHash=${tokenHashLiteral(hashToken(token))} AND s.RevogadoEmUtc IS NULL AND s.ExpiraEmUtc>SYSUTCDATETIME() AND u.Ativo=1`);return rows[0]||null;});
+  WHERE s.TokenHash=${tokenHashLiteral(hashToken(token))} AND s.RevogadoEmUtc IS NULL AND s.ExpiraEmUtc>SYSUTCDATETIME() AND u.Ativo=1`);return rows[0]?accountContext(db,cfg,rows[0]):null;});
 }
 export async function logout(cfg,token){return withDb(cfg,db=>db.query(`UPDATE Seguranca.SessaoWeb SET RevogadoEmUtc=SYSUTCDATETIME() WHERE TokenHash=${tokenHashLiteral(hashToken(token))} AND RevogadoEmUtc IS NULL`));}
 export async function depositsFor(cfg,user){return withDb(cfg,async db=>{
@@ -113,9 +113,16 @@ async function findSessionConsistent(cfg,token){
    if(!user){await db.rollback();return null;}
    emit(cfg,'auth.stage',{stage:'session-revalidate'});
    const valid=(await db.query(`SELECT SessaoId FROM Seguranca.SessaoWeb WITH(HOLDLOCK) WHERE UsuarioId=${intLiteral(candidate.UsuarioId)} AND TokenHash=${tokenHashLiteral(hashToken(token))} AND RevogadoEmUtc IS NULL AND ExpiraEmUtc>SYSUTCDATETIME()`)).length>0;
-   await db.commit();return valid?user:null;
+   const context=valid?await accountContext(db,cfg,user):null;
+   await db.commit();return context;
   }catch(error){try{await db.rollback();}catch{}throw error;}
  });
+}
+
+async function accountContext(db,cfg,user){
+ if(!cfg.pc01)return user;
+ const roles=await db.query(`SELECT pa.Codigo FROM Seguranca.UsuarioPerfil up JOIN Seguranca.PerfilAcesso pa ON pa.PerfilId=up.PerfilId AND pa.Ativo=1 WHERE up.UsuarioId=${intLiteral(user.id)} AND pa.Codigo IN('PC01_ADMIN','PC01_GESTOR','PC01_FINANCEIRO')`);
+ return {...user,pc01:true,pc02:cfg.pc02===true,pc03:cfg.pc03===true,pc04:cfg.pc04===true,pc08:cfg.pc08===true,pc10:cfg.pc10===true,pc11:cfg.pc11===true,funcoes:roles.map(r=>r.Codigo.slice(5)),filiais:(await db.query(`SELECT FilialId FROM Seguranca.UsuarioFilial WHERE UsuarioId=${intLiteral(user.id)} AND RevogadoEmUtc IS NULL`)).map(r=>String(r.FilialId))};
 }
 
 // EXEC arguments must be variables/constants, not inline CONVERT expressions.

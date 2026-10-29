@@ -11,6 +11,9 @@ export async function completeSetup(cfg,body){
   const salt=crypto.randomBytes(16).toString('hex'),hash=hashPassword(body.password,salt);
   const id=(await db.query(`INSERT Seguranca.Usuario(Nome,Email,Perfil,Ativo) OUTPUT inserted.UsuarioId VALUES(${s(row.AdminNome,150)},${s(row.AdminEmail)},'ADMIN',1)`))[0].UsuarioId;
   await db.query(`INSERT Seguranca.UsuarioRaiz(UsuarioId) VALUES(${id});INSERT Seguranca.UsuarioPerfil(UsuarioId,PerfilId) SELECT ${id},PerfilId FROM Seguranca.PerfilAcesso WHERE Codigo='PILOTO_ADMIN';INSERT Seguranca.Credencial(UsuarioId,SaltHex,SenhaHashHex) VALUES(${id},'${salt}','${hash}');UPDATE Seguranca.PilotoInicializacao SET ConsumidoUtc=SYSUTCDATETIME() WHERE Id=1;INSERT Seguranca.Auditoria(Entidade,EntidadeId,Acao,AtorUsuarioId) VALUES(N'PilotoLocal',${id},N'INICIALIZACAO',${id});`);
+  if(cfg.pc01)await db.query(`INSERT Seguranca.UsuarioPerfil(UsuarioId,PerfilId) SELECT ${id},PerfilId FROM Seguranca.PerfilAcesso WHERE Codigo='PC01_ADMIN' AND Ativo=1;
+   INSERT Seguranca.UsuarioDeposito(UsuarioId,DepositoId,ConcedidoPor) SELECT ${id},DepositoId,${id} FROM Cadastro.Deposito WHERE Ativo=1;
+   INSERT Seguranca.GestorDeposito(GestorUsuarioId,DepositoId,ConcedidoPorUsuarioId) SELECT ${id},DepositoId,${id} FROM Cadastro.Deposito WHERE Ativo=1;`);
   await db.commit();return {ok:true};
  }catch(error){try{await db.rollback();}catch{}throw error;}});
 }

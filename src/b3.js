@@ -1,3 +1,4 @@
+import {roleSql} from './access-policy.js';
 import {withDb, intLiteral, nvarcharLiteral} from './auth-db.js';
 import {sqlTrue} from './rbac.js';
 
@@ -34,7 +35,7 @@ export async function transaction(cfg, actor, permission, fn) {
     } catch (e) { try { await db.rollback(); } catch {} throw e; }
   });
 }
-const selectActivity = `SELECT a.AtividadeId,a.DepositoId,d.FilialId,d.Nome AS Deposito,f.Nome AS Filial,a.TipoServicoId,t.Nome AS Servico,a.GestorUsuarioId,CONVERT(varchar(10),a.DataServico,23) AS DataServico,CONVERT(varchar(19),a.InicioPrevisto,126) AS InicioPrevisto,CONVERT(varchar(19),a.FimPrevisto,126) AS FimPrevisto,a.Descricao,a.Status FROM Operacao.Atividade a JOIN Cadastro.Deposito d ON d.DepositoId=a.DepositoId AND d.Ativo=1 JOIN Cadastro.Filial f ON f.FilialId=d.FilialId AND f.Ativo=1 JOIN Cadastro.TipoServico t ON t.TipoServicoId=a.TipoServicoId`;
+const selectActivity = `SELECT a.AtividadeId,a.DepositoId,d.FilialId,d.Nome AS Deposito,f.Nome AS Filial,a.TipoServicoId,t.Nome AS Servico,a.GestorUsuarioId,CONVERT(varchar(10),a.DataServico,23) AS DataServico,CONVERT(varchar(19),a.InicioPrevisto,126) AS InicioPrevisto,CONVERT(varchar(19),a.FimPrevisto,126) AS FimPrevisto,a.Descricao,a.Status FROM Operacao.Atividade a JOIN Cadastro.Deposito d ON d.DepositoId=a.DepositoId AND d.Ativo=1 JOIN Cadastro.Filial f ON f.FilialId=d.FilialId JOIN Cadastro.TipoServico t ON t.TipoServicoId=a.TipoServicoId`;
 export async function activity(db, actor, id, own = false) {
   const row = (await db.query(`${selectActivity} WHERE a.AtividadeId=${intLiteral(id)} AND ${scope(actor)}${own ? ` AND a.GestorUsuarioId=${intLiteral(actor)}` : ''}`))[0];
   if (!row) throw new PlanningError('ATIVIDADE_INDISPONIVEL', 404);
@@ -45,12 +46,13 @@ export async function planningCatalog(cfg, actor) {
     atorId:actor,
     depositos: await db.query(`SELECT d.DepositoId,d.FilialId,d.Nome,f.Nome AS Filial FROM Cadastro.Deposito d JOIN Cadastro.Filial f ON f.FilialId=d.FilialId AND f.Ativo=1 WHERE d.Ativo=1 AND ${scope(actor)} ORDER BY f.Nome,d.Nome`),
     servicos: await db.query('SELECT TipoServicoId,Nome FROM Cadastro.TipoServico WHERE Ativo=1 ORDER BY Nome'),
-    prestadores: await db.query('SELECT PrestadorId,Nome FROM Cadastro.Prestador WHERE Ativo=1 ORDER BY Nome'),
-    podeCriar: sqlTrue((await db.query(`SELECT CASE WHEN EXISTS(SELECT 1 FROM Seguranca.Usuario WHERE UsuarioId=${intLiteral(actor)} AND Perfil='GESTOR' AND Ativo=1) AND Seguranca.fn_Pode(${intLiteral(actor)},'atividades.criar')=1 THEN 1 ELSE 0 END AS V`))[0]?.V),
+    prestadores: await db.query(cfg.pc03?`SELECT p.PrestadorId,p.Nome,pf.FilialId FROM Cadastro.Prestador p JOIN Cadastro.PrestadorFilial pf ON pf.PrestadorId=p.PrestadorId AND pf.RevogadoEmUtc IS NULL WHERE p.Ativo=1 AND EXISTS(SELECT 1 FROM Cadastro.Deposito d JOIN Cadastro.Filial f ON f.FilialId=d.FilialId AND f.Ativo=1 WHERE d.FilialId=pf.FilialId AND d.Ativo=1 AND ${scope(actor)}) ORDER BY p.Nome,pf.FilialId`:'SELECT PrestadorId,Nome FROM Cadastro.Prestador WHERE Ativo=1 ORDER BY Nome'),
+    podeCriar: !cfg.pc04 && sqlTrue((await db.query(`SELECT CASE WHEN EXISTS(SELECT 1 FROM Seguranca.Usuario WHERE UsuarioId=${intLiteral(actor)} AND ${roleSql(intLiteral(actor),'GESTOR')} AND Ativo=1) AND Seguranca.fn_Pode(${intLiteral(actor)},'atividades.criar')=1 THEN 1 ELSE 0 END AS V`))[0]?.V),
+    pc03:cfg.pc03===true,
     b34:cfg.b34===true,
     b33:cfg.b33===true,
     b32:cfg.b32===true,
-    podeConfirmar:cfg.b32===true&&sqlTrue((await db.query(`SELECT CASE WHEN EXISTS(SELECT 1 FROM Seguranca.Usuario WHERE UsuarioId=${intLiteral(actor)} AND Perfil='GESTOR' AND Ativo=1) AND Seguranca.fn_Pode(${intLiteral(actor)},'atividades.confirmar')=1 THEN 1 ELSE 0 END AS V`))[0]?.V),
+    podeConfirmar:cfg.b32===true&&sqlTrue((await db.query(`SELECT CASE WHEN EXISTS(SELECT 1 FROM Seguranca.Usuario WHERE UsuarioId=${intLiteral(actor)} AND ${roleSql(intLiteral(actor),'GESTOR')} AND Ativo=1) AND Seguranca.fn_Pode(${intLiteral(actor)},'atividades.confirmar')=1 THEN 1 ELSE 0 END AS V`))[0]?.V),
     podeDecidir:cfg.b32===true&&sqlTrue((await db.query(`SELECT CASE WHEN EXISTS(SELECT 1 FROM Seguranca.Usuario WHERE UsuarioId=${intLiteral(actor)} AND Perfil='DIRETORIA' AND Ativo=1) AND Seguranca.fn_Pode(${intLiteral(actor)},'limites.excecao.aprovar')=1 THEN 1 ELSE 0 END AS V`))[0]?.V)
   }));
 }
@@ -75,6 +77,7 @@ export async function activityDetailDb(cfg,db,actor,id){
     return {atividade:a,participacoes:rows};
 }
 export async function createActivity(cfg, actor, body) {
+  if(cfg.pc04)throw new PlanningError('UTILIZE_CONTRATACOES_PC04',409);
   const v = planningInput(body);
   return transaction(cfg, actor, 'atividades.criar', async db => {
     if (!(await db.query(`SELECT d.DepositoId FROM Cadastro.Deposito d JOIN Cadastro.Filial f ON f.FilialId=d.FilialId AND f.Ativo=1 WHERE d.DepositoId=${v.depositoId} AND d.FilialId=${v.filialId} AND d.Ativo=1 AND ${scope(actor)}`)).length) throw new PlanningError('DEPOSITO_INDISPONIVEL', 403);
@@ -84,10 +87,13 @@ export async function createActivity(cfg, actor, body) {
   });
 }
 export async function addParticipant(cfg, actor, id, body) {
+  if(cfg.pc04)throw new PlanningError('UTILIZE_CONTRATACOES_PC04',409);
   if (!body || Object.keys(body).sort().join(',') !== 'prestadorId,valorContratado') throw new PlanningError('CAMPOS_INVALIDOS');
   const provider = intLiteral(body.prestadorId), amount = money(body.valorContratado);
   return transaction(cfg, actor, 'atividades.criar', async db => {
     await activity(db, actor, id, true);
+    if (!(await db.query(`SELECT a.AtividadeId FROM Operacao.Atividade a JOIN Cadastro.Deposito d ON d.DepositoId=a.DepositoId JOIN Cadastro.Filial f ON f.FilialId=d.FilialId AND f.Ativo=1 JOIN Cadastro.TipoServico t ON t.TipoServicoId=a.TipoServicoId AND t.Ativo=1 WHERE a.AtividadeId=${intLiteral(id)}`)).length) throw new PlanningError('CADASTRO_INATIVO',409);
+    if(cfg.pc03&&!(await db.query(`SELECT p.PrestadorId FROM Cadastro.Prestador p WITH(HOLDLOCK) JOIN Cadastro.PrestadorFilial pf WITH(HOLDLOCK) ON pf.PrestadorId=p.PrestadorId AND pf.RevogadoEmUtc IS NULL JOIN Cadastro.Deposito d ON d.FilialId=pf.FilialId JOIN Operacao.Atividade a ON a.DepositoId=d.DepositoId WHERE a.AtividadeId=${intLiteral(id)} AND p.PrestadorId=${provider} AND p.Ativo=1`)).length)throw new PlanningError('PRESTADOR_SEM_VINCULO_ATIVO',409);
     const rows = await db.query(`EXEC Operacao.sp_AdicionarParticipantePlanejado @GestorUsuarioId=${intLiteral(actor)},@AtividadeId=${intLiteral(id)},@PrestadorId=${provider},@ValorContratado=${amount};`);
     return {participacaoId: rows[0]?.ParticipacaoId};
   });

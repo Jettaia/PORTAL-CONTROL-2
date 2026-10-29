@@ -1,0 +1,31 @@
+(()=>{
+ const $=id=>document.getElementById(id),panel=$('pc01Panel'),form=$('pc01Form');
+ if(!panel||!form)return;
+ let epoch=0,editing=null,users=[],busy=false,enabled=false;
+ const messages={EMAIL_DUPLICADO:'Este e-mail já está cadastrado.',ULTIMO_ADM_ATIVO:'Mantenha pelo menos um ADM ativo.',MFA_RECENTE_OBRIGATORIO:'Valide o MFA de ação no painel de segurança e tente novamente.',CONTA_SEM_CREDENCIAL:'A conta precisa concluir a ativação pelo convite existente.',FILIAL_INDISPONIVEL:'Uma filial foi desativada. Atualize a lista.',UTILIZE_ADMINISTRACAO_PC01:'Utilize a administração de usuários.'};
+ const text=(tag,value)=>{const n=document.createElement(tag);n.textContent=value;return n;};
+ async function api(url,method,body){const r=await (window.jettaProtectedFetch||fetch)(url,{credentials:'same-origin',...(method?{method,headers:{'Content-Type':'application/json','x-jetta-request':'web'},body:JSON.stringify(body)}:{})});const data=await r.json();if(!r.ok)throw Error(messages[data.erro]||data.erro||'Não foi possível concluir a operação.');return data;}
+ function clear(){editing=null;form.reset();$('pc01Password').required=true;$('pc01PasswordRow').hidden=false;$('pc01Title').textContent='Nova conta';$('pc01Save').textContent='Criar conta';}
+ function roles(u){const values=JSON.parse(u.FuncoesJson||'[]').map(r=>r.Codigo.replace('PC01_',''));return values.length?values:[u.Perfil];}
+ function selectedBranches(u){return JSON.parse(u.FiliaisJson||'[]').map(r=>String(r.FilialId));}
+ function edit(u){clear();editing=String(u.UsuarioId);$('pc01Title').textContent='Editar conta';$('pc01Save').textContent='Salvar alterações';$('pc01Nome').value=u.Nome;$('pc01Email').value=u.Email;$('pc01Ativo').checked=u.Ativo===true||Number(u.Ativo)===1;$('pc01Password').required=false;$('pc01PasswordRow').hidden=true;for(const input of form.querySelectorAll('[name=funcao]'))input.checked=roles(u).includes(input.value);for(const input of form.querySelectorAll('[name=filial]'))input.checked=selectedBranches(u).includes(input.value);$('pc01Nome').focus();}
+ async function load(){const revision=epoch;$('pc01Msg').textContent='Carregando contas…';try{const data=await api('/api/pc01/usuarios');if(revision!==epoch||!enabled)return;users=data.usuarios;
+  $('pc01Branches').replaceChildren();for(const branch of data.filiais){const label=text('label',branch.Nome);label.className='pc01-check';const input=document.createElement('input');input.type='checkbox';input.name='filial';input.value=String(branch.FilialId);input.disabled=!(branch.Ativo===true||Number(branch.Ativo)===1);label.dataset.inactive=String(input.disabled);label.prepend(input);$('pc01Branches').append(label);}
+  if(!data.filiais.length)$('pc01Branches').append(text('p','Nenhuma filial cadastrada. O cadastro de filiais pertence ao PC-02.'));
+  const table=document.createElement('table'),head=document.createElement('tr');for(const label of ['Nome','E-mail','Funções','Situação','Ações'])head.append(text('th',label));table.append(head);
+  for(const u of users){const row=document.createElement('tr');for(const value of [u.Nome,u.Email,roles(u).map(r=>r==='ADMIN'?'ADM':r==='GESTOR'?'Gestor':'Financeiro').join(', '),u.Ativo===true||Number(u.Ativo)===1?'Ativo':'Inativo'])row.append(text('td',value));const cell=document.createElement('td'),button=text('button','Editar');button.type='button';button.setAttribute('aria-label','Editar '+u.Nome);button.onclick=()=>edit(u);cell.append(button);row.append(cell);table.append(row);}
+  $('pc01Users').replaceChildren(table);$('pc01Msg').textContent=users.length?`${users.length} conta(s).`:'Nenhuma conta encontrada.';
+ }catch(e){if(revision===epoch)$('pc01Msg').textContent=e.message;}}
+ form.addEventListener('submit',async e=>{e.preventDefault();if(busy||!enabled)return;const funcoes=[...form.querySelectorAll('[name=funcao]:checked')].map(i=>i.value);if(!funcoes.length){$('pc01Msg').textContent='Selecione pelo menos uma função.';return;}
+  const revision=epoch,target=editing,body={nome:$('pc01Nome').value,email:$('pc01Email').value,ativo:$('pc01Ativo').checked,funcoes,filiais:[...form.querySelectorAll('[name=filial]:checked')].map(i=>Number(i.value)),...(!target?{senha:$('pc01Password').value}:{})};
+  busy=true;for(const control of panel.querySelectorAll('button,input'))control.disabled=true;$('pc01Msg').textContent='Salvando conta…';
+  try{await api('/api/pc01/usuarios'+(target?'/'+target:''),target?'PUT':'POST',body);if(revision!==epoch)return;clear();if(target===String(window.jettaAccount?.id)){window.dispatchEvent(new Event('jetta:pc01-session-revoked'));return;}await load();if(revision===epoch)$('pc01Msg').textContent='Conta salva. As sessões anteriores foram encerradas.';
+  }catch(x){if(revision===epoch)$('pc01Msg').textContent=x.message;}finally{$('pc01Password').value='';busy=false;for(const control of panel.querySelectorAll('button,input'))control.disabled=false;for(const input of form.querySelectorAll('[name=filial]')){const label=input.closest('label');if(label?.dataset.inactive==='true')input.disabled=true;}}
+ });
+ $('pc01Cancel').onclick=()=>{if(!busy){clear();$('pc01Msg').textContent='';}};$('pc01Reload').onclick=()=>{if(!busy){clear();load();}};
+ window.addEventListener('jetta:b24c',e=>{if(enabled&&e.detail==='usuarios'&&!busy){clear();load();}});
+ window.addEventListener('jetta:auth',e=>{epoch++;const account=e.detail;enabled=!!account?.pc01&&account.perfil==='ADMIN';panel.hidden=!enabled;$('pc01Legacy').hidden=!!account?.pc01;clear();$('pc01Users').replaceChildren();$('pc01Branches').replaceChildren();$('pc01Msg').textContent='';
+  if(!account?.pc01)for(const button of document.querySelectorAll('[data-page]'))button.hidden=false;
+  if(account?.pc01){for(const button of document.querySelectorAll('[data-page]')){const page=button.dataset.page,admin=account.perfil==='ADMIN',finance=admin||account.funcoes?.includes('FINANCEIRO'),manager=admin||account.funcoes?.includes('GESTOR');button.hidden=['usuarios','perfis','diagnostico'].includes(page)?!admin:['pagamentos','recibos','extratos','autorizacoes','carteira'].includes(page)?!finance:['planejamento','atividades','apontamentos','confirmacoes','fechamento'].includes(page)?!manager:false;}}
+ });
+})();

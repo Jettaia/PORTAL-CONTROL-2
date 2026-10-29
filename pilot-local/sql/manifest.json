@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0-pilot.rc1",
+  "version": "1.7.0-pc10",
   "purpose": "PILOTO_LOCAL_FINANCEIRO_SIMULADO",
   "files": [
     {
@@ -126,6 +126,41 @@
       "file": "21-pilot-operational.sql",
       "source": "pilot-local/operational.sql",
       "sha256": "b5ae65b300ffa13d478571b66b82fadd4bd8c3ee612b9600fcef2fda4b59ce8f"
+    },
+    {
+      "file": "22-pc01-access.sql",
+      "source": "pilot-local/pc01-access.sql",
+      "sha256": "0cc85e591819cb2976a1e57af46dbb6594602f4dba6ca22ddc2aed347871db43"
+    },
+    {
+      "file": "23-pc02-catalog.sql",
+      "source": "pilot-local/pc02-catalog.sql",
+      "sha256": "5c445f91c0a7b9658d70e78ceb6e908df56c6767b3f123862e06c0fb537c62ff"
+    },
+    {
+      "file": "24-pc03-providers.sql",
+      "source": "pilot-local/pc03-providers.sql",
+      "sha256": "993d14c12710d438bb7f8657bfb96c83aa2b3b56551ba7e6bfe552294e6f66ae"
+    },
+    {
+      "file": "25-pc04-contracts.sql",
+      "source": "pilot-local/pc04-contracts.sql",
+      "sha256": "62239042ea1229d58f4278cd21e434fa8d6ad0f5b08aa214059cf65b800d8f97"
+    },
+    {
+      "file": "26-pc05-tokens.sql",
+      "source": "pilot-local/pc05-tokens.sql",
+      "sha256": "80453a2d4edea9cb64a60b436eb360d89321a8af6bcce9a1da1bc6bf55b87133"
+    },
+    {
+      "file": "27-pc08-payments.sql",
+      "source": "pilot-local/pc08-payments.sql",
+      "sha256": "5279ae468fedd43e65a8f2fc8cbb16ba2b8e67852cd905f2e8af7838c14a2385"
+    },
+    {
+      "file": "28-pc10-adjustments.sql",
+      "source": "pilot-local/pc10-adjustments.sql",
+      "sha256": "782995384bed86dad615fdddedff0837c1120dfc1a0abe130a289f50a34c184e"
     }
   ]
 }

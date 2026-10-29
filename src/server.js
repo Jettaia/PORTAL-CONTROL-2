@@ -1,3 +1,11 @@
+import {mountPayments} from './pc08-routes.js';
+import {mountAdjustments} from './pc10-routes.js';
+import {mountStatements} from './pc11-routes.js';
+import {mountContracts} from './pc04-routes.js';
+import {mountTokens} from './pc05-routes.js';
+import {mountProviders} from './pc03-routes.js';
+import {mountBranchCatalog} from './pc02-routes.js';
+import {mountUserAdmin} from './pc01-routes.js';
 import {mountFinalLab} from './final-lab-routes.js';
 import {mountProvisioning} from './b6-1-routes.js';
 import {mountF03} from './b5-3-f03-routes.js';
@@ -42,6 +50,8 @@ app.set('json replacer', (_key, val) => {
 app.use(correlationMiddleware(cfg));
 app.use(helmet({contentSecurityPolicy:{directives:{defaultSrc:["'self'"],styleSrc:["'self'"],scriptSrc:["'self'"],imgSrc:["'self'","data:"],connectSrc:["'self'"],formAction:["'self'"]}}}));
 app.use('/api/final-lab/anexos',express.json({limit:'3mb'}));
+app.use('/api/pc08/pagamentos',express.json({limit:'15mb'}));
+app.use('/api/pc10',express.json({limit:'2mb'}));
 app.use(express.json({limit:'8kb'}));
 app.use('/api',rateLimit({windowMs:60000,limit:90,standardHeaders:'draft-7',legacyHeaders:false}));
 const loginLimiter=rateLimit({windowMs:15*60000,limit:12,standardHeaders:'draft-7',legacyHeaders:false});
@@ -64,8 +74,23 @@ mountF03(app,cfg,{session,sameOrigin});
 mountProvisioning(app,cfg,{session,sameOrigin});
 mountFinalLab(app,cfg,{session,sameOrigin});
 mountPointing(app,cfg,{session,sameOrigin});
+// PC05 tablet has its own restricted credential; management checks MFA in its service.
+mountTokens(app,cfg,{session,sameOrigin});
 app.use(privilegedGate(cfg,session));
 app.use('/api',requireMfaMiddleware(cfg,session));
+mountUserAdmin(app,cfg,{session,sameOrigin});
+mountBranchCatalog(app,cfg,{session,sameOrigin});
+mountProviders(app,cfg,{session,sameOrigin});
+mountContracts(app,cfg,{session,sameOrigin});
+mountPayments(app,cfg,{session,sameOrigin});
+mountAdjustments(app,cfg,{session,sameOrigin});
+mountStatements(app,cfg,{session});
+// PC-01 is the sole writer of account roles/branch scope once enabled.
+// Keep legacy read APIs and security gates; prevent alternate mutation paths.
+app.use('/api',(req,res,next)=>{
+ if(cfg.pc01&&['POST','PUT','PATCH','DELETE'].includes(req.method)&&/^\/(?:b23\/(?:perfis|permissoes|usuarios\/perfis)|b24c\/abrangencias|b25\/usuarios-pendentes)(?:\/|$)/.test(req.path))return res.status(409).json({erro:'UTILIZE_ADMINISTRACAO_PC01'});
+ next();
+});
 app.get('/api/health',(req,res)=>res.json({status:'UP',projeto:'Jetta Control',bloco:'B2.3',escopo:'local-auth-piloto'}));
 app.post('/api/auth/login',loginLimiter,sameOrigin,async(req,res)=>{
  const {email,senha}=req.body||{};if(typeof email!=='string'||typeof senha!=='string'||email.length>256||senha.length>1024||!email.includes('@'))return res.status(400).json({erro:'Dados invalidos'});
@@ -104,7 +129,7 @@ app.get('/api/b24/cadastros/:tipo',session,b23Root,async(req,res)=>{
 app.get('/api/b24a/:tipo',session,async(req,res)=>{
  const d=b24Definition(req.params.tipo);if(!d)return res.status(404).json({erro:'Cadastro inexistente'});
  try{if(!await can(cfg,req.user.id,d.read))return res.status(403).json({erro:'Permissao negada'});
- res.json({podeEditar:await isRoot(cfg,req.user.id)&&req.user.perfil==='ADMIN'&&await can(cfg,req.user.id,d.write),registros:await listB24(cfg,req.params.tipo),podeEditarFiliais:req.params.tipo==='filiais'&&await isRoot(cfg,req.user.id)&&req.user.perfil==='ADMIN'&&await can(cfg,req.user.id,'filiais.cadastrar')});
+ res.json({podeEditar:await isRoot(cfg,req.user.id)&&req.user.perfil==='ADMIN'&&await can(cfg,req.user.id,d.write),registros:await listB24(cfg,req.params.tipo,req.user.id),podeEditarFiliais:req.params.tipo==='filiais'&&await isRoot(cfg,req.user.id)&&req.user.perfil==='ADMIN'&&await can(cfg,req.user.id,'filiais.cadastrar')});
  }catch(e){console.error('B24A read:',safeSqlErrors(e));res.status(503).json({erro:'Consulta indisponivel'});}
 });
 app.post('/api/b24a/:tipo',sameOrigin,session,async(req,res)=>{
@@ -172,7 +197,9 @@ app.post('/api/mfa/verify',mfaLimiter,sameOrigin,session,async(req,res)=>{try{co
 // Revoga TODAS as sessoes do usuario, inclusive a atual, apos MFA recente.
 app.post('/api/mfa/revoke-own-sessions',mfaLimiter,sameOrigin,session,async(req,res)=>{try{await revokeOwnSessions(cfg,req.user.id,req.rawSession);res.set('Set-Cookie',clearCookie());return res.json({ok:true});}catch(e){console.error('B2C revoke:',safeSqlErrors(e));return res.status(403).json({erro:'Revogacao recusada: valide MFA recente'});}});
 mountPlanning(app,cfg,{session,sameOrigin});
-const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../public');app.use(express.static(root,{index:'index.html',dotfiles:'deny'}));
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../public');
+app.get('/tablet.html',(req,res,next)=>cfg.pc05?res.sendFile(path.join(root,'tablet-pc05.html')):next());
+app.use(express.static(root,{index:'index.html',dotfiles:'deny'}));
 app.use((req,res)=>res.status(404).json({erro:'Nao encontrado'}));
 return app;}
 if(process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){const cfg=configFromEnv();createApp(cfg).listen(cfg.port,cfg.host,()=>console.log('Jetta Control B3: servidor local'));}

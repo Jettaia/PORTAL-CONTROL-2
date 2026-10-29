@@ -1,3 +1,4 @@
+import {roleSql} from './access-policy.js';
 import crypto from 'node:crypto';
 import {withDb,intLiteral,nvarcharLiteral,tokenHashLiteral} from './auth-db.js';
 import {hashToken} from './security.js';
@@ -12,7 +13,7 @@ export async function tx(cfg,fn){
 }
 export async function lock(db,key,mode='Exclusive'){if(!['Exclusive','Shared'].includes(mode))throw Error('Modo de trava invalido');const r=(await db.query(`DECLARE @r int,@resource nvarchar(255)=${s('JettaControl.B41.'+key,255)};EXEC @r=sys.sp_getapplock @Resource=@resource,@LockMode='${mode}',@LockOwner='Transaction',@LockTimeout=5000;SELECT @r AS R;`))[0];if(Number(r?.R)<0)throw new PlanningError('OPERACAO_OCUPADA',409);}
 export function explicit(actor,key){return `EXISTS(SELECT 1 FROM Seguranca.UsuarioPerfil up JOIN Seguranca.PerfilAcesso pa ON pa.PerfilId=up.PerfilId AND pa.Ativo=1 JOIN Seguranca.PerfilPermissao pp ON pp.PerfilId=pa.PerfilId JOIN Seguranca.Permissao pm ON pm.PermissaoId=pp.PermissaoId WHERE up.UsuarioId=${n(actor)} AND pm.Chave=${s(key,100)})`;}
-function manager(actor,depot,key){return `EXISTS(SELECT 1 FROM Cadastro.Deposito d JOIN Cadastro.Filial f ON f.FilialId=d.FilialId AND f.Ativo=1 JOIN Seguranca.Usuario u ON u.UsuarioId=${n(actor)} AND u.Ativo=1 AND u.Perfil='GESTOR' WHERE d.DepositoId=${n(depot)} AND d.Ativo=1 AND ${scope(actor)} AND ${explicit(actor,key)})`;}
+function manager(actor,depot,key){return `EXISTS(SELECT 1 FROM Cadastro.Deposito d JOIN Cadastro.Filial f ON f.FilialId=d.FilialId AND f.Ativo=1 JOIN Seguranca.Usuario u ON u.UsuarioId=${n(actor)} AND u.Ativo=1 AND ${roleSql('u.UsuarioId','GESTOR')} WHERE d.DepositoId=${n(depot)} AND d.Ativo=1 AND ${scope(actor)} AND ${explicit(actor,key)})`;}
 export async function authorize(db,actor,depot,key,token){
  if(!(await db.query(`SELECT 1 AS V WHERE ${manager(actor,depot,key)}`)).length)throw new PlanningError('PERMISSAO_OU_ABRANGENCIA_NEGADA',403);
  if(token!==undefined)await assertMfa(db,actor,token);
