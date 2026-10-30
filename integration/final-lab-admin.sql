@@ -1,7 +1,5 @@
 -- Fixture de administracao das APIs B2 existentes, exclusivamente no banco sintetico.
 IF LEN(DB_NAME())<>34 OR LEFT(DB_NAME(),22)<>'JETTA_CONTROL_B3_TEST_' OR RIGHT(DB_NAME(),12) COLLATE Latin1_General_100_BIN2 LIKE '%[^a-f0-9]%' THROW 55700,N'Somente laboratorio sintetico',1;
-IF OBJECT_ID('Cadastro.TipoPrestador') IS NULL CREATE TABLE Cadastro.TipoPrestador(TipoPrestadorId bigint IDENTITY PRIMARY KEY,Nome nvarchar(120) NOT NULL UNIQUE,Ativo bit NOT NULL DEFAULT 1);
-IF OBJECT_ID('Cadastro.PrestadorTipo') IS NULL CREATE TABLE Cadastro.PrestadorTipo(PrestadorId bigint NOT NULL REFERENCES Cadastro.Prestador(PrestadorId),TipoPrestadorId bigint NOT NULL REFERENCES Cadastro.TipoPrestador(TipoPrestadorId),PRIMARY KEY(PrestadorId,TipoPrestadorId));
 GO
 CREATE OR ALTER PROCEDURE Seguranca.sp_LabAdminGuard @AtorId bigint AS
 BEGIN
@@ -17,19 +15,13 @@ GO
 CREATE OR ALTER PROCEDURE Cadastro.sp_B24A_CriarTipoServico @AtorId bigint,@Nome nvarchar(120) AS
 BEGIN SET NOCOUNT ON;SET XACT_ABORT ON;EXEC Seguranca.sp_LabAdminGuard @AtorId;BEGIN TRANSACTION;INSERT Cadastro.TipoServico(Nome) VALUES(@Nome);DECLARE @id bigint=SCOPE_IDENTITY();INSERT Seguranca.Auditoria(Entidade,EntidadeId,Acao,AtorUsuarioId) VALUES(N'TipoServico',@id,N'CADASTRAR',@AtorId);COMMIT;SELECT @id TipoServicoId;END;
 GO
-CREATE OR ALTER PROCEDURE Cadastro.sp_B24B_CriarTipoPrestador @AtorId bigint,@Nome nvarchar(120) AS
-BEGIN SET NOCOUNT ON;SET XACT_ABORT ON;EXEC Seguranca.sp_LabAdminGuard @AtorId;BEGIN TRANSACTION;INSERT Cadastro.TipoPrestador(Nome) VALUES(@Nome);DECLARE @id bigint=SCOPE_IDENTITY();INSERT Seguranca.Auditoria(Entidade,EntidadeId,Acao,AtorUsuarioId) VALUES(N'TipoPrestador',@id,N'CADASTRAR',@AtorId);COMMIT;SELECT @id TipoPrestadorId;END;
-GO
-CREATE OR ALTER PROCEDURE Cadastro.sp_B24B_VincularTipoPrestador @AtorId bigint,@PrestadorId bigint,@TipoPrestadorId bigint AS
-BEGIN SET NOCOUNT ON;SET XACT_ABORT ON;EXEC Seguranca.sp_LabAdminGuard @AtorId;BEGIN TRANSACTION;IF NOT EXISTS(SELECT 1 FROM Cadastro.PrestadorTipo WHERE PrestadorId=@PrestadorId AND TipoPrestadorId=@TipoPrestadorId) INSERT Cadastro.PrestadorTipo VALUES(@PrestadorId,@TipoPrestadorId);INSERT Seguranca.Auditoria(Entidade,EntidadeId,Acao,AtorUsuarioId) VALUES(N'Prestador',@PrestadorId,N'VINCULAR_TIPO',@AtorId);COMMIT;END;
-GO
-CREATE OR ALTER PROCEDURE Cadastro.sp_B24C_CriarDeposito @AtorId bigint,@FilialId bigint,@Codigo nvarchar(30),@Nome nvarchar(150),@Endereco nvarchar(400)=NULL AS
+CREATE OR ALTER PROCEDURE Cadastro.sp_B24C_CriarDeposito @AtorId bigint,@FilialId bigint,@Codigo nvarchar(30),@Nome nvarchar(150) AS
 BEGIN SET NOCOUNT ON;SET XACT_ABORT ON;EXEC Seguranca.sp_LabAdminGuard @AtorId;BEGIN TRANSACTION;
  IF NOT EXISTS(SELECT 1 FROM Cadastro.Filial WHERE FilialId=@FilialId AND Ativo=1) OR EXISTS(SELECT 1 FROM Cadastro.Deposito WHERE FilialId=@FilialId AND Codigo=@Codigo) THROW 55711,N'Filial ou codigo invalido',1;
- INSERT Cadastro.Deposito(FilialId,Codigo,Nome,Endereco) VALUES(@FilialId,@Codigo,@Nome,@Endereco);DECLARE @id bigint=SCOPE_IDENTITY();INSERT Seguranca.Auditoria(Entidade,EntidadeId,Acao,AtorUsuarioId) VALUES(N'Deposito',@id,N'CADASTRAR',@AtorId);COMMIT;SELECT @id DepositoId;END;
+ INSERT Cadastro.Deposito(FilialId,Codigo,Nome) VALUES(@FilialId,@Codigo,@Nome);DECLARE @id bigint=SCOPE_IDENTITY();INSERT Seguranca.Auditoria(Entidade,EntidadeId,Acao,AtorUsuarioId) VALUES(N'Deposito',@id,N'CADASTRAR',@AtorId);COMMIT;SELECT @id DepositoId;END;
 GO
-CREATE OR ALTER PROCEDURE Cadastro.sp_B24C_AtualizarDeposito @AtorId bigint,@DepositoId bigint,@Nome nvarchar(150),@Endereco nvarchar(400)=NULL,@Ativo bit AS
-BEGIN SET NOCOUNT ON;SET XACT_ABORT ON;EXEC Seguranca.sp_LabAdminGuard @AtorId;BEGIN TRANSACTION;UPDATE Cadastro.Deposito SET Nome=@Nome,Endereco=@Endereco,Ativo=@Ativo,AtualizadoEm=SYSUTCDATETIME() WHERE DepositoId=@DepositoId;IF @@ROWCOUNT<>1 THROW 55711,N'Deposito indisponivel',1;INSERT Seguranca.Auditoria(Entidade,EntidadeId,Acao,AtorUsuarioId) VALUES(N'Deposito',@DepositoId,N'ATUALIZAR',@AtorId);COMMIT;END;
+CREATE OR ALTER PROCEDURE Cadastro.sp_B24C_AtualizarDeposito @AtorId bigint,@DepositoId bigint,@Nome nvarchar(150),@Ativo bit AS
+BEGIN SET NOCOUNT ON;SET XACT_ABORT ON;EXEC Seguranca.sp_LabAdminGuard @AtorId;BEGIN TRANSACTION;UPDATE Cadastro.Deposito SET Nome=@Nome,Ativo=@Ativo,AtualizadoEm=SYSUTCDATETIME() WHERE DepositoId=@DepositoId;IF @@ROWCOUNT<>1 THROW 55711,N'Deposito indisponivel',1;INSERT Seguranca.Auditoria(Entidade,EntidadeId,Acao,AtorUsuarioId) VALUES(N'Deposito',@DepositoId,N'ATUALIZAR',@AtorId);COMMIT;END;
 GO
 CREATE OR ALTER PROCEDURE Seguranca.sp_B24D_AtribuirUsuarioDeposito @AtorId bigint,@UsuarioId bigint,@DepositoId bigint,@Conceder bit AS
 BEGIN SET NOCOUNT ON;SET XACT_ABORT ON;EXEC Seguranca.sp_LabAdminGuard @AtorId;BEGIN TRANSACTION;

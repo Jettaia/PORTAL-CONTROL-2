@@ -1,0 +1,18 @@
+/* Shared identity for the portal and the standalone time-clock surface. */
+:root {
+  --jc-navy: #113d68;
+  --jc-navy-hover: #0b2e51;
+  --jc-accent: #ed8b36;
+  --jc-ink: #17324d;
+  --jc-muted: #506780;
+  --jc-border: #c5d2df;
+  --jc-canvas: #f2f5f9;
+  --jc-surface: #fff;
+  --jc-subtle: #f6f8fb;
+  --jc-radius: 8px;
+  --jc-font: 'Segoe UI', Arial, sans-serif;
+  font-family: var(--jc-font);
+  color-scheme: light;
+}
+::selection { background: #ffdfbd; color: #17324d; }
+input, textarea { caret-color: var(--jc-navy); }

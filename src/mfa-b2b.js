@@ -22,7 +22,7 @@ export async function verify(cfg,user,token,code,purpose){if(!['ENROLL','LOGIN',
  const match=verifyTotp(decryptedSecret(buf),code,Date.now(),last);if(!match.valid)return false;
  try{await db.query(`EXEC Seguranca.sp_B25B2B_ConfirmarOuValidar @UsuarioId=${intLiteral(user.id)},@SessaoHash=${literalHash(token)},@Passo=${match.step},@Finalidade='${purpose}'`);return true;}catch(e){if(e.odbcErrors?.some(x=>Number(x.code)===59822))return false;throw e;}
  });}
-export function requireMfaMiddleware(cfg,sessionFn){return async(req,res,next)=>{const method=req.method;
+export function requireMfaMiddleware(cfg,sessionFn){return async(req,res,next)=>{if(cfg.mfaRequired===false)return next();const method=req.method;
  if(!['POST','PUT','PATCH','DELETE'].includes(method))return next();
  const exempt=['/api/auth/login','/api/auth/logout','/api/b25b/ativar','/api/mfa/enroll','/api/mfa/confirm','/api/mfa/verify','/api/mfa/status'];
  if(exempt.includes('/api'+req.path))return next();

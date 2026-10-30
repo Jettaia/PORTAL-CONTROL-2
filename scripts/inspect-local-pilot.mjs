@@ -6,7 +6,8 @@ import odbc from 'odbc';
 
 // Read-only preparation. This script cannot install, migrate, start or erase a database.
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const plan=JSON.parse(fs.readFileSync(path.join(root,'pilot-local/plan.json'),'utf8'));
+const planFile=path.join(root,'pilot-local/plan.json');
+const plan=fs.existsSync(planFile)?JSON.parse(fs.readFileSync(planFile,'utf8')):{host:'127.0.0.1',database:'JETTA_CONTROL_PILOTO_LOCAL',finance:'SIMULADO'};
 if(plan.host!=='127.0.0.1'||plan.database!=='JETTA_CONTROL_PILOTO_LOCAL'||plan.finance!=='SIMULADO')throw Error('Plano local divergente');
 const inputs=['src/config.js','src/b4-codes.js','src/db.js','scripts/demo-final-lab.mjs',
  'integration/b3-common.sql','integration/b3-rbac.sql','integration/b3-operation.sql',
@@ -30,7 +31,7 @@ if(!report.privateConfigurationPresent)report.blockers.push('Instalacao persiste
 const manifestPath=path.join(root,'pilot-local/sql/manifest.json');if(fs.existsSync(manifestPath)){const manifest=JSON.parse(fs.readFileSync(manifestPath,'utf8'));report.pilotMigrations=manifest.files.length;for(const file of manifest.files){const bytes=fs.readFileSync(path.join(root,'pilot-local/sql',file.file));if(crypto.createHash('sha256').update(bytes).digest('hex')!==file.sha256)report.blockers.push('Integridade da migracao divergente: '+file.file);}}else report.blockers.push('Manifesto de migracoes ausente');
 
 if(process.argv.includes('--sql-readonly')){
- const connection=await odbc.connect(`Driver={ODBC Driver 18 for SQL Server};Server=Ferretti\\SQLEXPRESS;Database=master;Trusted_Connection=Yes;Encrypt=Yes;TrustServerCertificate=Yes;Connection Timeout=8;`);
+ const connection=await odbc.connect(`Driver={ODBC Driver 18 for SQL Server};Server=localhost\\SQLEXPRESS;Database=master;Trusted_Connection=Yes;Encrypt=Yes;TrustServerCertificate=Yes;Connection Timeout=8;`);
  try{const row=(await connection.query("SELECT CONVERT(varchar(128),SERVERPROPERTY('ServerName')) ServerName,CONVERT(varchar(128),SERVERPROPERTY('ProductVersion')) ProductVersion,CASE WHEN DB_ID('JETTA_CONTROL_PILOTO_LOCAL') IS NULL THEN 0 ELSE 1 END PilotDatabaseExists"))[0];report.sql={connectedDatabase:'master',server:row.ServerName,productVersion:row.ProductVersion,pilotDatabaseExists:Number(row.PilotDatabaseExists)===1};}
  finally{await connection.close();}
 }

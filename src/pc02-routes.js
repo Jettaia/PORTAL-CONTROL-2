@@ -4,7 +4,7 @@ export function mountBranchCatalog(app,cfg,{session,sameOrigin},service=catalog)
  if(!cfg.pc02)return;
  if(!cfg.pc01)throw Error('PC-02 exige PC-01 provisionado e ativo');
  const error=(res,e)=>res.status(e.status||503).json({erro:e.status?e.message:'CADASTRO_INDISPONIVEL'});
- for(const kind of ['filiais','servicos']){
+ for(const kind of ['depositos','servicos']){
   app.get('/api/b24a/'+kind,session,async(req,res)=>{try{res.json(await service.read(cfg,req.user.id,kind,req));}catch(e){error(res,e);}});
   const save=editing=>async(req,res)=>{
    try{

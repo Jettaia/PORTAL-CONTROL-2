@@ -83,11 +83,9 @@ BEGIN
   IF @Atividade IS NULL THROW 54150,N'Participacao fora de estado ou escopo',1;
   IF @Valor IS NULL OR @Valor<0 OR @Fim<=@Inicio OR CONVERT(date,@Inicio)<>@Data THROW 54202,N'Periodo ou valor invalido',1;
   IF NOT EXISTS(SELECT 1 FROM Seguranca.SessaoWeb s WITH(UPDLOCK,HOLDLOCK)
-   JOIN Seguranca.MfaTotp m ON m.UsuarioId=s.UsuarioId AND m.ConfirmadoEmUtc IS NOT NULL AND m.RevogadoEmUtc IS NULL
    WHERE s.UsuarioId=@GestorId AND s.TokenHash=@SessaoHash AND s.RevogadoEmUtc IS NULL AND s.ExpiraEmUtc>SYSUTCDATETIME()
-   AND s.MfaValidadoEmUtc>=m.ConfirmadoEmUtc AND s.MfaValidadoEmUtc<=SYSUTCDATETIME()
-   AND s.MfaStepUpEmUtc>=m.ConfirmadoEmUtc AND s.MfaStepUpEmUtc BETWEEN DATEADD(minute,-5,SYSUTCDATETIME()) AND SYSUTCDATETIME())
-   THROW 54203,N'MFA recente obrigatorio',1;
+   )
+   THROW 54203,N'Sessao valida obrigatoria',1;
   IF EXISTS(SELECT 1 FROM Operacao.Participacao p JOIN Operacao.Atividade a ON a.AtividadeId=p.AtividadeId
    WHERE p.PrestadorId=@Prestador AND p.ParticipacaoId<>@ParticipacaoId AND p.Status NOT IN ('CANCELADA','NAO_COMPARECEU')
    AND a.Status<>'CANCELADA' AND a.InicioPrevisto<@Fim AND @Inicio<a.FimPrevisto) THROW 54152,N'Conflito de periodo',1;
@@ -188,11 +186,9 @@ BEGIN
   WHERE e.ExcecaoId=@ExcecaoId AND e.Status='PENDENTE' AND e.SolicitadoPorGestorId<>@DiretorId AND a.GestorUsuarioId<>@DiretorId;
   IF @Participacao IS NULL THROW 54143,N'Excecao decidida, autoaprovacao ou fora de escopo',1;
   IF ISNULL(@MfaConfirmado,0)<>1 OR NOT EXISTS(SELECT 1 FROM Seguranca.SessaoWeb s WITH(UPDLOCK,HOLDLOCK)
-   JOIN Seguranca.MfaTotp m ON m.UsuarioId=s.UsuarioId AND m.ConfirmadoEmUtc IS NOT NULL AND m.RevogadoEmUtc IS NULL
    WHERE s.UsuarioId=@DiretorId AND s.TokenHash=@SessaoHash AND s.RevogadoEmUtc IS NULL AND s.ExpiraEmUtc>SYSUTCDATETIME()
-   AND s.MfaValidadoEmUtc>=m.ConfirmadoEmUtc AND s.MfaValidadoEmUtc<=SYSUTCDATETIME()
-   AND s.MfaStepUpEmUtc>=m.ConfirmadoEmUtc AND s.MfaStepUpEmUtc BETWEEN DATEADD(minute,-5,SYSUTCDATETIME()) AND SYSUTCDATETIME())
-   THROW 54203,N'MFA recente obrigatorio',1;
+   )
+   THROW 54203,N'Sessao valida obrigatoria',1;
   DECLARE @Contexto varchar(64);
   SELECT @Contexto=CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(nvarchar(max),(SELECT p.ParticipacaoId participacaoId,p.PrestadorId prestadorId,p.ValorContratado valorContratado,a.AtividadeId atividadeId,a.DepositoId depositoId,a.TipoServicoId servicoId,a.GestorUsuarioId gestorId,a.DataServico dataServico,a.InicioPrevisto inicio,a.FimPrevisto fim FOR JSON PATH,WITHOUT_ARRAY_WRAPPER))),2)
   FROM Operacao.Participacao p JOIN Operacao.Atividade a ON a.AtividadeId=p.AtividadeId WHERE p.ParticipacaoId=@Participacao;

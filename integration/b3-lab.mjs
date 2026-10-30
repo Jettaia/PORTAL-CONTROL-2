@@ -7,7 +7,7 @@ export const safeName = name => /^JETTA_CONTROL_B3_TEST_[a-f0-9]{12}$/.test(name
 function lifecycle(event,database){if(process.env.JETTA_B52A_EVIDENCE!=='YES')return;if(!safeName(database))throw Error('Registro de destino recusado');const out=process.env.JETTA_FINAL_RECORDS==='YES'?'docs/final-lab':process.env.JETTA_B61_UAT_RECORDS==='YES'?'docs/b6-1-uat':process.env.JETTA_B61_RECORDS==='YES'?'docs/b6-1':process.env.JETTA_F03_RECORDS==='YES'?'docs/b5-3-f03':process.env.JETTA_F02_RECORDS==='YES'?'docs/b5-3-f02':process.env.JETTA_F01_RECORDS==='YES'?'docs/b5-3-f01':(process.env.JETTA_B52C_RECORDS==='YES'||process.env.JETTA_B52C_EVIDENCE==='YES')?'docs/b5-2c':process.env.JETTA_B52B_EVIDENCE==='YES'?'docs/b5-2b':'docs/b5-2a';fs.mkdirSync(out,{recursive:true});fs.appendFileSync(out+'/laboratories.ndjson',JSON.stringify({utc:new Date().toISOString(),event,database})+'\n');}
 export async function connect(database) {
   if (database !== 'master' && !safeName(database)) throw Error('Destino B3 recusado');
-  const db = await odbc.connect(`Driver={ODBC Driver 18 for SQL Server};Server=Ferretti\\SQLEXPRESS;Database=${database};Trusted_Connection=Yes;Encrypt=Yes;TrustServerCertificate=Yes;Connection Timeout=8;`);
+  const db = await odbc.connect(`Driver={ODBC Driver 18 for SQL Server};Server=localhost\\SQLEXPRESS;Database=${database};Trusted_Connection=Yes;Encrypt=Yes;TrustServerCertificate=Yes;Connection Timeout=8;`);
   await db.query('SET NOCOUNT ON; SET XACT_ABORT ON; SET LOCK_TIMEOUT 5000;'); return db;
 }
 export async function makeB3Lab({b32=false,b33=false}={}) {
@@ -17,7 +17,7 @@ export async function makeB3Lab({b32=false,b33=false}={}) {
   const master = await connect('master');
   try { await master.query(`CREATE DATABASE [${database}]`);lifecycle('created',database); } finally { await master.close(); }
   const db = await connect(database);
-  const cfg = {server:'Ferretti\\SQLEXPRESS', database, driver:'ODBC Driver 18 for SQL Server', trust:true, host:'127.0.0.1', port:0, b32, b33, b41:b33&&process.env.JETTA_B41_EVIDENCE==='YES', b52a:b33&&process.env.JETTA_B52A_EVIDENCE==='YES', b52:b33&&process.env.JETTA_B52_EVIDENCE==='YES', b51:b33&&process.env.JETTA_B51_EVIDENCE==='YES', b43:b33&&process.env.JETTA_B43_EVIDENCE==='YES', b42:b33&&process.env.JETTA_B42_EVIDENCE==='YES', token:crypto.randomBytes(32).toString('hex')};
+  const cfg = {server:'localhost\\SQLEXPRESS', database, driver:'ODBC Driver 18 for SQL Server', trust:true, host:'127.0.0.1', port:0, b32, b33, b41:b33&&process.env.JETTA_B41_EVIDENCE==='YES', b52a:b33&&process.env.JETTA_B52A_EVIDENCE==='YES', b52:b33&&process.env.JETTA_B52_EVIDENCE==='YES', b51:b33&&process.env.JETTA_B51_EVIDENCE==='YES', b43:b33&&process.env.JETTA_B43_EVIDENCE==='YES', b42:b33&&process.env.JETTA_B42_EVIDENCE==='YES', token:crypto.randomBytes(32).toString('hex')};
   const close = async () => {
     try { await db.close(); } finally {
       const admin = await connect('master');

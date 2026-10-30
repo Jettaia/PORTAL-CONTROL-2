@@ -6,7 +6,7 @@ import path from 'node:path';
 import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url),{chromium}=require(path.join(process.env.JETTA_PLAYWRIGHT_ROOT,'playwright'));
 const app=express();app.use(express.json());let role='GESTOR',logged=false,conflict=false;
-const person={PrestadorId:7,Nome:'Pessoa Compartilhada',CPF:'12345678901',Telefone:'',CNPJ:'',Ativo:true,Versao:1};let links=[];const writes=[];
+const person={PrestadorId:7,Nome:'Pessoa Compartilhada',CPF:'12345678901',Telefone:'',CNPJ:'',Ativo:true,Versao:1};let links=[];let extras=[{PrestadorId:8,Nome:'Ana Inativa',CPF:'98765432100',Ativo:false,Versao:1}];const writes=[];const reads=[];
 app.all('/api/*',(req,res)=>{
  const user={id:1,nome:'Conta Teste',perfil:role,funcoes:[role],pc01:true,pc02:true,pc03:true};
  if(req.path==='/api/auth/login'){logged=true;return res.json({usuario:user});}
@@ -14,7 +14,8 @@ app.all('/api/*',(req,res)=>{
  if(!logged)return res.sendStatus(401);
  if(req.path==='/api/auth/me')return res.json({usuario:user});
  if(req.path==='/api/mfa/status')return res.json({enrolled:true,verified:true,stepUp:true});
- if(req.path==='/api/b24a/chapas'&&req.method==='GET')return role==='FINANCEIRO'?res.status(403).json({erro:'PERMISSAO_NEGADA'}):res.json({pc03:true,podeEditar:true,adm:role==='ADMIN',registros:role==='ADMIN'||req.query.cpf||links.length?[person]:[],filiais:[{FilialId:1,Nome:'Filial Norte',Ativo:1}],vinculos:links});
+ if(req.path==='/api/b24a/chapas'&&req.method==='GET')reads.push(req.originalUrl);
+ if(req.path==='/api/b24a/chapas'&&req.method==='GET')return role==='FINANCEIRO'?res.status(403).json({erro:'PERMISSAO_NEGADA'}):res.json({pc03:true,podeEditar:true,adm:role==='ADMIN',registros:[person,...extras],filiais:[{FilialId:1,Nome:'Filial Norte',Ativo:1}],vinculos:links});
  if(req.path.startsWith('/api/b24a/chapas')&&req.method!=='GET'){
   writes.push(req.body);if(conflict){conflict=false;return res.status(409).json({erro:'REGISTRO_ALTERADO_ATUALIZE'});}
   if(req.path.endsWith('/filiais/1'))links=req.body.vinculado?[{PrestadorId:7,FilialId:1}]:[];
@@ -31,13 +32,21 @@ app.all('/api/*',(req,res)=>{
 app.use(express.static('public'));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
 const browser=await chromium.launch({channel:'msedge',headless:true});
 try{
- const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.stack||e.message));
  await page.goto(`http://127.0.0.1:${server.address().port}`);
  const login=async()=>{await page.locator('#email').fill('teste@example.test');await page.locator('#senha').fill('SenhaDeTeste!123');await page.locator('#loginForm button').click();await page.locator('#dashboard').waitFor({state:'visible'});};
- await login();await page.locator('[data-page=chapas]').click();const panel=page.locator('#pc03Panel');await panel.getByText('Nenhum prestador encontrado.',{exact:true}).waitFor();assert.equal(await page.locator('#b24Form').isVisible(),false);assert.equal(await page.locator('#b24Vincular').isVisible(),false);
- await panel.locator('form').first().locator('input').fill(person.CPF);await panel.getByRole('button',{name:'Buscar CPF',exact:true}).click();await panel.getByText('1 prestadores encontrados.',{exact:true}).waitFor();
+ await login();await page.locator('[data-page=chapas]').click();const panel=page.locator('#pc03Panel');await panel.getByText('2 prestadores encontrados.',{exact:true}).waitFor();assert.equal(await page.locator('#b24Form').isVisible(),false);assert.equal(await page.locator('#b24Vincular').isVisible(),false);
+ assert.equal(await panel.getByRole('button',{name:'Buscar CPF',exact:true}).count(),0);assert.equal(await panel.getByRole('button',{name:'Listar minhas filiais',exact:true}).count(),0);
+ const search=panel.getByLabel('Buscar por nome ou CPF'),situation=panel.getByLabel('Filtrar situação'),branch=panel.getByLabel('Filtrar filial');
+ await panel.locator('input[name=filial]').check();await search.fill('ana');assert.equal(await panel.locator('input[name=filial]').isChecked(),true);await panel.locator('input[name=filial]').uncheck();assert.equal(await panel.locator('table tr').count(),2);assert.equal(await panel.locator('table').getByText('Ana Inativa',{exact:true}).count(),1);
+ await search.fill('COMPARTILHADA');assert.equal(await panel.locator('table').getByText(person.Nome,{exact:true}).count(),1);
+ await search.fill('123.456.789-01');assert.equal(await panel.locator('table').getByText(person.Nome,{exact:true}).count(),1);
+ await situation.selectOption('0');assert.equal(await panel.locator('table tr').count(),1);await panel.getByText('Nenhum prestador encontrado com os filtros selecionados.',{exact:true}).waitFor();
+ await search.fill('');assert.equal(await panel.locator('table').getByText('Ana Inativa',{exact:true}).count(),1);await situation.selectOption('');
+ await branch.selectOption('1');assert.equal(await panel.locator('table tr').count(),1);await branch.selectOption('');
+ assert.deepEqual(reads,['/api/b24a/chapas']);extras=[];await search.fill(person.CPF);
  assert.equal(await panel.getByRole('button',{name:'Editar',exact:true}).count(),0);
- await panel.getByRole('button',{name:'Vincular Filial Norte',exact:true}).click();await panel.getByText('Vínculo atualizado. Histórico preservado.',{exact:true}).waitFor();assert.equal(links.length,1);
+ await panel.getByRole('button',{name:'Vincular Filial Norte',exact:true}).click();await panel.getByText('Vínculo atualizado. Histórico preservado.',{exact:true}).waitFor();assert.equal(links.length,1);await branch.selectOption('1');assert.equal(await panel.locator('table').getByText(person.Nome,{exact:true}).count(),1);await situation.selectOption('1');assert.equal(await panel.locator('table tr').count(),2);await branch.selectOption('');await situation.selectOption('');
  await panel.getByRole('button',{name:'Editar',exact:true}).click();assert.equal(await panel.locator('#pc03_cpf').getAttribute('readonly'),'');
  await panel.locator('#pc03_nome').fill('Pessoa Atualizada');conflict=true;await panel.getByRole('button',{name:'Salvar alterações',exact:true}).click();await panel.getByText(/Operação recusada: Outra pessoa alterou/).waitFor();assert.equal(await panel.locator('#pc03_nome').inputValue(),'Pessoa Atualizada');
  await panel.getByRole('button',{name:'Salvar alterações',exact:true}).click();await panel.getByText('Alterações salvas. Histórico preservado.',{exact:true}).waitFor();assert.equal(person.Nome,'Pessoa Atualizada');
@@ -46,7 +55,7 @@ try{
  await panel.locator('#pc03_nome').fill('Pessoa Nova');await panel.locator('#pc03_cpf').fill('12345678902');await panel.getByRole('button',{name:'Cadastrar prestador',exact:true}).click();await panel.getByText('Operação recusada: Selecione ao menos uma filial.',{exact:true}).waitFor();
  await panel.locator('input[name=filial]').check();await panel.getByRole('button',{name:'Cadastrar prestador',exact:true}).click();await panel.getByText('Prestador cadastrado.',{exact:true}).waitFor();assert.equal(writes.at(-1).cnpj,'');
  // ADM correction/inactivation, roundtrip to PC02 and back.
- await page.locator('#logout').click();role='ADMIN';await login();await page.locator('[data-page=chapas]').click();await panel.getByText('1 prestadores encontrados.',{exact:true}).waitFor();await panel.getByRole('button',{name:'Editar',exact:true}).click();assert.equal(await panel.locator('#pc03_cpf').getAttribute('readonly'),null);await panel.locator('#pc03_cpf').fill('12345678903');await panel.locator('select').selectOption('0');await panel.getByRole('button',{name:'Salvar alterações',exact:true}).click();await panel.getByText('Alterações salvas. Histórico preservado.',{exact:true}).waitFor();assert.equal(person.Ativo,false);await panel.getByRole('button',{name:'Remover Filial Norte',exact:true}).click();await panel.getByText('Vínculo atualizado. Histórico preservado.',{exact:true}).waitFor();assert.equal(await panel.getByRole('button',{name:'Vincular Filial Norte',exact:true}).isDisabled(),true);assert.equal(await page.getByRole('button',{name:'Atualizar lista',exact:true}).isVisible(),false);
+ await page.locator('#logout').click();role='ADMIN';await login();await page.locator('[data-page=chapas]').click();await panel.getByText('1 prestadores encontrados.',{exact:true}).waitFor();await panel.getByRole('button',{name:'Editar',exact:true}).click();assert.equal(await panel.locator('#pc03_cpf').getAttribute('readonly'),null);await panel.locator('#pc03_cpf').fill('12345678903');await panel.locator('form select').selectOption('0');await panel.getByRole('button',{name:'Salvar alterações',exact:true}).click();await panel.getByText('Alterações salvas. Histórico preservado.',{exact:true}).waitFor();assert.equal(person.Ativo,false);await panel.getByRole('button',{name:'Remover Filial Norte',exact:true}).click();await panel.getByText('Vínculo atualizado. Histórico preservado.',{exact:true}).waitFor();assert.equal(await panel.getByRole('button',{name:'Vincular Filial Norte',exact:true}).isDisabled(),true);assert.equal(await page.getByRole('button',{name:'Atualizar lista',exact:true}).isVisible(),false);
  await page.locator('[data-page=servicos]').click();await page.getByText('0 registros carregados, incluindo inativos.').waitFor();assert.equal(await panel.isVisible(),false);assert.equal(await page.locator('#b24Form').isVisible(),true);
  await page.locator('[data-page=chapas]').click();await panel.getByText('1 prestadores encontrados.',{exact:true}).waitFor();
  fs.mkdirSync('artifacts/pc03',{recursive:true});
@@ -55,6 +64,6 @@ try{
  await page.locator('#mainNav summary').filter({hasText:'Operação'}).click();await page.locator('[data-page=planejamento]').click();await page.locator('#b3Activities table').waitFor();
  await page.locator('#b3Activities tr').filter({hasText:'Norte'}).getByRole('button',{name:'Abrir atividade'}).click();await page.locator('#b3Detail').waitFor({state:'visible'});assert.deepEqual(await page.locator('#b3Prestador option').allTextContents(),['Selecione','Pessoa Norte']);
  await page.locator('#b3Activities tr').filter({hasText:'Sul'}).getByRole('button',{name:'Abrir atividade'}).click();await page.locator('#b3DetailTitle').filter({hasText:'Atividade 2'}).waitFor();assert.deepEqual(await page.locator('#b3Prestador option').allTextContents(),['Selecione','Pessoa Sul']);
- await page.locator('#logout').click();role='FINANCEIRO';await login();await page.locator('[data-page=chapas]').click();await panel.getByText('PERMISSAO_NEGADA',{exact:true}).waitFor();assert.equal(await panel.locator('form').last().isVisible(),false);assert.equal(await panel.locator('table').count(),0);
- assert.deepEqual(errors,[]);console.log('PC03 visual PASS: CPF/link/unlink/edit/conflict/create/admin/finance/PC02/1440-768-390');
+ await page.locator('#logout').click();role='FINANCEIRO';await login();await page.locator('[data-page=chapas]').click();await panel.getByText('PERMISSAO_NEGADA',{exact:true}).waitFor();assert.equal(await panel.locator('form').last().isVisible(),false);assert.equal(await panel.locator('table').count(),0);assert.equal(await search.isVisible(),false);
+ assert.deepEqual(errors,[]);console.log('PC03 visual PASS: local-name-CPF-status-branch-filters/no-global-query/link/unlink/edit/conflict/create/admin/finance/PC02/1440-768-390');
 }finally{await browser.close();server.close();}

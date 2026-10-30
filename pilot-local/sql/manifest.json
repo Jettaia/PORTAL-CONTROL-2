@@ -1,6 +1,6 @@
 {
-  "version": "1.7.0-pc10",
-  "purpose": "PILOTO_LOCAL_FINANCEIRO_SIMULADO",
+  "version": "1.15.0-depot-numbering",
+  "purpose": "PILOTO_LOCAL_FINANCEIRO_CONTRATACOES",
   "files": [
     {
       "file": "01-b3-common.sql",
@@ -30,7 +30,7 @@
       "file": "05-b3-2-patch.sql",
       "source": "b3-2-patch.sql",
       "sourceSha256": "14e04c625022b36af75b9f0e771d72e6cb7dc2bccd4dc9f94fefafc17ce6ddd7",
-      "sha256": "a936e511ccf657c73201e694d011c76cfac37836e8774e5ebc15b77242836b55"
+      "sha256": "5e321787dca6254ebdc94822e9891c61dadd61fd54287cdfd568d3efc6105fb9"
     },
     {
       "file": "06-b3-3-availability.sql",
@@ -42,7 +42,7 @@
       "file": "07-b3-3-patch.sql",
       "source": "b3-3-patch.sql",
       "sourceSha256": "ded1eaeb3f72c2e01cdba055bea7ee7769392525bada416850a95270f137fca0",
-      "sha256": "5a0a4638b238de9af4676fbe4e39747142bdfb408588c99267b2fdf2aa288907"
+      "sha256": "7eb41d7f2162a47fc8fd61f13c22328db8827ad8e1a4de10648d045bf9bc711d"
     },
     {
       "file": "08-b4-1-schema.sql",
@@ -119,8 +119,8 @@
     {
       "file": "20-final-lab-admin.sql",
       "source": "final-lab-admin.sql",
-      "sourceSha256": "2e314663eec00d8b18266f3ab76b2e2a1a133b122e470e6bb2292c6b3b3459ea",
-      "sha256": "a333c5e47dbea413bfcdffe9da001d86909ff710430610b5b432944d1c0c27ef"
+      "sourceSha256": "f3a4eaa41f5941b7d64b0f0d07457c20b87ef067466414566a0f6881c9d0975d",
+      "sha256": "928a5e24b5f66a26cdac2084e034e7b75a07c641e3f1b54fe0ce78a342d8c7f6"
     },
     {
       "file": "21-pilot-operational.sql",
@@ -135,7 +135,7 @@
     {
       "file": "23-pc02-catalog.sql",
       "source": "pilot-local/pc02-catalog.sql",
-      "sha256": "5c445f91c0a7b9658d70e78ceb6e908df56c6767b3f123862e06c0fb537c62ff"
+      "sha256": "ba685eca538dfe3d2f5ae94163a1b3ac93dade696818ba1678f6efe00a424cdc"
     },
     {
       "file": "24-pc03-providers.sql",
@@ -161,6 +161,46 @@
       "file": "28-pc10-adjustments.sql",
       "source": "pilot-local/pc10-adjustments.sql",
       "sha256": "782995384bed86dad615fdddedff0837c1120dfc1a0abe130a289f50a34c184e"
+    },
+    {
+      "file": "29-depot-model.sql",
+      "source": "pilot-local/depot-model.sql",
+      "sha256": "9f4b8206811575ace3036bc33986390f61f3043f21d8995a71d6bf732b2d8800"
+    },
+    {
+      "file": "30-provider-document.sql",
+      "source": "pilot-local/provider-document.sql",
+      "sha256": "752017bb9e99575ee63ae8ea61e01bb8e2c63416cc0027d8ee06a01b4fd85b13"
+    },
+    {
+      "file": "31-manual-hours-approval.sql",
+      "source": "pilot-local/manual-hours-approval.sql",
+      "sha256": "ff66586ea06a550d34ee8f98538108e9cc58d5a802a98545c29c8cdd94be5aff"
+    },
+    {
+      "file": "32-tablets-permanent.sql",
+      "source": "pilot-local/tablets-permanent.sql",
+      "sha256": "3d0e1f156de4e106126c4f2e878022ef9a88bf803ef4862bf2bf4205f8afeb95"
+    },
+    {
+      "file": "33-fin02-receipts.sql",
+      "source": "pilot-local/fin02-receipts.sql",
+      "sha256": "3ffd512383834751d21cf553d4de1b499acd7043802aed27cddca8fbc0596e7f"
+    },
+    {
+      "file": "34-fin03-payments.sql",
+      "source": "pilot-local/fin03-payments.sql",
+      "sha256": "d55977bb1ab8ed5a52013e58522118e2e99c865caa7db57549c00e4da8619c44"
+    },
+    {
+      "file": "35-fin04-retirement.sql",
+      "source": "pilot-local/fin04-retirement.sql",
+      "sha256": "745175e1fbcb24c0cf33ab8057d8ed4d665b838f694cc696821418b2d3c5a745"
+    },
+    {
+      "file": "36-contract-numbering.sql",
+      "source": "pilot-local/contract-numbering.sql",
+      "sha256": "4c92849fc3f5104d84a90b0b47a5380bcc7c30db7701e5596d87201294803f07"
     }
   ]
 }

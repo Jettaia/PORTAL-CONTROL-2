@@ -61,13 +61,7 @@ export async function findSession(cfg,token){
   WHERE s.TokenHash=${tokenHashLiteral(hashToken(token))} AND s.RevogadoEmUtc IS NULL AND s.ExpiraEmUtc>SYSUTCDATETIME() AND u.Ativo=1`);return rows[0]?accountContext(db,cfg,rows[0]):null;});
 }
 export async function logout(cfg,token){return withDb(cfg,db=>db.query(`UPDATE Seguranca.SessaoWeb SET RevogadoEmUtc=SYSUTCDATETIME() WHERE TokenHash=${tokenHashLiteral(hashToken(token))} AND RevogadoEmUtc IS NULL`));}
-export async function depositsFor(cfg,user){return withDb(cfg,async db=>{
- const result=await db.query(`SELECT d.DepositoId,d.FilialId,d.Codigo,d.Nome
- FROM Cadastro.Deposito d WHERE d.Ativo=1 AND
- ((${nvarcharLiteral(user.perfil,20)}='ADMIN') OR (${nvarcharLiteral(user.perfil,20)}='GESTOR' AND EXISTS(
- SELECT 1 FROM Seguranca.GestorDeposito g WHERE g.DepositoId=d.DepositoId AND g.GestorUsuarioId=${intLiteral(user.id)} AND g.RevogadoEm IS NULL)))
- ORDER BY d.Nome`);return result;
-});}
+export async function depositsFor(cfg,user){return withDb(cfg,async db=>db.query(`SELECT d.DepositoId,d.Codigo,d.Nome FROM Cadastro.Deposito d WHERE d.Ativo=1 AND EXISTS(SELECT 1 FROM Seguranca.Usuario u WHERE u.UsuarioId=${intLiteral(user.id)} AND u.Ativo=1 AND ((u.Perfil='ADMIN' AND EXISTS(SELECT 1 FROM Seguranca.UsuarioRaiz r WHERE r.UsuarioId=u.UsuarioId)) OR EXISTS(SELECT 1 FROM Seguranca.UsuarioDeposito ud WHERE ud.UsuarioId=u.UsuarioId AND ud.DepositoId=d.DepositoId AND ud.RevogadoEmUtc IS NULL))) ORDER BY d.Nome`));}
 // Encode text as UTF-16LE hexadecimal rather than injecting user content into SQL.
 // The SQL statement has no ODBC parameter markers: this avoids SQLDescribeParam
 // for the one-time bootstrap in affected Windows ODBC installations.
@@ -122,7 +116,7 @@ async function findSessionConsistent(cfg,token){
 async function accountContext(db,cfg,user){
  if(!cfg.pc01)return user;
  const roles=await db.query(`SELECT pa.Codigo FROM Seguranca.UsuarioPerfil up JOIN Seguranca.PerfilAcesso pa ON pa.PerfilId=up.PerfilId AND pa.Ativo=1 WHERE up.UsuarioId=${intLiteral(user.id)} AND pa.Codigo IN('PC01_ADMIN','PC01_GESTOR','PC01_FINANCEIRO')`);
- return {...user,pc01:true,pc02:cfg.pc02===true,pc03:cfg.pc03===true,pc04:cfg.pc04===true,pc08:cfg.pc08===true,pc10:cfg.pc10===true,pc11:cfg.pc11===true,funcoes:roles.map(r=>r.Codigo.slice(5)),filiais:(await db.query(`SELECT FilialId FROM Seguranca.UsuarioFilial WHERE UsuarioId=${intLiteral(user.id)} AND RevogadoEmUtc IS NULL`)).map(r=>String(r.FilialId))};
+ return {...user,pc01:true,pc02:cfg.pc02===true,pc03:cfg.pc03===true,pc04:cfg.pc04===true,pc05:cfg.pc05===true,fin01:cfg.fin01===true,pc08:cfg.pc08===true,pc10:cfg.pc10===true,pc11:cfg.pc11===true,funcoes:roles.map(r=>r.Codigo.slice(5)),depositos:(await db.query(`SELECT DepositoId FROM Seguranca.UsuarioDeposito WHERE UsuarioId=${intLiteral(user.id)} AND RevogadoEmUtc IS NULL`)).map(r=>String(r.DepositoId))};
 }
 
 // EXEC arguments must be variables/constants, not inline CONVERT expressions.

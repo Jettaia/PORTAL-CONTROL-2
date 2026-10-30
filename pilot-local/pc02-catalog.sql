@@ -6,3 +6,10 @@ IF COL_LENGTH('Cadastro.Filial','Endereco') IS NULL
 IF COL_LENGTH('Cadastro.TipoServico','Descricao') IS NULL
  ALTER TABLE Cadastro.TipoServico ADD Descricao nvarchar(500) NULL;
 GO
+IF COL_LENGTH('Cadastro.Filial','Cidade') IS NULL
+ ALTER TABLE Cadastro.Filial ADD Cidade nvarchar(120) NULL;
+IF COL_LENGTH('Cadastro.Filial','Estado') IS NULL
+ ALTER TABLE Cadastro.Filial ADD Estado char(2) NULL;
+IF COL_LENGTH('Cadastro.Filial','CEP') IS NULL
+ ALTER TABLE Cadastro.Filial ADD CEP char(8) NULL;
+GO

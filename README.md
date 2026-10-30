@@ -23,7 +23,7 @@ node --test pilot-local/unit.test.mjs
 
 O pacote `odbc` também exige o ambiente nativo compatível. O acesso ao SQL Server requer Microsoft ODBC Driver 18.
 
-`npm start` executa o servidor legado, com configuração `.env` e destino `JETTA_CONTROL`; não é o iniciador do piloto mais recente. O piloto instalado usa `node pilot-local/start.mjs`, configuração privada em `secrets/pilot-local/runtime.json`, acesso local em `127.0.0.1:3211` e efeitos financeiros simulados. Não copie configurações privadas de outra máquina nem execute o instalador como roteiro de produção.
+`npm start` executa o servidor legado, com configuração `.env` e destino `JETTA_CONTROL`; não é o iniciador do piloto mais recente. O piloto instalado usa `node pilot-local/start.mjs`, configuração privada em `secrets/pilot-local/runtime.json`, acesso local em `127.0.0.1:3211` e registro de pagamentos externos por contratação, sem execução bancária. A atualização financeira exige migrações 33, 34 e 35 em ordem, com piloto parado e backup verificado; veja `docs/BANCO-DE-DADOS.md`. Não copie configurações privadas de outra máquina nem execute o instalador como roteiro de produção.
 
 ## Limites desta entrega
 

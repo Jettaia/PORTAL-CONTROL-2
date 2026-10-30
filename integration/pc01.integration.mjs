@@ -13,7 +13,7 @@ import {nvarcharLiteral as s} from '../src/auth-db.js';
 import {save} from '../src/pc01.js';
 import {financialAuthorize} from '../src/b5-1.js';
 
-test('PC-01: login, ADM, funções, filial forjada, duplicidade e sessão desativada em SQL real',{
+test('PC-01: login, ADM, funções, deposito forjada, duplicidade e sessão desativada em SQL real',{
  skip:process.env.PC01_SQL_TESTS!=='YES'?'Requer PC01_SQL_TESTS=YES e PC01_SQL_SERVER (instância local de testes).':false
 },async()=>{
  const sqlServer=process.env.PC01_SQL_SERVER;
@@ -29,7 +29,7 @@ test('PC-01: login, ADM, funções, filial forjada, duplicidade e sessão desati
   const setup=crypto.randomBytes(32).toString('hex'),password=crypto.randomBytes(24).toString('base64')+'aA1!';
   await db.beginTransaction();await seedCatalog(db);await db.query(`INSERT Seguranca.PilotoInicializacao(Id,TokenHash,AdminEmail,AdminNome) VALUES(1,'${hashToken(setup)}',N'admin@example.test',N'ADM Teste')`);await db.commit();
   await completeSetup(cfg,{token:setup,password});await assert.rejects(()=>completeSetup(cfg,{token:setup,password}));
-  await db.query("INSERT Cadastro.Filial(Codigo,Nome) VALUES('A',N'Filial A'),('B',N'Filial B');INSERT Cadastro.Deposito(FilialId,Codigo,Nome) VALUES(1,'A',N'Depósito A'),(2,'B',N'Depósito B');INSERT Cadastro.TipoServico(Nome) VALUES(N'Serviço teste');INSERT Cadastro.Prestador(Nome,CPF) VALUES(N'Prestador Teste','00000000001');");
+  await db.query("INSERT Cadastro.Deposito(Codigo,Nome,CentroCusto,Rua,Numero,Bairro,Cidade,Estado,CEP) VALUES('A',N'Depósito A','CC-A',N'Rua A','1',N'Centro',N'Campinas','SP','13010000'),('B',N'Depósito B','CC-B',N'Rua B','2',N'Centro',N'Campinas','SP','13010000');INSERT Cadastro.TipoServico(Nome) VALUES(N'Serviço teste');INSERT Cadastro.Prestador(Nome,CPF) VALUES(N'Prestador Teste','00000000001');");
   server=createApp(cfg).listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));cfg.port=server.address().port;const base=`http://127.0.0.1:${cfg.port}`;
   const call=async(path,{cookie,body,method=body?'POST':'GET'}={})=>fetch(base+path,{method,headers:{'Content-Type':'application/json',Origin:base,'x-jetta-request':'web',...(cookie?{Cookie:cookie}:{})},...(body?{body:JSON.stringify(body)}:{})});
   const login=async email=>{const r=await call('/api/auth/login',{body:{email,senha:password}});assert.equal(r.status,200);const cookie=r.headers.get('set-cookie').split(';')[0],secret=crypto.randomBytes(20),cipher=encryptedSecret(secret),uid=(await db.query(`SELECT UsuarioId FROM Seguranca.Usuario WHERE Email=${s(email)}`))[0].UsuarioId;
@@ -37,22 +37,24 @@ test('PC-01: login, ADM, funções, filial forjada, duplicidade e sessão desati
    assert.equal((await call('/api/mfa/verify',{cookie,body:{code:hotp(secret,Math.floor(Date.now()/30000)),purpose:'STEPUP'}})).status,200);return cookie;};
   const admin=await login('admin@example.test');
   assert.equal((await call('/api/pc01/usuarios')).status,401);
-  assert.equal((await call('/api/pc01/usuarios/1',{cookie:admin,method:'PUT',body:{nome:'ADM Teste',email:'admin@example.test',funcoes:['GESTOR'],filiais:[],ativo:true}})).status,409);
-  const body=(email,funcoes,filiais=[1])=>({nome:'Conta Teste',email,funcoes,filiais,ativo:true,senha:password});
-  const make=async(email,funcoes,filiais)=>{const r=await call('/api/pc01/usuarios',{cookie:admin,body:body(email,funcoes,filiais)});assert.equal(r.status,201,JSON.stringify(await r.clone().json()));return (await r.json()).usuarioId;};
+  assert.equal((await call('/api/pc01/usuarios/1',{cookie:admin,method:'PUT',body:{nome:'ADM Teste',email:'admin@example.test',funcoes:['GESTOR'],depositos:[],ativo:true}})).status,409);
+  const body=(email,funcoes,depositos=[1])=>({nome:'Conta Teste',email,funcoes,depositos,ativo:true,senha:password});
+  const make=async(email,funcoes,depositos)=>{const r=await call('/api/pc01/usuarios',{cookie:admin,body:body(email,funcoes,depositos)});assert.equal(r.status,201,JSON.stringify(await r.clone().json()));return (await r.json()).usuarioId;};
   const managerId=await make('gestor@example.test',['GESTOR']);
   await make('financeiro@example.test',['FINANCEIRO'],[]);await make('combo@example.test',['GESTOR','FINANCEIRO']);const admin2Id=await make('adm2@example.test',['ADMIN'],[]);
   assert.equal((await call('/api/pc01/usuarios',{cookie:admin,body:body(' GESTOR@EXAMPLE.TEST ',['GESTOR'])})).status,409);
   const manager=await login('gestor@example.test'),finance=await login('financeiro@example.test'),combo=await login('combo@example.test'),admin2=await login('adm2@example.test');
   for(const cookie of [manager,finance])assert.equal((await call('/api/pc01/usuarios',{cookie})).status,403);
-  const planned={filialId:1,depositoId:1,tipoServicoId:1,dataServico:'2026-11-10',inicioPrevisto:'2026-11-10T08:00',fimPrevisto:'2026-11-10T12:00',descricao:'Teste isolado'};
+  const planned={depositoId:1,tipoServicoId:1,dataServico:'2026-11-10',inicioPrevisto:'2026-11-10T08:00',fimPrevisto:'2026-11-10T12:00',descricao:'Teste isolado'};
   // Read and writes through the real planning API; body role/branch cannot elevate.
   assert.equal((await call('/api/b3/atividades',{cookie:manager,body:planned})).status,200);
-  assert.equal((await call('/api/b3/atividades',{cookie:combo,body:{...planned,filialId:2,depositoId:2}})).status,403);
+  assert.equal((await call('/api/b3/atividades',{cookie:combo,body:{...planned,depositoId:2}})).status,403);
   assert.equal((await call('/api/b3/atividades',{cookie:finance,body:planned})).status,403);
-  assert.equal((await call('/api/b3/atividades',{cookie:admin2,body:{...planned,filialId:2,depositoId:2}})).status,200);
+  assert.equal((await call('/api/b3/atividades',{cookie:admin2,body:{...planned,depositoId:2}})).status,200);
   assert.equal((await call('/api/b3/disponibilidade',{cookie:admin2,body:{prestadorId:1,depositoId:2,inicio:planned.inicioPrevisto,fim:planned.fimPrevisto,estado:'DISPONIVEL',requisicaoId:crypto.randomUUID()}})).status,200);
-  await financialAuthorize(db,(await db.query(`SELECT UsuarioId FROM Seguranca.Usuario WHERE Email=${s('combo@example.test')}`))[0].UsuarioId,'financeiro.carteira.consultar',2);
+  const comboId=(await db.query(`SELECT UsuarioId FROM Seguranca.Usuario WHERE Email=${s('combo@example.test')}`))[0].UsuarioId;
+  await financialAuthorize(db,comboId,'financeiro.carteira.consultar',1);
+  await assert.rejects(()=>financialAuthorize(db,comboId,'financeiro.carteira.consultar',2));
   await assert.rejects(()=>financialAuthorize(db,managerId,'financeiro.carteira.consultar',2));
   const update=body('gestor@example.test',['GESTOR']);delete update.senha;update.ativo=false;
   assert.equal((await call('/api/pc01/usuarios/'+managerId,{cookie:admin,method:'PUT',body:update})).status,200);
@@ -62,7 +64,7 @@ test('PC-01: login, ADM, funções, filial forjada, duplicidade e sessão desati
   assert.ok(Number((await db.query(`SELECT COUNT(*) N FROM Seguranca.Auditoria WHERE Entidade='Usuario' AND EntidadeId=${managerId}`))[0].N)>=2);
   const concurrentEmails=await Promise.all([1,2].map(()=>call('/api/pc01/usuarios',{cookie:admin,body:body('concorrencia@example.test',['GESTOR'])})));
   assert.deepEqual(concurrentEmails.map(r=>r.status).sort(),[201,409]);
-  const demote=email=>({nome:'ADM Teste',email,funcoes:['GESTOR'],filiais:[],ativo:true});
+  const demote=email=>({nome:'ADM Teste',email,funcoes:['GESTOR'],depositos:[],ativo:true});
   const concurrentDemotions=await Promise.allSettled([save(cfg,1,admin.split('=')[1],demote('admin@example.test'),1),save(cfg,admin2Id,admin2.split('=')[1],demote('adm2@example.test'),admin2Id)]);
   assert.equal(concurrentDemotions.filter(r=>r.status==='fulfilled').length,1);
   assert.equal(concurrentDemotions.find(r=>r.status==='rejected').reason.message,'ULTIMO_ADM_ATIVO');

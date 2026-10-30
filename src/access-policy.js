@@ -8,5 +8,5 @@ export function roleSql(userId,role){
 }
 export function globalFinanceSql(userId){
  if(!/^[1-9]\d*$/.test(String(userId)))throw Error('Identificador invalido');
- return `EXISTS(SELECT 1 FROM Seguranca.Usuario pcu JOIN Seguranca.UsuarioPerfil pcup ON pcup.UsuarioId=pcu.UsuarioId JOIN Seguranca.PerfilAcesso pcpa ON pcpa.PerfilId=pcup.PerfilId AND pcpa.Ativo=1 WHERE pcu.UsuarioId=${userId} AND pcu.Ativo=1 AND (pcpa.Codigo='PC01_FINANCEIRO' OR (pcpa.Codigo='PC01_ADMIN' AND EXISTS(SELECT 1 FROM Seguranca.UsuarioRaiz pcr WHERE pcr.UsuarioId=pcu.UsuarioId))))`;
+ return `EXISTS(SELECT 1 FROM Seguranca.Usuario pcu JOIN Seguranca.UsuarioPerfil pcup ON pcup.UsuarioId=pcu.UsuarioId JOIN Seguranca.PerfilAcesso pcpa ON pcpa.PerfilId=pcup.PerfilId AND pcpa.Ativo=1 WHERE pcu.UsuarioId=${userId} AND pcu.Ativo=1 AND (pcpa.Codigo='PC01_ADMIN' AND EXISTS(SELECT 1 FROM Seguranca.UsuarioRaiz pcr WHERE pcr.UsuarioId=pcu.UsuarioId)))`;
 }

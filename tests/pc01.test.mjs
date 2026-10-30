@@ -4,10 +4,10 @@ import express from 'express';
 import {mountUserAdmin} from '../src/pc01-routes.js';
 import {normalizeAccount} from '../src/pc01.js';
 
-const account={nome:'Pessoa Teste',email:'  PESSOA@EXAMPLE.TEST ',funcoes:['GESTOR','FINANCEIRO'],filiais:[1,2],ativo:true,senha:'SenhaSomenteDeTeste!123'};
+const account={nome:'Pessoa Teste',email:'  PESSOA@EXAMPLE.TEST ',funcoes:['GESTOR','FINANCEIRO'],depositos:[1,2],ativo:true,senha:'SenhaSomenteDeTeste!123'};
 test('conta mantém funções explícitas e normaliza e-mail; recusa campos forjados',()=>{
  assert.equal(normalizeAccount(account,true).email,'pessoa@example.test');
- for(const patch of [{funcoes:[]},{funcoes:['DIRETORIA']},{funcoes:['GESTOR','GESTOR']},{filiais:[0]},{filiais:[1,1]},{ativo:'false'},{senha:'fraca'},{raiz:true},{nome:''}])assert.throws(()=>normalizeAccount({...account,...patch},true));
+ for(const patch of [{funcoes:[]},{funcoes:['DIRETORIA']},{funcoes:['GESTOR','GESTOR']},{depositos:[0]},{depositos:[1,1]},{ativo:'false'},{senha:'fraca'},{raiz:true},{nome:''}])assert.throws(()=>normalizeAccount({...account,...patch},true));
  assert.throws(()=>normalizeAccount({...account,senha:undefined},true));
  assert.throws(()=>normalizeAccount(account,false)); // edição não redefine senha
 });
@@ -19,7 +19,7 @@ test('HTTP: ADM cria e edita; nega anônimo, gestor, financeiro, origem e MFA au
  const service={
   assertAdmin:async(_cfg,id,token,role)=>{if(role!=='ADMIN')throw Object.assign(Error('SOMENTE_ADM'),{status:403});if(token!=='test')throw Error('token');},
   assertMfa:async(_cfg,_id,_token,req)=>{if(req.get('x-test-mfa')!=='ok')throw Object.assign(Error('MFA_RECENTE_OBRIGATORIO'),{status:403});},
-  catalog:async()=>({usuarios:[],filiais:[]}),
+  catalog:async()=>({usuarios:[],depositos:[]}),
   save:async(_cfg,_actor,_token,body,id)=>{calls++;normalizeAccount(body,!id);return {usuarioId:id||2};}
  };
  mountUserAdmin(app,{pc01:true},{session,sameOrigin},service);

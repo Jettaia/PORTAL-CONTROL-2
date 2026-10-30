@@ -7,6 +7,7 @@ import {withDb,intLiteral,tokenHashLiteral} from './auth-db.js';
 import {hashToken} from './security.js';
 import {B2C_ENV,PUBLIC_API,gateDecision,validateKeyConfig} from './mfa-policy.js';
 export function privilegedGate(cfg,sessionFn){return async(req,res,next)=>{
+ if(cfg.mfaRequired===false)return next();
  if(process.env[B2C_ENV]!=='true'||PUBLIC_API.has(req.path)||!req.path.startsWith('/api/'))return next();
  sessionFn(req,res,async()=>{try{
   const privileged=req.user.perfil==='DIRETORIA'||await isRoot(cfg,req.user.id);

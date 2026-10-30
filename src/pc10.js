@@ -6,7 +6,7 @@ import {movement,cents,decimal} from './pc10-ledger.js';
 
 const fail=(message,status=400)=>{throw new PlanningError(message,status);};
 const yes=v=>v===true||v===1||v===1n||v==='1';
-function id(v){if(!['number','string'].includes(typeof v)||! /^[1-9]\d*$/.test(String(v)))fail('IDENTIFICADOR_INVALIDO');try{return n(v);}catch{fail('IDENTIFICADOR_INVALIDO');}}
+function id(v){if(!['number','string','bigint'].includes(typeof v)||! /^[1-9]\d*$/.test(String(v)))fail('IDENTIFICADOR_INVALIDO');try{return n(v);}catch{fail('IDENTIFICADOR_INVALIDO');}}
 function keys(v,allowed){if(!v||typeof v!=='object'||Array.isArray(v)||Object.keys(v).some(k=>!allowed.includes(k)))fail('CAMPOS_INVALIDOS');}
 function reason(v){if(typeof v!=='string'||!v.trim()||v.trim().length>800)fail('MOTIVO_OBRIGATORIO');return v.trim();}
 function date(v){if(typeof v!=='string'||! /^\d{4}-\d{2}-\d{2}$/.test(v)||v<'2000-01-01'||v>'9998-12-31')fail('DATA_INVALIDA');const d=new Date(v+'T00:00:00Z');if(!Number.isFinite(d.getTime())||d.toISOString().slice(0,10)!==v)fail('DATA_INVALIDA');const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());if(v>today)fail('DATA_FUTURA');return v;}
@@ -17,10 +17,10 @@ async function tx(cfg,actor,token,write,fn){return withDb(cfg,async db=>{
   if(write){const r=(await db.query("DECLARE @r int;EXEC @r=sys.sp_getapplock @Resource='JettaControl.PC04',@LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=5000;SELECT @r R;"))[0];if(!r||!Number.isInteger(Number(r.R))||Number(r.R)<0)fail('OPERACAO_OCUPADA',409);}
   const uid=id(actor),u=(await db.query(`SELECT CASE WHEN ${roleSql(uid,'ADMIN')} AND u.Perfil='ADMIN' THEN 1 ELSE 0 END Adm,CASE WHEN ${roleSql(uid,'GESTOR')} THEN 1 ELSE 0 END Gestor,CASE WHEN ${roleSql(uid,'FINANCEIRO')} THEN 1 ELSE 0 END Financeiro FROM Seguranca.Usuario u WITH(HOLDLOCK) WHERE u.UsuarioId=${uid} AND u.Ativo=1`))[0];
   if(!u||!yes(u.Adm)&&!yes(u.Financeiro)&&(!yes(u.Gestor)||write))fail('PERMISSAO_NEGADA',403);
-  if(write)await assertMfa(db,actor,token);const result=await fn(db,u);await db.commit();return result;
+  if(write)await assertMfa(db,actor,token,cfg);const result=await fn(db,u);await db.commit();return result;
  }catch(e){try{await db.rollback();}catch{}if(e.odbcErrors?.some(x=>[2601,2627,1205,1222].includes(Number(x.code))))fail('REGISTRO_ALTERADO_ATUALIZE',409);throw e;}
 });}
-const scoped=(actor,u,alias='c')=>yes(u.Adm)||yes(u.Financeiro)?'1=1':`EXISTS(SELECT 1 FROM Seguranca.UsuarioFilial uf WHERE uf.UsuarioId=${id(actor)} AND uf.FilialId=${alias}.FilialId AND uf.RevogadoEmUtc IS NULL)`;
+const scoped=(actor,u,alias='c')=>yes(u.Adm)?'1=1':`EXISTS(SELECT 1 FROM Seguranca.UsuarioDeposito uf WHERE uf.UsuarioId=${id(actor)} AND uf.DepositoId=${alias}.DepositoId AND uf.RevogadoEmUtc IS NULL)`;
 async function contract(db,actor,u,key){const r=(await db.query(`SELECT c.ContratacaoId,c.Status,c.Versao,c.PagoEmUtc,CONVERT(varchar(40),c.ValorLiberado) ValorLiberado,CONVERT(varchar(10),c.DataServico,23) DataServico FROM Operacao.Contratacao c WITH(UPDLOCK,HOLDLOCK) WHERE c.ContratacaoId=${key} AND ${scoped(actor,u)}`))[0];if(!r)fail('CONTRATACAO_INDISPONIVEL',404);return r;}
 async function balance(db,key){return (await db.query(`SELECT CONVERT(varchar(40),COALESCE(SUM(Valor),0)) Saldo FROM Financeiro.PC10Movimento WHERE ContratacaoId=${key}`))[0]?.Saldo||'0.00';}
 async function audit(db,actor,key,type,details){await db.query(`INSERT Seguranca.Auditoria(Entidade,EntidadeId,Acao,AtorUsuarioId,DetalhesJson) VALUES(N'Contratacao',${key},${s(type,40)},${id(actor)},${s(JSON.stringify(details),'max')})`);}
@@ -48,7 +48,7 @@ export async function settle(cfg,actor,token,key,body){
 export async function reverse(cfg,actor,token,key,body){key=id(key);keys(body,['motivo']);const why=reason(body.motivo);return tx(cfg,actor,token,true,async(db,u)=>{
  const pg=(await db.query(`SELECT PagamentoId,RegistradoPor FROM Financeiro.PC08Pagamento WITH(UPDLOCK,HOLDLOCK) WHERE PagamentoId=${key}`))[0];if(!pg)fail('PAGAMENTO_INDISPONIVEL',404);if(!yes(u.Adm)&&String(pg.RegistradoPor)!==String(actor))fail('PERMISSAO_NEGADA',403);
  if((await db.query(`SELECT PagamentoId FROM Financeiro.PC10Estorno WHERE PagamentoId=${key}`)).length)fail('PAGAMENTO_JA_ESTORNADO',409);
- const items=await db.query(`SELECT i.ContratacaoId,CONVERT(varchar(40),i.Valor) Valor,c.Versao FROM Financeiro.PC08Item i JOIN Operacao.Contratacao c WITH(UPDLOCK,HOLDLOCK) ON c.ContratacaoId=i.ContratacaoId WHERE i.PagamentoId=${key}`);if(!items.length)fail('PAGAMENTO_INDISPONIVEL',409);
+ const items=await db.query(`SELECT i.ContratacaoId,CONVERT(varchar(40),i.Valor) Valor,c.Versao FROM Financeiro.PC08Item i JOIN Operacao.Contratacao c WITH(UPDLOCK,HOLDLOCK) ON c.ContratacaoId=i.ContratacaoId WHERE i.PagamentoId=${key} AND NOT EXISTS(SELECT 1 FROM Financeiro.PC08Item ix JOIN Operacao.Contratacao cx ON cx.ContratacaoId=ix.ContratacaoId WHERE ix.PagamentoId=${key} AND NOT (${scoped(actor,u,'cx')}))`);if(!items.length)fail('PAGAMENTO_INDISPONIVEL',409);
  await db.query(`INSERT Financeiro.PC10Estorno(PagamentoId,AtorUsuarioId,Motivo) VALUES(${key},${id(actor)},${s(why,800)})`);
  for(const i of items){await movement(db,{contract:i.ContratacaoId,key:`E:${key}:${i.ContratacaoId}`,type:'ESTORNO',value:i.Valor,actor,version:i.Versao,payment:key,reason:why});await db.query(`UPDATE Operacao.Contratacao SET Versao=Versao+1 WHERE ContratacaoId=${id(i.ContratacaoId)}`);await audit(db,actor,id(i.ContratacaoId),'PC10_ESTORNO',{pagamentoId:key,motivo:why,valor:i.Valor});}
  return {estornado:true};

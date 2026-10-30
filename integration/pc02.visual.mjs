@@ -19,7 +19,7 @@ app.all('/api/*',(req,res)=>{
  if(match){const kind=match[1];if(req.method==='GET')return res.json({pc02:true,podeEditar:role==='ADMIN',registros:rows[kind]});
   writes.push(req.body);if(role!=='ADMIN')return res.sendStatus(403);if(failNext){failNext=false;return res.status(409).json({erro:'Registro alterado em outra tela. Atualize a lista.'});}
   const b=req.body,id=match[2]?Number(match[2]):rows[kind].length+1;
-  const row={Nome:b.nome,Ativo:b.ativo??true,...(kind==='filiais'?{FilialId:id,Codigo:b.codigo.toUpperCase(),Endereco:b.endereco}:{TipoServicoId:id,Descricao:b.descricao||''})};
+  const row={Nome:b.nome,Ativo:b.ativo??true,...(kind==='filiais'?{FilialId:id,Codigo:b.codigo.toUpperCase(),Endereco:b.endereco,Cidade:b.cidade,Estado:b.estado,CEP:b.cep}:{TipoServicoId:id,Descricao:b.descricao||''})};
   rows[kind]=rows[kind].filter(r=>(r.FilialId||r.TipoServicoId)!==id).concat(row);return res.status(match[2]?200:201).json({ok:true,resultado:row});
  }
  return res.status(403).json({erro:'API fora do recorte visual'});
@@ -33,7 +33,7 @@ try{
  const login=async()=>{await page.locator('#email').fill('conta@example.test');await page.locator('#senha').fill('SenhaSomenteDeTeste!123');await page.locator('#loginForm button').click();await page.locator('#dashboard').waitFor({state:'visible'});};
  await login();await page.locator('[data-page=filiais]').click();await page.locator('#b24Table table').waitFor();await page.getByText('1 registros carregados, incluindo inativos.').waitFor();
  assert.equal(await page.locator('#b24Endereco').isVisible(),true);
- await page.locator('#b24Nome').fill('Filial Sul');await page.locator('#b24Codigo').fill('sul');await page.locator('#b24Endereco').fill('Avenida Sul, 20 — Santos/SP');await page.locator('#b24Form button[type=submit]').click();await page.getByText('Cadastro realizado.',{exact:true}).waitFor();assert.equal(rows.filiais[1].Endereco,'Avenida Sul, 20 — Santos/SP');
+ await page.locator('#b24Nome').fill('Filial Sul');await page.locator('#b24Codigo').fill('sul');await page.locator('#b24Endereco').fill('Avenida Sul, 20');await page.locator('#b24Cidade').fill('Santos');await page.locator('#b24Estado').fill('SP');await page.locator('#b24Cep').fill('11010-000');await page.locator('#b24Form button[type=submit]').click();await page.getByText('Cadastro realizado.',{exact:true}).waitFor();assert.equal(rows.filiais[1].Endereco,'Avenida Sul, 20');assert.equal(rows.filiais[1].Cidade,'Santos');assert.equal(rows.filiais[1].Estado,'SP');assert.equal(rows.filiais[1].CEP,'11010-000');
  await page.locator('#b24Table tr').filter({hasText:'Filial Sul'}).getByRole('button',{name:'Editar',exact:true}).click();assert.equal(await page.locator('#b24Endereco').inputValue(),rows.filiais[1].Endereco);
  await page.locator('#b24Endereco').fill('Avenida Sul, 30 — Santos/SP');failNext=true;await page.locator('#b24Form button[type=submit]').click();await page.getByText(/Operação recusada: Registro alterado/).waitFor();assert.equal(await page.locator('#b24Form button[type=submit]').isEnabled(),true);assert.equal(await page.locator('#b24Endereco').inputValue(),'Avenida Sul, 30 — Santos/SP');
  await page.locator('#b24Form button[type=submit]').click();await page.getByText('Alterações salvas. Histórico preservado.',{exact:true}).waitFor();

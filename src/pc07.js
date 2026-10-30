@@ -13,18 +13,18 @@ const decimal=value=>(value/100n).toString()+'.'+(value%100n).toString().padStar
 
 // Read-only comparison: a high price never changes authorization or contract eligibility.
 export async function comparison(cfg,actor,query){
- const allowed=['filialId','tipoServicoId','dataServico','valor','contratacaoId'];
+ const allowed=['depositoId','tipoServicoId','dataServico','valor','contratacaoId'];
  if(Object.keys(query).some(k=>!allowed.includes(k)))fail('CAMPOS_INVALIDOS');
- const branch=id(query.filialId),type=id(query.tipoServicoId),date=serviceDate(query.dataServico),amount=cents(query.valor),own=query.contratacaoId===undefined?null:id(query.contratacaoId);
+ const branch=id(query.depositoId),type=id(query.tipoServicoId),date=serviceDate(query.dataServico),amount=cents(query.valor),own=query.contratacaoId===undefined?null:id(query.contratacaoId);
  return transaction(cfg,actor,null,false,async(db,user)=>{
   if(!user.operational)fail('PERMISSAO_NEGADA',403);
-  const scope=user.admin?'1=1':`EXISTS(SELECT 1 FROM Seguranca.UsuarioFilial uf WHERE uf.UsuarioId=${n(actor)} AND uf.FilialId=f.FilialId AND uf.RevogadoEmUtc IS NULL)`;
-  if(!(await db.query(`SELECT f.FilialId FROM Cadastro.Filial f WHERE f.FilialId=${branch} AND ${scope}`)).length)fail('FILIAL_NAO_AUTORIZADA',403);
+  const scope=user.admin?'1=1':`EXISTS(SELECT 1 FROM Seguranca.UsuarioDeposito uf WHERE uf.UsuarioId=${n(actor)} AND uf.DepositoId=f.DepositoId AND uf.RevogadoEmUtc IS NULL)`;
+  if(!(await db.query(`SELECT f.DepositoId FROM Cadastro.Deposito f WHERE f.DepositoId=${branch} AND ${scope}`)).length)fail('DEPOSITO_NAO_AUTORIZADA',403);
   if(own){
    const previous=await record(db,actor,user,own,true);
-   if(String(previous.FilialId)!==branch||String(previous.TipoServicoId)!==type||previous.DataServico!==date)fail('CONTEXTO_INVALIDO');
+   if(String(previous.DepositoId)!==branch||String(previous.TipoServicoId)!==type||previous.DataServico!==date)fail('CONTEXTO_INVALIDO');
   }
-  const rows=await db.query(`SELECT TOP(20) CONVERT(varchar(40),c.ValorLiberado) Valor FROM Operacao.Contratacao c WHERE c.FilialId=${branch} AND c.TipoServicoId=${type} AND c.Status='LIBERADA' AND c.ValorLiberado IS NOT NULL AND c.DataServico>=DATEADD(day,-90,CONVERT(date,'${date}',23)) AND c.DataServico<CONVERT(date,'${date}',23)${own?` AND c.ContratacaoId<>${own}`:''} ORDER BY c.DataServico DESC,c.ContratacaoId DESC`);
+  const rows=await db.query(`SELECT TOP(20) CONVERT(varchar(40),c.ValorLiberado) Valor FROM Operacao.Contratacao c WHERE c.DepositoId=${branch} AND c.TipoServicoId=${type} AND c.Status='LIBERADA' AND c.ValorLiberado IS NOT NULL AND c.DataServico>=DATEADD(day,-90,CONVERT(date,'${date}',23)) AND c.DataServico<CONVERT(date,'${date}',23)${own?` AND c.ContratacaoId<>${own}`:''} ORDER BY c.DataServico DESC,c.ContratacaoId DESC`);
   const count=rows.length,base={quantidade:count,janelaDias:90,limite:20,minimo:5};
   if(count<5)return {...base,media:null,acima:false};
   const sum=rows.reduce((total,row)=>total+cents(row.Valor),0n),size=BigInt(count);

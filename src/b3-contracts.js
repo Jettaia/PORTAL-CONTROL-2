@@ -1,3 +1,4 @@
+import {assertMfa} from './b4.js';
 import {withDb,intLiteral,nvarcharLiteral,tokenHashLiteral} from './auth-db.js';
 import {hashToken} from './security.js';
 import {status} from './mfa-b2b.js';
@@ -10,12 +11,12 @@ export function decisionInput(body){
 }
 export async function critical(cfg,actor,token,query,audit){
   // Reuses the B2B TOTP verifier/session proof; never trusts a browser checkbox.
-  const mfa=await status(cfg,actor,token);
-  if(!mfa.enrolled||!mfa.verified||!mfa.stepUp){
+  const mfa=cfg.mfaRequired===false?null:await status(cfg,actor,token);
+  if(mfa&&(!mfa.enrolled||!mfa.verified||!mfa.stepUp)){
     await withDb(cfg,db=>db.query(`SET NOCOUNT ON;INSERT Seguranca.Auditoria(Entidade,EntidadeId,Acao,AtorUsuarioId,DetalhesJson) VALUES(${nvarcharLiteral(audit.entity,80)},${intLiteral(audit.id)},${nvarcharLiteral(audit.action,40)},${intLiteral(actor)},N'{"resultado":"DENIED","motivo":"MFA_RECENTE_OBRIGATORIO"}')`));
     throw new PlanningError('MFA_RECENTE_OBRIGATORIO',403);
   }
-  return withDb(cfg,async db=>{await db.query('SET NOCOUNT ON;SET XACT_ABORT ON;SET LOCK_TIMEOUT 5000;');return query(db,tokenHashLiteral(hashToken(token)));});
+  return withDb(cfg,async db=>{if(cfg.mfaRequired===false)await assertMfa(db,actor,token,cfg);await db.query('SET NOCOUNT ON;SET XACT_ABORT ON;SET LOCK_TIMEOUT 5000;');return query(db,tokenHashLiteral(hashToken(token)));});
 }
 export async function confirmParticipation(cfg,actor,token,id,body){
   if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).length)throw new PlanningError('CAMPOS_INVALIDOS');
@@ -37,10 +38,10 @@ export async function listExceptionsDb(db,actor){
   return db.query(`SELECT e.ExcecaoId,e.ParticipacaoId,p.AtividadeId,e.SolicitadoPorGestorId,s.Nome AS Solicitante,e.Motivo,e.Status,
    CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(nvarchar(max),(SELECT p.ParticipacaoId participacaoId,p.PrestadorId prestadorId,p.ValorContratado valorContratado,a.AtividadeId atividadeId,a.DepositoId depositoId,a.TipoServicoId servicoId,a.GestorUsuarioId gestorId,a.DataServico dataServico,a.InicioPrevisto inicio,a.FimPrevisto fim FOR JSON PATH,WITHOUT_ARRAY_WRAPPER))),2) AS ContextoHash,
    CASE WHEN e.Status='APROVADA' AND e.ExpiraEmUtc<=SYSUTCDATETIME() AND p.Status IN ('PLANEJADA','AGUARDANDO_APROVACAO') THEN 'EXPIRADA' ELSE e.Status END AS EstadoExcecao,
-   e.DiretorAprovadorId,ap.Nome AS Aprovador,CONVERT(varchar(23),e.DecididoEmUtc,126) AS DecididoEmUtc,CONVERT(varchar(23),e.ExpiraEmUtc,126) AS ExpiraEmUtc,d.Nome AS Deposito,f.Nome AS Filial,pr.Nome AS Prestador,t.Nome AS Servico,CONVERT(varchar(40),p.ValorContratado) AS ValorContratado,CONVERT(varchar(19),a.InicioPrevisto,126) AS InicioPrevisto,CONVERT(varchar(19),a.FimPrevisto,126) AS FimPrevisto,au.MotivoDecisao
+   e.DiretorAprovadorId,ap.Nome AS Aprovador,CONVERT(varchar(23),e.DecididoEmUtc,126) AS DecididoEmUtc,CONVERT(varchar(23),e.ExpiraEmUtc,126) AS ExpiraEmUtc,d.Nome AS Deposito,pr.Nome AS Prestador,t.Nome AS Servico,CONVERT(varchar(40),p.ValorContratado) AS ValorContratado,CONVERT(varchar(19),a.InicioPrevisto,126) AS InicioPrevisto,CONVERT(varchar(19),a.FimPrevisto,126) AS FimPrevisto,au.MotivoDecisao
    FROM Operacao.ExcecaoLimite e JOIN Operacao.Participacao p ON p.ParticipacaoId=e.ParticipacaoId
    JOIN Operacao.Atividade a ON a.AtividadeId=p.AtividadeId JOIN Cadastro.Deposito d ON d.DepositoId=a.DepositoId AND d.Ativo=1
-   JOIN Cadastro.Filial f ON f.FilialId=d.FilialId AND f.Ativo=1 JOIN Seguranca.Usuario s ON s.UsuarioId=e.SolicitadoPorGestorId
+   JOIN Seguranca.Usuario s ON s.UsuarioId=e.SolicitadoPorGestorId
    JOIN Cadastro.Prestador pr ON pr.PrestadorId=p.PrestadorId JOIN Cadastro.TipoServico t ON t.TipoServicoId=a.TipoServicoId
    LEFT JOIN Seguranca.Usuario ap ON ap.UsuarioId=e.DiretorAprovadorId
    OUTER APPLY(SELECT TOP(1) JSON_VALUE(x.DetalhesJson,'$.motivoDecisao') MotivoDecisao FROM Seguranca.Auditoria x WHERE x.Entidade='ExcecaoLimite' AND x.EntidadeId=e.ExcecaoId AND x.Acao IN ('APROVAR','REJEITAR') ORDER BY x.AuditoriaId DESC) au

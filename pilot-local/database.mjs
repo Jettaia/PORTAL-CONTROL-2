@@ -1,6 +1,6 @@
 import odbc from 'odbc';import fs from 'node:fs';import crypto from 'node:crypto';import path from 'node:path';import {fileURLToPath} from 'node:url';import {targetGuard} from './build-schema.mjs';
 const here=path.dirname(fileURLToPath(import.meta.url));
-export async function connectPilot(database,server='Ferretti\\SQLEXPRESS'){
+export async function connectPilot(database,server='localhost\\SQLEXPRESS'){
  if(database!=='master'&&database!=='JETTA_CONTROL_PILOTO_LOCAL'&&!/^JETTA_CONTROL_B3_TEST_[a-f0-9]{12}$/.test(database))throw Error('Destino de instalacao recusado');
  if(!/^[-A-Za-z0-9_.\\]+$/.test(server))throw Error('Servidor invalido');
  const db=await odbc.connect(`Driver={ODBC Driver 18 for SQL Server};Server=${server};Database=${database};Trusted_Connection=Yes;Encrypt=Yes;TrustServerCertificate=Yes;Connection Timeout=8;`);await db.query('SET NOCOUNT ON;SET XACT_ABORT ON;SET LOCK_TIMEOUT 5000;');return db;

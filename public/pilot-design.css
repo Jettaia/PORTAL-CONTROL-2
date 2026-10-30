@@ -1,0 +1,156 @@
+/* Pilot presentation layer. Loaded after module styles; no operational logic. */
+body { background: var(--jc-canvas); color: var(--jc-ink); font-family: var(--jc-font); }
+.sidebar { background: #0b2e51; width: 252px; flex-basis: 252px; box-shadow: none; }
+.brand { padding-bottom: 20px; }
+.brand img { width: 164px; height: 90px; }
+.brand b { font-size: 17px; font-weight: 700; }
+.brand small { font-size: 11px; }
+#mainNav { gap: 6px; }
+#mainNav summary { min-height: 44px; }
+#mainNav .subitems button { min-height: 40px; padding-block: 10px !important; }
+#mainNav button.selected { background: #214f80; color: #ffb36e; }
+.side-foot { color: #bed0e2; line-height: 1.5; }
+.toolbar { padding-inline: 28px; box-shadow: none; border-bottom: 1px solid #dce4ed; }
+.toolbar-search { color: var(--jc-muted); background: var(--jc-subtle); }
+.toolbar-search kbd { color: var(--jc-muted); }
+.environment { font-size: 11px; }
+.workspace main { padding: 28px; }
+.page-title { margin-bottom: 24px; }
+.breadcrumb { font-size: 12px; color: var(--jc-muted); }
+.page-title h1 { font-size: 30px; line-height: 1.2; letter-spacing: -.6px; margin: 8px 0; }
+.page-title p { color: var(--jc-muted); font-size: 14px; }
+p { color: var(--jc-muted); }
+.panel, .grid article { border: 1px solid #dce4ed; border-radius: 12px; box-shadow: none; padding: 24px; }
+.panel-title { gap: 12px; }
+.panel-title .title-icon { width: 42px; height: 42px; border-radius: 8px; }
+.panel h2, .rbac-toolbar h2 { font-size: 20px; line-height: 1.35; color: var(--jc-navy); }
+.panel h3 { font-size: 17px; line-height: 1.4; }
+.panel-title p { font-size: 13px; }
+.user-status strong { color: var(--jc-muted); }
+footer { color: var(--jc-muted); line-height: 1.5; }
+
+/* Shared controls, including dynamically rendered module content. */
+#dashboard .view-section form { max-width: none; }
+#dashboard .view-section label { min-width: 0; margin: 0; font-size: 13px; line-height: 1.45; color: var(--jc-ink); }
+#dashboard .view-section :is(input, select, textarea),
+#loginBox :is(input, select, textarea), #token {
+  font: inherit; font-size: 14px; color: var(--jc-ink);
+  min-height: 44px; min-width: 0; max-width: 100%;
+  border: 1px solid var(--jc-border); border-radius: var(--jc-radius);
+  padding: 10px 12px; background: var(--jc-surface);
+}
+#dashboard .view-section input::placeholder, #loginBox input::placeholder { color: #5d7085; opacity: 1; }
+#dashboard .view-section :is(input[type=checkbox], input[type=radio]) {
+  min-height: 20px; width: 20px; height: 20px; padding: 0; flex: 0 0 20px; accent-color: var(--jc-navy);
+}
+#dashboard .view-section input:disabled, #dashboard .view-section select:disabled,
+#dashboard .view-section textarea:disabled { background: #edf1f5; color: #53677c; }
+#dashboard .view-section button, #loginBox button, .account-actions button,
+#fin01Page .fin02-print {
+  min-height: 44px; padding: 10px 16px; margin-top: 0;
+  font: 600 14px/1.4 var(--jc-font); border: 1px solid var(--jc-navy);
+  border-radius: var(--jc-radius); background: var(--jc-navy); color: #fff;
+  text-decoration: none; cursor: pointer; max-width: 100%;
+}
+#dashboard .view-section button:hover:not(:disabled), #loginBox button:hover:not(:disabled),
+.account-actions button:hover:not(:disabled), #fin01Page .fin02-print:hover {
+  background: var(--jc-navy-hover); border-color: var(--jc-navy-hover); color: #fff;
+}
+#dashboard .view-section button:is(.secondary, .tablets-secondary), .account-actions .secondary {
+  background: #fff; color: var(--jc-navy); border-color: var(--jc-border);
+}
+#dashboard .view-section button:is(.secondary, .tablets-secondary):hover:not(:disabled), .account-actions .secondary:hover {
+  background: #eaf0f6; color: var(--jc-navy); border-color: var(--jc-navy);
+}
+#dashboard .view-section button:is(.pc04-danger, .tablets-danger) { background: #a02828; color: #fff; border-color: #a02828; }
+#dashboard .view-section button:is(.pc04-danger, .tablets-danger):hover:not(:disabled) { background: #7d2020; border-color: #7d2020; }
+#dashboard .view-section button:disabled, #loginBox button:disabled { opacity: .55; cursor: not-allowed; }
+:is(button, a, input, select, textarea, summary, [tabindex]):focus-visible,
+#dashboard .view-section :is(button, input, select, textarea):focus-visible {
+  outline: 3px solid var(--jc-accent); outline-offset: 3px;
+}
+a { color: var(--jc-navy); text-underline-offset: 3px; }
+.account-actions { gap: 12px; margin: 24px 0; flex-wrap: wrap; }
+#loginForm button { margin-top: 20px; }
+#loginBox .b25b-card { margin-top: 28px; border-radius: 0; border: 0; border-top: 1px solid var(--jc-border); padding: 24px 0 0; box-shadow: none; background: transparent; }
+#b25bActivateForm button { margin-top: 20px; }
+
+/* One form rhythm: labels stay with controls; related actions share one row. */
+#dashboard :is(.b24a-form, .b24c-grid, .pc01-grid, .pc04-grid, .tablets-grid, .fin01-grid, .fin05-grid, .b3-grid) { gap: 18px; align-items: end; }
+#dashboard .b24a-form { grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); }
+#dashboard :is(.fin01-actions, .fin05-actions) { grid-column: 1 / -1; gap: 10px; }
+#dashboard .fin01-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#dashboard .fin05-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+#dashboard :is(.b24a-form, .b24c-grid, .pc01-grid, .pc04-grid, .tablets-grid, .b3-grid) > label { display: flex; flex-direction: column; gap: 7px; }
+#dashboard .pc01-grid .pc01-check { flex-direction: row; }
+#dashboard .view-section fieldset { min-width: 0; border: 1px solid var(--jc-border); border-radius: 8px; padding: 16px; }
+#dashboard .view-section legend { color: var(--jc-navy); font-size: 13px; font-weight: 600; padding-inline: 6px; }
+#dashboard #pc03Panel fieldset label { flex-direction: row; }
+#dashboard .view-section small { line-height: 1.5; }
+#dashboard :is(.fin01-heading, .fin05-heading) { border-left: 0; padding: 0 0 18px; border-bottom: 1px solid #dce4ed; margin-bottom: 22px; }
+#dashboard :is(.fin01-heading, .fin05-heading) p { margin-bottom: 0; }
+#dashboard :is(.pc04-card, .tablets-card) { background: transparent; border: 0; border-radius: 0; padding: 24px 0; margin: 0; }
+#dashboard .pc04-card + .pc04-card { border-top: 1px solid #dce4ed; }
+#dashboard :is(.pc04-note, .pc07-comparison, .pc04-lock-notice, .tablets-notice, #tabletsEditNotice) { border-left-width: 1px; }
+#dashboard .tablets-notice { background: #edf3f9; border: 1px solid #dce4ed; padding: 16px; margin-top: 16px; }
+#dashboard :is(#fin01Detail:not(:empty), .fin05-totals) { border: 1px solid #dce4ed; border-radius: 8px; background: var(--jc-subtle); padding: 20px; }
+#dashboard .pc04-summary { background: var(--jc-subtle); border-radius: 8px; font-size: 14px; }
+#dashboard :is(.pc04-approval-pending, .pc04-locked) { border-left-width: 1px; padding-inline: 16px; }
+
+/* Tables retain local scrolling instead of widening the page. */
+#dashboard .view-section :is(.b24a-table, .b3-table, .pc04-table, .fin01-scroll, .fin05-scroll, #pc01Users, .tablets-scroll) {
+  overflow: auto; max-width: 100%; border: 1px solid #dce4ed; border-radius: 8px; padding: 0; background: #fff;
+}
+#dashboard .view-section table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+#dashboard .view-section table th { background: var(--jc-navy); color: #fff; font-weight: 600; font-size: 13px; text-align: left; padding: 14px 16px; vertical-align: top; border-bottom: 1px solid #315879; }
+#dashboard .view-section table td { padding: 14px 16px; color: var(--jc-ink); border-bottom: 1px solid #e1e7ef; vertical-align: middle; }
+#dashboard .view-section table tr:nth-child(even) { background: #f7f9fc; }
+#dashboard .view-section table tr:hover { background: #edf3f9; }
+#dashboard .view-section table tr:last-child td { border-bottom: 0; }
+#dashboard .view-section table td button { margin: 3px; white-space: nowrap; }
+#dashboard .b24a-table table { min-width: 880px; }
+#dashboard #pc03Panel table td:first-child { min-width: 240px; }
+#dashboard :is(.pc04-table, .fin01-scroll) td:nth-child(2),
+#dashboard :is(.pc04-table, .fin01-scroll) td:nth-child(3) { min-width: 200px; }
+#dashboard .pc04-table { border-top: 0; border-radius: 0 0 8px 8px; }
+#dashboard .pc04-toolbar { background: var(--jc-navy); padding: 16px; gap: 16px; }
+#dashboard .pc04-toolbar button { border-color: #7895b2; }
+#dashboard .pc04-toolbar button:hover:not(:disabled) { border-color: #fff; }
+#dashboard .pc04-column-title { min-height: 20px; }
+#dashboard .pc04-table th input::placeholder { color: #5d7085; }
+#dashboard :is(.pc04-status, .fin01-badge, .tablets-status) { font-size: 12px; border-radius: 6px; padding: 6px 9px; font-weight: 700; }
+#dashboard .view-section [role=status] { overflow-wrap: anywhere; font-size: 14px; line-height: 1.6; }
+#dashboard .view-section :is(.fin01-period, .fin05-period) { font-size: 13px; }
+#dashboard .view-section .profile-row { background: #fff; color: var(--jc-ink); border: 0; border-bottom: 1px solid #e1e7ef; text-align: left; }
+#dashboard .view-section .profile-row.active { background: #e7f2ff; color: var(--jc-navy); }
+#dashboard .view-section .profile-row small { color: var(--jc-muted); }
+#dashboard .view-section .permission-item button { background: #eaf0f6; color: var(--jc-navy); border-color: var(--jc-border); }
+#dashboard .rbac-grid .panel { box-shadow: none; }
+#dashboard #rbacPanel form { display: grid; gap: 12px; }
+#dashboard #rbacPanel .advanced-permission { display: grid; gap: 12px; }
+#dashboard #pc01Title { margin-top: 28px; }
+.rbac-toolbar { flex-wrap: wrap; }
+.permission-item, .profile-row { overflow-wrap: anywhere; }
+
+@media (max-width: 1100px) {
+  .workspace main { padding: 24px; }
+  #dashboard .pc04-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .sidebar { width: 100%; flex-basis: auto; }
+  .sidebar.collapsed { width: 100%; }
+  .toolbar { padding-inline: 16px; height: auto; min-height: 64px; }
+  .top-user { font-size: 12px; }
+  .toolbar .environment { font-size: 11px; }
+  .workspace main { padding: 20px 16px; }
+  .page-title h1 { font-size: 26px; letter-spacing: -.4px; }
+  .panel, .grid article { padding: 18px; }
+  #dashboard :is(.fin01-grid, .fin05-grid, .b24c-grid, .pc01-grid, .pc04-grid, .tablets-grid) { grid-template-columns: minmax(0, 1fr); }
+  #dashboard :is(.fin01-actions, .fin05-actions, .pc01-actions, .pc04-filter-actions, .tablets-actions) { width: 100%; gap: 10px; }
+  #dashboard :is(.fin01-actions, .fin05-actions, .pc01-actions, .pc04-filter-actions, .tablets-actions) button { flex: 1 1 130px; }
+  #dashboard .view-section table :is(th, td) { padding: 12px; }
+  #dashboard .pc04-toolbar { padding: 14px; }
+  .account-actions { justify-content: stretch; }
+  .account-actions button { flex: 1 1 150px; }
+  .login-card { margin: 24px auto; }
+}

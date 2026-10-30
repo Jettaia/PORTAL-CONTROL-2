@@ -1,0 +1,14 @@
+✔ MFA inicial força cadastro e trata 429 sem ler JSON nem repetir requisição (8.2783ms)
+✔ sessão protegida recolhe formulário e ação aguarda STEPUP antes de continuar (3.001ms)
+✔ cadastro mantém campos e não envia gravação antes da confirmação (6.6183ms)
+✔ piloto oculta segundo fator e envia escrita sem código ou modal (9.0312ms)
+✔ piloto recusa principal, rede e efeito financeiro real (1.5445ms)
+✔ piloto verifica nome, instancia e estado antes de consultar dados (0.5071ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 224.418
