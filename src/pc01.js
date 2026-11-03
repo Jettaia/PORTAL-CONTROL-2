@@ -1,10 +1,18 @@
 import crypto from 'node:crypto';
-import {withDb,intLiteral as n,nvarcharLiteral as s} from './auth-db.js';
-import {hashPassword} from './security.js';
+import {withDb,intLiteral as n,nvarcharLiteral as s,tokenHashLiteral} from './auth-db.js';
+import {hashPassword,passwordValid,hashToken} from './security.js';
 import {validNewPassword} from './b25b.js';
 import {assertMfa as assertMfaDb} from './b4.js';
 import {PlanningError} from './b3.js';
 const fail=(message,status=400)=>{throw new PlanningError(message,status);};
+export function normalizePasswordChange(body,own=false){
+ const fields=['senha','confirmacao',...(own?['senhaAtual']:[])];
+ if(!body||Array.isArray(body)||Object.keys(body).some(key=>!fields.includes(key)))fail('CAMPOS_INVALIDOS');
+ if(!validNewPassword(body.senha))fail('SENHA_INVALIDA');
+ if(body.confirmacao!==body.senha)fail('CONFIRMACAO_SENHA_INVALIDA');
+ if(own&&(typeof body.senhaAtual!=='string'||body.senhaAtual.length<1||body.senhaAtual.length>128))fail('SENHA_ATUAL_INVALIDA');
+ return {senha:body.senha,...(own?{senhaAtual:body.senhaAtual}:{})};
+}
 export function normalizeAccount(body,creating){
  const fields=['nome','email','funcoes','depositos','ativo',...(creating?['senha']:[])];
  if(!body||Array.isArray(body)||Object.keys(body).some(k=>!fields.includes(k)))fail('CAMPOS_INVALIDOS');
@@ -21,6 +29,42 @@ export async function assertAdminDb(db,actor){
 }
 export async function assertAdmin(cfg,actor){return withDb(cfg,db=>assertAdminDb(db,actor));}
 export async function assertMfa(cfg,actor,token){return withDb(cfg,db=>assertMfaDb(db,actor,token,cfg));}
+export async function changeOwnPassword(cfg,actor,token,body){return changePassword(cfg,actor,token,body,actor,true);}
+export async function resetPassword(cfg,actor,token,body,id){return changePassword(cfg,actor,token,body,id,false);}
+async function changePassword(cfg,actor,token,body,id,own){
+ const value=normalizePasswordChange(body,own),target=n(id),actorId=n(actor);
+ const result=await withDb(cfg,async db=>{
+  await db.query('SET NOCOUNT ON;SET XACT_ABORT ON;SET LOCK_TIMEOUT 5000;SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;');
+  await db.beginTransaction();
+  try{
+   // Share the administration lock with account/role edits; lock users before credentials/sessions.
+   const locked=(await db.query("DECLARE @r int;EXEC @r=sys.sp_getapplock @Resource='JettaControl.PC01.Usuarios',@LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=5000;SELECT @r R;"))[0];
+   if(!locked||Number(locked.R)<0)fail('OPERACAO_OCUPADA',409);
+   const currentActor=(await db.query(`SELECT UsuarioId,Ativo FROM Seguranca.Usuario WITH(UPDLOCK,HOLDLOCK) WHERE UsuarioId=${actorId}`))[0];
+   if(!currentActor||![true,1,1n,'1'].includes(currentActor.Ativo))fail('SESSAO_INVALIDA',401);
+   if(!(await db.query(`SELECT SessaoId FROM Seguranca.SessaoWeb WITH(UPDLOCK,HOLDLOCK) WHERE UsuarioId=${actorId} AND TokenHash=${tokenHashLiteral(hashToken(token))} AND RevogadoEmUtc IS NULL AND ExpiraEmUtc>SYSUTCDATETIME()`)).length)fail('SESSAO_INVALIDA',401);
+   if(!own){await assertAdminDb(db,actor);await assertMfaDb(db,actor,token,cfg);}
+   if(target!==actorId&&!(await db.query(`SELECT UsuarioId FROM Seguranca.Usuario WITH(UPDLOCK,HOLDLOCK) WHERE UsuarioId=${target}`)).length)fail('USUARIO_INDISPONIVEL',404);
+   const credential=(await db.query(`SELECT SaltHex,SenhaHashHex,CASE WHEN BloqueadoAteUtc>SYSUTCDATETIME() THEN 1 ELSE 0 END EmBloqueio FROM Seguranca.Credencial WITH(UPDLOCK,HOLDLOCK) WHERE UsuarioId=${target}`))[0];
+   if(!credential)fail('CONTA_SEM_CREDENCIAL',409);
+   if(own){
+    if([true,1,1n,'1'].includes(credential.EmBloqueio))fail('SENHA_ATUAL_BLOQUEADA',423);
+    if(!passwordValid(value.senhaAtual,credential.SaltHex,credential.SenhaHashHex)){
+     await db.query(`UPDATE Seguranca.Credencial SET Falhas=CASE WHEN Falhas>=99 THEN 100 ELSE Falhas+1 END,BloqueadoAteUtc=CASE WHEN Falhas>=4 THEN DATEADD(minute,15,SYSUTCDATETIME()) ELSE NULL END WHERE UsuarioId=${target}`);
+     await db.commit();return null;
+    }
+   }
+   const salt=crypto.randomBytes(16).toString('hex'),hash=hashPassword(value.senha,salt);
+   await db.query(`UPDATE Seguranca.Credencial SET SaltHex='${salt}',SenhaHashHex='${hash}',Falhas=0,BloqueadoAteUtc=NULL,AlteradoEmUtc=SYSUTCDATETIME() WHERE UsuarioId=${target}`);
+   await db.query(`UPDATE Seguranca.SessaoWeb SET RevogadoEmUtc=SYSUTCDATETIME() WHERE UsuarioId=${target} AND RevogadoEmUtc IS NULL;
+    UPDATE Seguranca.ConviteAtivacaoPiloto SET RevogadoUtc=SYSUTCDATETIME() WHERE UsuarioId=${target} AND ConsumidoUtc IS NULL AND RevogadoUtc IS NULL;`);
+   await db.query(`INSERT Seguranca.Auditoria(Entidade,EntidadeId,Acao,AtorUsuarioId,DetalhesJson) VALUES(N'Usuario',${target},N'PC01_${own?'ALTERAR':'REDEFINIR'}_SENHA',${actorId},${s(JSON.stringify({sessoesRevogadas:true}),'max')})`);
+   await db.commit();return {usuarioId:target,sessoesRevogadas:true};
+  }catch(error){try{await db.rollback();}catch{}throw error;}
+ });
+ if(!result)fail('SENHA_ATUAL_INVALIDA');
+ return result;
+}
 export async function catalog(cfg){return withDb(cfg,async db=>({
  usuarios:await db.query(`SELECT u.UsuarioId,u.Nome,u.Email,u.Ativo,u.Perfil,
  (SELECT pa.Codigo FROM Seguranca.UsuarioPerfil up JOIN Seguranca.PerfilAcesso pa ON pa.PerfilId=up.PerfilId WHERE up.UsuarioId=u.UsuarioId AND pa.Ativo=1 AND pa.Codigo IN('PC01_ADMIN','PC01_GESTOR','PC01_FINANCEIRO') FOR JSON PATH) FuncoesJson,

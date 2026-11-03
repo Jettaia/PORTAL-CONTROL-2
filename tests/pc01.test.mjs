@@ -25,7 +25,7 @@ test('HTTP: ADM cria e edita; nega anônimo, gestor, financeiro, origem e MFA au
  mountUserAdmin(app,{pc01:true},{session,sameOrigin},service);
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>server.close());
  const url=`http://127.0.0.1:${server.address().port}/api/pc01/usuarios`;
- const call=(role,patch={})=>fetch(url,{method:'POST',headers:{'Content-Type':'application/json',origin:'http://local.test','x-test-mfa':'ok',...(role?{'x-test-role':role}:{}),...patch},body:JSON.stringify(account)});
+ const call=(role,patch={},body=account)=>fetch(url,{method:'POST',headers:{'Content-Type':'application/json',origin:'http://local.test','x-test-mfa':'ok',...(role?{'x-test-role':role}:{}),...patch},body:JSON.stringify(body)});
  assert.equal((await call()).status,401);
  for(const role of ['GESTOR','FINANCEIRO'])assert.equal((await call(role)).status,403);
  assert.equal((await call('ADMIN',{origin:'http://evil.test'})).status,403);
@@ -36,6 +36,12 @@ test('HTTP: ADM cria e edita; nega anônimo, gestor, financeiro, origem e MFA au
  const update=await fetch(url+'/2',{method:'PUT',headers:{'Content-Type':'application/json',origin:'http://local.test','x-test-role':'ADMIN','x-test-mfa':'ok'},body:JSON.stringify({...edit,ativo:false})});
  assert.equal(update.status,200);assert.equal(calls,2);
  const bad=await fetch(url+'/0',{method:'PUT',headers:{'Content-Type':'application/json',origin:'http://local.test','x-test-role':'ADMIN','x-test-mfa':'ok'},body:JSON.stringify(edit)});assert.equal(bad.status,400);assert.equal(calls,2);
+ for(const senha of ['Aa1!bc','Aa1!'+'b'.repeat(9),'Aa1!'+'b'.repeat(124)]){
+  assert.equal((await call('ADMIN',{}, {...account,senha})).status,201,`aceita ${senha.length} caracteres`);
+ }
+ for(const senha of ['Aa1!b','Aa1!'+'b'.repeat(125),'abcdef','ABC123','Abc123','Abc!de']){
+  assert.equal((await call('ADMIN',{}, {...account,senha})).status,400,`recusa senha fora da política (${senha.length} caracteres)`);
+ }
 });
 
 test('rotas PC-01 indisponíveis sem ativação explícita',async t=>{

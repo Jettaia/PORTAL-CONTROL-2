@@ -13,15 +13,14 @@ try{
   page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(/\/(?:api\/(?:pc08|pc09|pc10|pc11|b51|b52|b52a|b52b|b52c|b53f01|b53f03|b61|final-lab)|(?:b5-|b6-|final-lab|pc08|pc09|pc10|pc11))/.test(new URL(r.url()).pathname))retired.push(r.url());});
   await page.route('**/api/**',async route=>{
    const url=new URL(route.request().url());let body={};
-   if(url.pathname==='/api/auth/me')body={usuario:{id:1,nome:'QA '+perfil,perfil,fin01:true,pc04:true},mfa:{necessarioParaAcoesSensiveis:false}};
+   if(url.pathname==='/api/auth/me')body={usuario:{id:1,nome:'QA '+perfil,perfil,fin01:true,pc04:true,pc09:true},mfa:{necessarioParaAcoesSensiveis:false}};
    if(url.pathname==='/api/financeiro/catalogo')body={podeOperar:perfil!=='GESTOR',depositos:[],prestadores:[]};
    if(url.pathname==='/api/financeiro/contratacoes')body={registros:[],proximaPagina:null,podeOperar:perfil!=='GESTOR'};
    await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
   });
   await page.goto(`http://127.0.0.1:${server.address().port}`);await page.waitForFunction(()=>window.jettaAccount?.fin01&&!document.getElementById('dashboard').hidden);
-  await page.locator('#homeStatus').getByText('Consulte contratações e o financeiro pelos respectivos menus.',{exact:false}).waitFor();
-  assert.match(await page.locator('#homePage').innerText(),/registra pagamentos realizados fora do portal/);
-  const nav=page.locator('#mainNav details').filter({has:page.locator('summary').filter({hasText:'Financeiro'})});assert.deepEqual(await nav.locator('button').allTextContents(),['Financeiro']);assert.equal(await page.locator('#mainNav a[href*="financeira"]').count(),0);
+  await page.locator('#homePage').getByText('Bem-vindo ao Jetta Control',{exact:true}).waitFor();
+  const nav=page.locator('#mainNav details').filter({has:page.locator('summary').filter({hasText:'Financeiro'})});assert.deepEqual(await nav.locator('button').allTextContents(),['Financeiro','Extrato por prestador']);assert.equal(await page.locator('#mainNav a[href*="financeira"]').count(),0);
   for(const alias of ['pagamentos','recibos','ajustes','extratos','autorizacoes','carteira','provisionamentos','pendencias','relatoriosfinanceiros','gestao']){
    await page.evaluate(alias=>window.dispatchEvent(new CustomEvent('jetta:go',{detail:alias})),alias);await page.locator('#fin01Page:not([hidden])').waitFor();assert.equal(await page.locator('#pageHeading').innerText(),'Financeiro');
   }

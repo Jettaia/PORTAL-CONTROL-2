@@ -25,6 +25,14 @@ O pacote `odbc` também exige o ambiente nativo compatível. O acesso ao SQL Ser
 
 `npm start` executa o servidor legado, com configuração `.env` e destino `JETTA_CONTROL`; não é o iniciador do piloto mais recente. O piloto instalado usa `node pilot-local/start.mjs`, configuração privada em `secrets/pilot-local/runtime.json`, acesso local em `127.0.0.1:3211` e registro de pagamentos externos por contratação, sem execução bancária. A atualização financeira exige migrações 33, 34 e 35 em ordem, com piloto parado e backup verificado; veja `docs/BANCO-DE-DADOS.md`. Não copie configurações privadas de outra máquina nem execute o instalador como roteiro de produção.
 
+## Regressão integral do piloto
+
+O PC-09 antigo foi aposentado em favor do FIN-02/03. `node scripts/validate-pilot.mjs` valida todos os testes atuais, sem exclusões, a sintaxe e os testes do piloto/gate/conexão SQL local. Requer a instância SQL Express e ODBC; gera `pilot-local/regression.json` com escopo `FULL`. Não gera liberação de instalação nem aprovação de produção. Relatórios históricos do perfil sem PC-09 não são aceitos pelo gate atual.
+
+## Identidade SQL
+
+A preparação da conta Windows restrita, a separação dos iniciadores e os limites da aplicação local estão documentados em [SQL-RUNTIME.md](docs/SQL-RUNTIME.md). A conta e suas ACLs exigem a etapa administrativa indicada; os scripts não ativam essa identidade automaticamente.
+
 ## Limites desta entrega
 
 Este repositório preserva os fontes, sem dados operacionais, credenciais, dependências instaladas, backups, capturas ou relatórios de execução locais. O instalador exige evidências de liberação que não são transportadas: `pilot-local/release.json`, `integration-evidence.json` e um relatório de regressão. A geração e validação dessas evidências, assim como a configuração da instância SQL, precisam ser tratadas antes de uma nova instalação. Nenhum gate foi removido ou contornado.

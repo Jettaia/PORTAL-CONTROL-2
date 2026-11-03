@@ -1,4 +1,5 @@
 import {verifyPilotDatabase} from './pilot-target.js';
+import {assertRuntimeIdentity} from './sql-runtime.js';
 import odbc from 'odbc';
 import {observeConnection,emit,safeSqlErrors} from './observability.js';
 import crypto from 'node:crypto';
@@ -8,7 +9,7 @@ const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 export function connectionString(cfg){return `Driver={${cfg.driver}};Server=${cfg.server};Database=${cfg.database};Trusted_Connection=Yes;Encrypt=Yes;TrustServerCertificate=${cfg.trust?'Yes':'No'};Connection Timeout=5;`;}
 export async function withDb(cfg,fn){
  const started=performance.now();let db,failure;
- try{db=await odbc.connect(connectionString(cfg));await verifyPilotDatabase(cfg,db);db=await observeConnection(cfg,db);emit(cfg,'sql.connected',{durationMs:Math.round(performance.now()-started)});return await fn(db);}
+ try{db=await odbc.connect(connectionString(cfg));await assertRuntimeIdentity(cfg,db);await verifyPilotDatabase(cfg,db);db=await observeConnection(cfg,db);emit(cfg,'sql.connected',{durationMs:Math.round(performance.now()-started)});return await fn(db);}
  catch(error){failure=error;emit(cfg,'sql.failure',{errors:safeSqlErrors(error)});throw error;}
  finally{if(db)try{await db.close();}catch(closeError){emit(cfg,'sql.close.failure',{errors:safeSqlErrors(closeError)});if(!failure)throw closeError;}}
 }
@@ -80,7 +81,7 @@ export function bootstrapSql(name,email,salt,pwdHash){
   `EXEC Seguranca.sp_BootstrapAdmin @Nome=@Nome, @Email=@Email, @SaltHex=@SaltHex, @SenhaHashHex=@SenhaHashHex;`;
 }
 export async function bootstrapAdmin(cfg,{name,email,password}){
- if(!name||name.trim().length<3||name.trim().length>150||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>256||!password||password.length<14||password.length>128)
+ if(!name||name.trim().length<3||name.trim().length>150||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>256||!password||password.length<6||password.length>128)
   throw Error('Dados invalidos para Admin inicial.');
  const salt=crypto.randomBytes(16).toString('hex');
  const pwdHash=hashPassword(password,salt);

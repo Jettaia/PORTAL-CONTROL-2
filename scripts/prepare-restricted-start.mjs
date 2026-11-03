@@ -1,0 +1,16 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import net from 'node:net';
+import {fileURLToPath} from 'node:url';
+import {pilotConfig,assertFinanceReady} from '../pilot-local/runtime-config.mjs';
+import {withDb} from '../src/auth-db.js';
+import {upgradePasswordSessions} from '../pilot-local/without-mfa.mjs';
+import {backupAndVerify} from '../pilot-local/recovery.mjs';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const config=JSON.parse(fs.readFileSync(path.join(root,'secrets/pilot-local/runtime.json'),'utf8')),cfg=pilotConfig(config);
+const busy=await new Promise(resolve=>{const socket=net.connect({host:cfg.host,port:cfg.port},()=>{socket.destroy();resolve(true);});socket.on('error',()=>resolve(false));});
+if(busy)throw Error('Encerre o piloto antes do bootstrap administrativo.');
+await withDb(cfg,async db=>{await assertFinanceReady(cfg,db);});
+const backup=await backupAndVerify(config);
+await upgradePasswordSessions(cfg);
+console.log(JSON.stringify({status:'PREPARED_FOR_RESTRICTED_START',backupVerified:backup.verifyOnly==='PASS'}));

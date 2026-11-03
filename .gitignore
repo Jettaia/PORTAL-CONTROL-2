@@ -55,3 +55,6 @@ pilot-local/*.json
 !pilot-local/sql/manifest.json
 pilot-local/*.txt
 pilot-local/*.png
+
+# Arquivo local do operador
+/env.txt

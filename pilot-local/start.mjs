@@ -5,6 +5,7 @@ import fs from 'node:fs';import path from 'node:path';import net from 'node:net'
 import {backupAndVerify} from './recovery.mjs';
 import crypto from 'node:crypto';
 const here=path.dirname(fileURLToPath(import.meta.url)),dir=path.resolve(here,'../secrets/pilot-local'),file=path.join(dir,'runtime.json');
+if(fs.existsSync(path.join(dir,'runtime-identity.json'))||fs.existsSync(path.join(dir,'launcher/pending-identity.json')))throw Error('Runtime restrito provisionado ou em preparação. Use scripts/start-restricted-pilot.ps1; este iniciador administrativo não pode servir HTTP.');
 if(!fs.existsSync(file))throw Error('Piloto ainda nao instalado. Nao use o iniciador do laboratorio para dados reais.');
 const privateConfig=JSON.parse(fs.readFileSync(file,'utf8')),cfg=pilotConfig(privateConfig);
 const financeDb=await connectPilot(cfg.database,cfg.server);try{await assertFinanceReady(cfg,financeDb);if(cfg.pc04){const ready=await financeDb.query("SELECT 1 V FROM sys.key_constraints WHERE parent_object_id=OBJECT_ID('Operacao.Contratacao') AND name='UQ_PC04_DepositoNumero'");if(!ready.length)throw Error('Numeração pendente: execute node scripts/upgrade-contract-numbering.mjs com o piloto encerrado.');}}finally{await financeDb.close();}

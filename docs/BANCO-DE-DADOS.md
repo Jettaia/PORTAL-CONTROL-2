@@ -1,5 +1,23 @@
 # Banco de dados
 
+## Regressão vigente — aposentadoria PC-09 (30/10/2026)
+
+O PC-09 antigo foi substituído pelo FIN-02/03. Seus assets, ensaio visual e teste de módulos ausentes foram retirados. URLs antigas continuam bloqueadas; recibos atuais, baixas, anexos, auditoria e as 35 migrações permanecem preservados. PC-08/10/11 não foram excluídos nesta limpeza.
+
+O perfil de exceção sem PC-09 e seu runner foram aposentados. Execute `node scripts/validate-pilot.mjs`: executa a suíte completa de `tests/`, sintaxe e testes do piloto/gate/conexão local, sem exclusões, e grava `pilot-local/regression.json` com escopo `FULL`, lista completa e hashes atuais. Exige SQL Express/ODBC para a verificação de conexão; não instala, migra, limpa ou inicia o banco operacional.
+
+O verificador de liberação exige escopo `FULL` também em `release.json`, regressão atual e integração atual com limpeza confirmada. Relatórios antigos, inclusive `regression-without-pc09.json`, são históricos e não liberam instalação. O runner não gera `release.json` nem renova evidências SQL/recuperação automaticamente. Suíte verde não é aprovação de produção.
+
+Os registros de 29/10 abaixo descrevem o estado histórico anterior ao financeiro atual e à aposentadoria do PC-09; seus comandos e pendências não são o roteiro vigente.
+
+## SQL: recuperação atual e identidade restrita (30/10/2026)
+
+O ensaio de recuperação agora trata também as autorizações permanentes de `Operacao.TabletPC05` e os tokens pendentes de `Operacao.ContratacaoToken`, além das sessões, convites e contextos antigos. As revogações são transacionais, preservam tokens consumidos e são permitidas somente em banco sintético identificado pelo nome, marcador de teste e identidade da instalação. Não executar invalidação ou restauração no banco operacional por esse mecanismo de ensaio.
+
+Prova atual: `SQL_RECOVERY_TESTS=YES node --test integration/recovery-current.integration.mjs`, 1/1 PASS com backup CHECKSUM, restore, CHECKDB completo, reconciliação dos dados, rollback por falha real de auditoria e consumidores PC05/FIN02/03. Credenciais anteriores foram recusadas, novo login/pareamento funcionaram, recibo/baixa/anexo foram preservados. Fonte e destino sintéticos removidos. O banco operacional não foi restaurado nem alterado nessa validação.
+
+A separação entre bootstrap administrativo e servidor HTTP restrito está preparada em [SQL-RUNTIME.md](SQL-RUNTIME.md), com grants testados em SQL isolado. A conta Windows dedicada, ACLs efetivas e autenticação do processo sob essa identidade ainda dependem da etapa elevada documentada: a sessão atual não é administradora do Windows. O processo instalado mantém a identidade anterior até esse corte. Não declarar o bloqueio de privilégios resolvido antes da prova real da nova identidade.
+
 ## Piloto atual — branch main
 
 O piloto utiliza SQL Server, banco `JETTA_CONTROL_PILOTO_LOCAL`, autenticação integrada do Windows e ODBC Driver 18. A aplicação permanece em localhost. O financeiro registra pagamentos externos por contratação, com recibo individual e evidência assinada; não executa pagamentos bancários.

@@ -7,7 +7,7 @@ export function hexLiteral(value,length){
  return `'${value}'`;
 }
 export function validNewPassword(password){
- return typeof password==='string' && password.length>=14 && password.length<=128 && /[a-z]/.test(password) && /[A-Z]/.test(password) && /\d/.test(password) && /[^A-Za-z0-9]/.test(password);
+ return typeof password==='string' && password.length>=6 && password.length<=128 && /[a-z]/.test(password) && /[A-Z]/.test(password) && /\d/.test(password) && /[^A-Za-z0-9]/.test(password);
 }
 export async function issueInvite(cfg,actorId,userId){
  const id=intLiteral(userId), actor=intLiteral(actorId);

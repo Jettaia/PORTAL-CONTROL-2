@@ -7,7 +7,7 @@
   const nome=(await rl.question('Nome completo: ')).trim();const email=(await rl.question('Email de login: ')).trim();
   // CLI readLine echoes password: recommend operator alone, then clear console history; no secrets in argv.
   const senha=await rl.question('Senha forte (sera exibida durante digitacao; execute em local privado): ');
-  if(nome.length<3||!/^\S+@\S+\.\S+$/.test(email)||senha.length<14||senha.length>128)throw Error('Nome, email ou senha invalido: senha precisa ter 14-128 caracteres.');
+  if(nome.length<3||!/^\S+@\S+\.\S+$/.test(email)||senha.length<6||senha.length>128)throw Error('Nome, email ou senha invalido: senha precisa ter 6-128 caracteres.');
   const id=await bootstrapAdmin(configFromEnv(),{name:nome,email,password:senha});console.log('ADMIN inicial criado. UsuarioId:',id);
  }catch(e){
   console.error('Nao criado:', e.message);

@@ -2,6 +2,8 @@
 
 Data: 28/10/2026. Origem: decisões da conversa de redefinição do produto.
 
+> Atualização de 30/10/2026: o PC-09 antigo foi aposentado e substituído pelo FIN-02/03, conforme `FINANCEIRO-SPEC.md`. As menções ao PC-09, à sua implementação pendente e às provas anteriores abaixo são históricas. A regressão vigente é integral, sem o perfil de exceção; ver `BANCO-DE-DADOS.md`. Essa substituição não declara liberação para produção.
+
 Status: especificação consolidada e decomposta em tickets locais; não autoriza implementação, migração, deploy ou publicação. As decisões confirmadas estão separadas das propostas técnicas e das pendências. Cada ticket identifica as etapas afetadas por decisões abertas, sem bloquear trabalho independente por pendências de outros módulos.
 
 Destino: cópia local de trabalho. Não foi fornecida referência Obsidian nem configuração de rastreador de issues e vocabulário de triagem. A publicação prevista pela skill `to-spec` permanece pendente de configuração por `/setup-matt-pocock-skills`.
