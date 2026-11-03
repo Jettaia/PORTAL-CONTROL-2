@@ -1,5 +1,21 @@
 # Banco de dados
 
+## Exclusão de contas — 03/11/2026
+
+Cadastro → Usuários oferece Excluir além da edição/inativação. A exclusão exige confirmação e ADM autenticado, remove a conta do catálogo, revoga sessões, convites e permissões e bloqueia edição/reativação/redefinição de senha. A própria conta e o último ADM ativo são protegidos. Identidade, auditoria e referências históricas permanecem; o e-mail da conta excluída continua reservado. Inativação permanece reversível pelo editor.
+
+A migration aditiva `38-delete-account.sql` acrescenta `ExcluidoEmUtc` e `ExcluidoPor` a `Seguranca.Usuario`, com restrição que impede ativar contas excluídas. Em instalação local existente, encerre o piloto, execute `node scripts/upgrade-delete-account.mjs` e reinicie pelo launcher habitual. O script exige destino/identidade corretos e backup verificado; compara todos os campos e linhas preexistentes antes do commit. Nenhuma conta é excluída pela migração.
+
+Provas: `DELETE_SQL_TESTS=YES PC01_SQL_SERVER=localhost\SQLEXPRESS node --test integration/delete-account.integration.mjs` para HTTP/SQL descartável e `JETTA_PLAYWRIGHT_ROOT=<node_modules com playwright> node integration/delete-account.visual.mjs` para interação e aparência desktop/mobile.
+
+## Solicitação de acesso — 03/11/2026
+
+No piloto PC-01, a tela de login recebe solicitações com nome e e-mail. Cadastro → Usuários mostra a fila pendente; o ADM aprova definindo senha inicial, funções e depósitos, ou recusa. A senha é informada manualmente pelo ADM ao usuário. Solicitar acesso não cria conta nem credencial. Aprovação/recusa, ator, data e auditoria são persistidos; aprovação e criação da conta pertencem à mesma transação.
+
+A migration aditiva `37-access-requests.sql` cria `Seguranca.SolicitacaoAcesso`. Para atualizar uma instalação local existente, encerre o piloto e execute `node scripts/upgrade-access-requests.mjs`, depois inicie pelo launcher habitual. O script verifica destino e identidade, exige backup verificado e preserva as linhas existentes. Não execute o instalador de banco novo em uma instalação existente. O endpoint público tem limite de solicitações e responde da mesma forma para e-mail já cadastrado ou já pendente.
+
+Provas focais: `ACCESS_SQL_TESTS=YES PC01_SQL_SERVER='localhost\\SQLEXPRESS' node --test integration/access-requests.integration.mjs` em banco descartável, e `JETTA_PLAYWRIGHT_ROOT=<node_modules com playwright> node integration/access-requests.visual.mjs` para interação/visual com HTTP sintético. Não há envio automático de e-mail, push ou deploy neste fluxo.
+
 ## Regressão vigente — aposentadoria PC-09 (30/10/2026)
 
 O PC-09 antigo foi substituído pelo FIN-02/03. Seus assets, ensaio visual e teste de módulos ausentes foram retirados. URLs antigas continuam bloqueadas; recibos atuais, baixas, anexos, auditoria e as 35 migrações permanecem preservados. PC-08/10/11 não foram excluídos nesta limpeza.

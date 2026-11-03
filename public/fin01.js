@@ -2,22 +2,35 @@
  const root=document.getElementById('fin01Page');if(!root)return;
  const labels={AGUARDANDO_PAGAMENTO:'Aguardando pagamento',RECIBO_GERADO:'Recibo gerado',PAGO:'Pago'};
  let pendingStatementDetail=null;
+ let canOperate=false;
  let rows=[],next=null,applied='',generation=0,detailGeneration=0,controller=new AbortController();
  const el=(tag,text,cls)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;if(cls)node.className=cls;return node;};
  const statusBadge=state=>el('span',labels[state]||'Situação indisponível','fin01-badge fin01-badge--'+({AGUARDANDO_PAGAMENTO:'pendente',RECIBO_GERADO:'recibo',PAGO:'pago'}[state]||'neutra'));
- root.innerHTML='<header class="fin01-heading"><h2>Financeiro de contratações</h2><p>Consulte as contratações liberadas. Pendências aparecem pela liberação mais antiga.</p></header><form id="fin01Filters" class="fin01-grid"><label>Número da contratação<input name="numero" inputmode="numeric" pattern="[1-9][0-9]*" placeholder="Número exato"></label><label>Depósito<select name="depositoId" aria-label="Depósito"><option value="">Todos autorizados</option></select></label><label>Prestador<select name="prestadorId" aria-label="Prestador"><option value="">Todos autorizados</option></select></label><label>Serviço desde<input name="inicio" type="date"></label><label>Serviço até<input name="fim" type="date"></label><label>Situação<select name="situacao" aria-label="Situação"><option value="AGUARDANDO_PAGAMENTO">Aguardando pagamento</option><option value="RECIBO_GERADO">Recibo gerado</option><option value="PAGO">Pago</option><option value="">Todas</option></select></label><div class="fin01-actions"><button>Aplicar filtros</button><button type="button" id="fin01Clear" class="secondary">Limpar filtros</button></div></form><p class="fin01-period">O período considera a data do serviço.</p><p id="fin01Message" role="status" aria-live="polite"></p><div class="fin01-scroll" tabindex="0" role="region" aria-label="Contratações liberadas"><table><thead><tr><th>Número</th><th>Prestador</th><th>Depósito</th><th>Atividade</th><th>Data do serviço</th><th>Valor liberado</th><th>Liberação</th><th>Situação</th><th>Consulta</th></tr></thead><tbody id="fin01Rows"></tbody></table></div><button type="button" id="fin01More" hidden>Carregar mais</button><section id="fin01Detail" aria-label="Detalhe financeiro" aria-live="polite"></section>';
+ root.innerHTML='<header class="fin01-heading"><h2>Financeiro de contratações</h2><p>Consulte as contratações liberadas. Pendências aparecem pela liberação mais antiga.</p></header><form id="fin01Filters" class="fin01-grid"><label>Número da contratação<input name="numero" inputmode="numeric" pattern="[1-9][0-9]*" placeholder="Número exato"></label><label>Depósito<select name="depositoId" aria-label="Depósito"><option value="">Todos autorizados</option></select></label><label>Prestador<select name="prestadorId" aria-label="Prestador"><option value="">Todos autorizados</option></select></label><label>Serviço desde<input name="inicio" type="date"></label><label>Serviço até<input name="fim" type="date"></label><label>Situação<select name="situacao" aria-label="Situação"><option value="">Todas</option><option value="AGUARDANDO_PAGAMENTO">Aguardando pagamento</option><option value="RECIBO_GERADO">Recibo gerado</option><option value="PAGO">Pago</option></select></label><div class="fin01-actions"><button>Aplicar filtros</button><button type="button" id="fin01Clear" class="secondary">Limpar filtros</button></div></form><p class="fin01-period">O período considera a data do serviço.</p><p id="fin01Message" role="status" aria-live="polite"></p><div class="fin01-scroll" tabindex="0" role="region" aria-label="Contratações liberadas"><table><thead><tr><th>Número</th><th>Prestador</th><th>Depósito</th><th>Atividade</th><th>Data do serviço</th><th>Valor liberado</th><th>Liberação</th><th>Situação</th><th>Consulta</th><th>Recibo</th></tr></thead><tbody id="fin01Rows"></tbody></table></div><button type="button" id="fin01More" hidden>Carregar mais</button><section id="fin01Detail" aria-label="Detalhe financeiro" aria-live="polite"></section>';
  const $=id=>document.getElementById(id),form=$('fin01Filters'),message=text=>$('fin01Message').textContent=text;
  const serviceDate=value=>value?value.split('-').reverse().join('/'):'—';
  const timestamp=value=>value?new Date(value.slice(0,23)+'Z').toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}):'—';
  const amount=value=>'R$ '+String(value??'0.00').replace('.',',');
  async function api(path,method='GET',body={}){const response=await fetch('/api/financeiro'+path,{signal:controller.signal,credentials:'same-origin',cache:'no-store',method,...(method==='POST'?{headers:{'Content-Type':'application/json','x-jetta-request':'web'},body:JSON.stringify(body)}:{})});const data=await response.json();if(!response.ok)throw Error(data.erro||'Não foi possível consultar o financeiro.');return data;}
  function render(){const target=$('fin01Rows');target.replaceChildren();
-  if(!rows.length){const tr=el('tr'),td=el('td','Nenhuma contratação encontrada para os filtros informados.');td.colSpan=9;tr.append(td);target.append(tr);}
+  if(!rows.length){const tr=el('tr'),td=el('td','Nenhuma contratação encontrada para os filtros informados.');td.colSpan=10;tr.append(td);target.append(tr);}
   for(const row of rows){const tr=el('tr');tr.dataset.contract=row.ContratacaoId;
    for(const text of [row.Numero,row.Prestador,row.Deposito,row.Tipo,serviceDate(row.DataServico),amount(row.ValorLiberado),timestamp(row.LiberadoEmUtc)])tr.append(el('td',text));
    const status=el('td'),badge=statusBadge(row.Situacao);status.append(badge);tr.append(status);
-   const td=el('td'),button=el('button','Detalhes');button.type='button';button.setAttribute('aria-label','Detalhes da contratação '+row.Numero);button.addEventListener('click',()=>detail(row.ContratacaoId));td.append(button);tr.append(td);target.append(tr);
+   const td=el('td'),button=el('button','Detalhes');button.type='button';button.setAttribute('aria-label','Detalhes da contratação '+row.Numero);button.addEventListener('click',()=>detail(row.ContratacaoId));td.append(button);tr.append(td);
+   const receiptCell=el('td');
+   if(row.ReciboId){const link=el('a','Abrir recibo','fin02-print');link.href='/api/financeiro/contratacoes/'+encodeURIComponent(row.ContratacaoId)+'/recibo/impressao';link.target='_blank';link.rel='noopener';link.setAttribute('aria-label','Abrir recibo da contratação '+row.Numero);receiptCell.append(link);}
+   else if(canOperate){const emit=el('button','Gerar recibo');emit.type='button';emit.setAttribute('aria-label','Gerar recibo da contratação '+row.Numero);emit.addEventListener('click',()=>generateReceipt(row.ContratacaoId,emit,$('fin01Message')));receiptCell.append(emit);}
+   else receiptCell.textContent='Ainda não emitido';
+   tr.append(receiptCell);target.append(tr);
   }$('fin01More').hidden=!next;
+ }
+ async function generateReceipt(key,button,feedback){
+  if(button.disabled)return;const stamp=detailGeneration,listStamp=generation;
+  button.disabled=true;feedback.textContent='Gerando recibo…';
+  try{await api('/contratacoes/'+encodeURIComponent(key)+'/recibo','POST');if(stamp!==detailGeneration||listStamp!==generation){if(button.isConnected&&listStamp===generation)feedback.textContent='Recibo gerado. Atualize a consulta para visualizá-lo.';return;}await load();await detail(key);}
+  catch(error){if(stamp===detailGeneration&&listStamp===generation&&error.name!=='AbortError'){feedback.textContent=error.message;button.disabled=false;}}
+  finally{if(button.isConnected)button.disabled=false;}
  }
  async function detail(key){const stamp=++detailGeneration,target=$('fin01Detail');target.replaceChildren(el('p','Consultando detalhes…'));
   try{const {registro:r,podeOperar}=await api('/contratacoes/'+encodeURIComponent(key));if(stamp!==detailGeneration)return;
@@ -31,11 +44,7 @@
     const link=el('a','Abrir recibo para impressão','fin02-print');link.href='/api/financeiro/contratacoes/'+encodeURIComponent(key)+'/recibo/impressao';link.target='_blank';link.rel='noopener';receiptActions.append(link);
    }else if(podeOperar){
     const emit=el('button','Gerar recibo');emit.type='button';receiptActions.append(emit);
-    emit.addEventListener('click',async()=>{
-     emit.disabled=true;receiptMessage.textContent='Gerando recibo…';
-     try{await api('/contratacoes/'+encodeURIComponent(key)+'/recibo','POST');if(stamp!==detailGeneration)return;await load();await detail(key);}
-     catch(error){if(stamp===detailGeneration&&error.name!=='AbortError'){receiptMessage.textContent=error.message;emit.disabled=false;}}
-    });
+    emit.addEventListener('click',()=>generateReceipt(key,emit,receiptMessage));
    }
    target.append(receiptActions,receiptMessage);await paymentDetail(key,r,podeOperar,target,stamp);if(stamp===detailGeneration)target.scrollIntoView({block:'nearest'});
   }catch(error){if(stamp===detailGeneration&&error.name!=='AbortError')target.replaceChildren(el('p',error.message));}
@@ -91,7 +100,7 @@
   const query=new URLSearchParams(applied);if(more&&next)query.set('cursor',next);
   $('fin01More').disabled=true;message('Consultando…');
   try{const data=await api('/contratacoes?'+query);if(stamp!==generation)return;
-   rows=more?[...new Map([...rows,...data.registros].map(r=>[String(r.ContratacaoId),r])).values()]:data.registros;next=data.proximaPagina;render();message('Consulta atualizada.');
+   canOperate=data.podeOperar===true;rows=more?[...new Map([...rows,...data.registros].map(r=>[String(r.ContratacaoId),r])).values()]:data.registros;next=data.proximaPagina;render();message('Consulta atualizada.');
   }catch(error){if(stamp!==generation||error.name==='AbortError')return;rows=[];next=null;render();message(error.message);
   }finally{if(stamp===generation)$('fin01More').disabled=false;}
  }
@@ -102,5 +111,5 @@
   try{const data=await api('/catalogo');if(signal.aborted)return;options('depositoId',data.depositos,'DepositoId');options('prestadorId',data.prestadores,'PrestadorId');await load();if(!signal.aborted&&pendingStatementDetail){const key=pendingStatementDetail;pendingStatementDetail=null;await detail(key);}}catch(error){if(!signal.aborted)message(error.message);}
  });
  window.addEventListener('jetta:fin01-open',event=>{const key=String(event.detail??'');if(!/^[1-9]\d*$/.test(key)||!window.jettaAccount?.fin01)return;pendingStatementDetail=key;window.dispatchEvent(new CustomEvent('jetta:go',{detail:'pagamentos'}));});
- window.addEventListener('jetta:auth',()=>{pendingStatementDetail=null;generation++;detailGeneration++;controller.abort();controller=new AbortController();rows=[];next=null;applied='';form.reset();options('depositoId',[],'DepositoId');options('prestadorId',[],'PrestadorId');$('fin01Detail').replaceChildren();render();message('');});
+ window.addEventListener('jetta:auth',()=>{pendingStatementDetail=null;canOperate=false;generation++;detailGeneration++;controller.abort();controller=new AbortController();rows=[];next=null;applied='';form.reset();options('depositoId',[],'DepositoId');options('prestadorId',[],'PrestadorId');$('fin01Detail').replaceChildren();render();message('');});
 })();

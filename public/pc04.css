@@ -8,3 +8,4 @@
 
 .pc04-column-title{display:block;margin-bottom:8px}#pc04Panel .pc04-table th input,#pc04Panel .pc04-table th select{display:block;min-width:110px;padding:8px;font-size:.85rem;font-weight:400}#pc04Panel .pc04-table th:first-child input{min-width:80px}.pc04-filter-actions{display:flex;gap:8px;flex-wrap:wrap}.pc04-table th:last-child{vertical-align:top;padding-top:16px}.pc04-toolbar{flex-wrap:wrap}
 #pc04Panel .pc04-table td:last-child button{white-space:nowrap;min-width:88px}
+#pc04Page #pc04Panel .pc04-table :is(th,td),#pc04Page #pc04Panel .pc04-table thead :is(input,select){text-align:center}

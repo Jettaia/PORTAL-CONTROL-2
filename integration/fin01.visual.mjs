@@ -23,6 +23,8 @@ try{
   await page.goto(`http://127.0.0.1:${server.address().port}`);await page.waitForFunction(()=>window.jettaAccount?.fin01&&!document.getElementById('dashboard').hidden);
   await page.evaluate(()=>window.dispatchEvent(new CustomEvent('jetta:go',{detail:'pagamentos'})));
   await page.locator('#fin01Page:not([hidden])').waitFor();await page.getByText('Consulta atualizada.',{exact:true}).waitFor();
+  assert.equal(await page.getByLabel('Situação',{exact:true}).inputValue(),'','Situação inicial deve ser Todas');
+  assert.deepEqual(queries[0],{},'Consulta inicial não deve restringir situação');
   const financialNav=page.locator('#mainNav details').filter({has:page.locator('summary').filter({hasText:'Financeiro'})});
   assert.deepEqual(await financialNav.locator('button:not([hidden])').allTextContents(),['Financeiro','Extrato por prestador']);
   assert.equal(await page.locator('#fin01Page [role=tab]').count(),0);
@@ -34,6 +36,7 @@ try{
   }
   if(perfil==='ADMIN'){fs.mkdirSync('artifacts/fin01',{recursive:true});await page.locator('#fin01Page .fin01-scroll').screenshot({path:'artifacts/fin01/situacoes.png'});}
   await page.getByLabel('Número da contratação',{exact:true}).fill('101');await page.getByLabel('Depósito',{exact:true}).selectOption('1');await page.getByLabel('Prestador',{exact:true}).selectOption('1');await page.locator('#fin01Filters').getByLabel('Serviço desde').fill('2026-10-01');await page.locator('#fin01Filters').getByLabel('Serviço até').fill('2026-10-31');
+  await page.getByLabel('Situação',{exact:true}).selectOption('AGUARDANDO_PAGAMENTO');
   await page.getByRole('button',{name:'Aplicar filtros',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('#fin01Rows tr[data-contract]').length===1);
   assert.deepEqual(queries.at(-1),{numero:'101',depositoId:'1',prestadorId:'1',inicio:'2026-10-01',fim:'2026-10-31',situacao:'AGUARDANDO_PAGAMENTO'});
   await page.getByRole('button',{name:'Detalhes da contratação 101',exact:true}).click();await page.locator('#fin01Detail').getByText('Ana Gestora',{exact:true}).waitFor();
@@ -41,10 +44,13 @@ try{
   assert.equal(await page.locator('#fin01Detail .fin01-badge').innerText(),'Aguardando pagamento');
   assert.equal(await page.locator('#fin01Detail .fin01-badge').evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(255, 243, 205)');
   for(const width of [1440,768,390]){await page.setViewportSize({width,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.locator('#fin01Page .fin01-scroll').evaluate(node=>node.scrollLeft=0);fs.mkdirSync('artifacts/fin01',{recursive:true});if(perfil==='ADMIN')await page.screenshot({path:`artifacts/fin01/fila-${width}.png`,fullPage:true});}
+  const queryCount=queries.length;await page.getByRole('button',{name:'Limpar filtros',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('#fin01Rows tr[data-contract]').length===2);
+  assert.equal(queries.length,queryCount+1);assert.deepEqual(queries.at(-1),{});assert.equal(await page.getByLabel('Situação',{exact:true}).inputValue(),'');
+  await page.getByLabel('Situação',{exact:true}).selectOption('PAGO');
   // Old direct navigation cannot re-open conflicting forms in the transition.
   await page.evaluate(()=>window.dispatchEvent(new CustomEvent('jetta:go',{detail:'ajustes'})));assert.equal(await page.locator('#fin01Page').isVisible(),true);
   assert.deepEqual(writes,[]);assert.deepEqual(errors,[]);
-  await page.evaluate(()=>{window.jettaAccount=null;window.dispatchEvent(new CustomEvent('jetta:auth',{detail:null}));});assert.equal(await page.locator('#fin01Rows tr[data-contract]').count(),0);assert.equal(await page.locator('#fin01Detail').innerText(),'');await page.close();
+  await page.evaluate(()=>{window.jettaAccount=null;window.dispatchEvent(new CustomEvent('jetta:auth',{detail:null}));});assert.equal(await page.locator('#fin01Rows tr[data-contract]').count(),0);assert.equal(await page.locator('#fin01Detail').innerText(),'');assert.equal(await page.getByLabel('Situação',{exact:true}).inputValue(),'');await page.close();
  }
  console.log('PASS FIN01 UI: ADMIN/FINANCEIRO/GESTOR, filtros juntos, paginação, detalhe, legado inacessível, logout, 1440/768/390, zero escritas/erros JS.');
 }finally{await browser.close();await new Promise(r=>server.close(r));}

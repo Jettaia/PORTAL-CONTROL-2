@@ -3,3 +3,5 @@
 #fin01Page .fin03-payment{border-top:1px solid #dbe3ec;margin-top:20px;padding-top:12px;overflow-wrap:anywhere}#fin01Page .fin03-form{display:grid;gap:12px;margin:16px 0;padding:16px;border:1px solid #dbe3ec;border-radius:6px;background:#fff}#fin01Page .fin03-form p{margin:0}#fin01Page .fin03-form button{justify-self:start}#fin01Page .fin03-payment li{margin:10px 0}#fin01Page .fin03-payment a{color:#123656}#fin01Page .fin03-payment a:focus-visible{outline:3px solid #ed8b36;outline-offset:2px}
 
 #fin01Page .fin01-badge--pendente{background:#fff3cd;color:#754c00;border-color:#ebd48c}#fin01Page .fin01-badge--recibo{background:#e7edf4;color:#17324d;border-color:#b8c7d7}#fin01Page .fin01-badge--pago{background:#dcfce7;color:#166534;border-color:#86d3a2}
+
+#dashboard #fin01Page .fin01-scroll :is(th,td){text-align:center}

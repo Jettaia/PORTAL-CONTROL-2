@@ -14,6 +14,13 @@ export function mountUserAdmin(app,cfg,{session,sameOrigin},service=users){
  };
  app.post('/api/pc01/usuarios',sameOrigin,session,admin,save(true));
  app.put('/api/pc01/usuarios/:id',sameOrigin,session,admin,save(false));
+ app.delete('/api/pc01/usuarios/:id',sameOrigin,session,admin,async(req,res)=>{
+  try{
+   let id;try{id=intLiteral(req.params.id);}catch{return res.status(400).json({erro:'IDENTIFICADOR_INVALIDO'});}
+   await service.assertMfa(cfg,req.user.id,req.rawSession,req);
+   res.json(await service.deleteAccount(cfg,req.user.id,req.rawSession,id));
+  }catch(e){error(res,e);}
+ });
  app.post('/api/pc01/minha-senha',sameOrigin,session,async(req,res)=>{
   try{res.json(await service.changeOwnPassword(cfg,req.user.id,req.rawSession,req.body));}catch(e){error(res,e);}
  });

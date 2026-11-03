@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import {pendingRequest} from './access-requests.js';
 import {withDb,intLiteral as n,nvarcharLiteral as s,tokenHashLiteral} from './auth-db.js';
 import {hashPassword,passwordValid,hashToken} from './security.js';
 import {validNewPassword} from './b25b.js';
@@ -44,7 +45,7 @@ async function changePassword(cfg,actor,token,body,id,own){
    if(!currentActor||![true,1,1n,'1'].includes(currentActor.Ativo))fail('SESSAO_INVALIDA',401);
    if(!(await db.query(`SELECT SessaoId FROM Seguranca.SessaoWeb WITH(UPDLOCK,HOLDLOCK) WHERE UsuarioId=${actorId} AND TokenHash=${tokenHashLiteral(hashToken(token))} AND RevogadoEmUtc IS NULL AND ExpiraEmUtc>SYSUTCDATETIME()`)).length)fail('SESSAO_INVALIDA',401);
    if(!own){await assertAdminDb(db,actor);await assertMfaDb(db,actor,token,cfg);}
-   if(target!==actorId&&!(await db.query(`SELECT UsuarioId FROM Seguranca.Usuario WITH(UPDLOCK,HOLDLOCK) WHERE UsuarioId=${target}`)).length)fail('USUARIO_INDISPONIVEL',404);
+   if(target!==actorId&&!(await db.query(`SELECT UsuarioId FROM Seguranca.Usuario WITH(UPDLOCK,HOLDLOCK) WHERE UsuarioId=${target} AND ExcluidoEmUtc IS NULL`)).length)fail('USUARIO_INDISPONIVEL',404);
    const credential=(await db.query(`SELECT SaltHex,SenhaHashHex,CASE WHEN BloqueadoAteUtc>SYSUTCDATETIME() THEN 1 ELSE 0 END EmBloqueio FROM Seguranca.Credencial WITH(UPDLOCK,HOLDLOCK) WHERE UsuarioId=${target}`))[0];
    if(!credential)fail('CONTA_SEM_CREDENCIAL',409);
    if(own){
@@ -69,12 +70,12 @@ export async function catalog(cfg){return withDb(cfg,async db=>({
  usuarios:await db.query(`SELECT u.UsuarioId,u.Nome,u.Email,u.Ativo,u.Perfil,
  (SELECT pa.Codigo FROM Seguranca.UsuarioPerfil up JOIN Seguranca.PerfilAcesso pa ON pa.PerfilId=up.PerfilId WHERE up.UsuarioId=u.UsuarioId AND pa.Ativo=1 AND pa.Codigo IN('PC01_ADMIN','PC01_GESTOR','PC01_FINANCEIRO') FOR JSON PATH) FuncoesJson,
  (SELECT uf.DepositoId FROM Seguranca.UsuarioDeposito uf WHERE uf.UsuarioId=u.UsuarioId AND uf.RevogadoEmUtc IS NULL FOR JSON PATH) DepositosJson
- FROM Seguranca.Usuario u ORDER BY u.Nome,u.UsuarioId`),
+ FROM Seguranca.Usuario u WHERE u.ExcluidoEmUtc IS NULL ORDER BY u.Nome,u.UsuarioId`),
  depositos:await db.query('SELECT DepositoId,Nome,Ativo FROM Cadastro.Deposito ORDER BY Nome,DepositoId')
 }));}
 // Serialize the whole administrative change, including last-ADM protection and audit.
 // Revalidate actor and recent MFA in the same transaction; never trust a posted role.
-export async function save(cfg,actor,token,body,id){
+export async function save(cfg,actor,token,body,id,requestId){
  const creating=id===undefined,v=normalizeAccount(body,creating),uid=creating?null:n(id);
  return withDb(cfg,async db=>{
   await db.query('SET NOCOUNT ON;SET XACT_ABORT ON;SET LOCK_TIMEOUT 5000;SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;');
@@ -83,7 +84,9 @@ export async function save(cfg,actor,token,body,id){
    const locked=(await db.query("DECLARE @r int;EXEC @r=sys.sp_getapplock @Resource='JettaControl.PC01.Usuarios',@LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=5000;SELECT @r R;"))[0];
    if(!locked||Number(locked.R)<0)fail('OPERACAO_OCUPADA',409);
    await assertAdminDb(db,actor);await assertMfaDb(db,actor,token,cfg);
-   const previous=uid?(await db.query(`SELECT UsuarioId,Nome,Email,Perfil,Ativo FROM Seguranca.Usuario WITH(UPDLOCK,HOLDLOCK) WHERE UsuarioId=${uid}`))[0]:null;
+   const request=requestId===undefined?null:await pendingRequest(db,requestId);
+   if(request&&(!creating||v.email!==request.Email||v.nome!==request.Nome||!v.ativo))fail('SOLICITACAO_DIVERGENTE',409);
+   const previous=uid?(await db.query(`SELECT UsuarioId,Nome,Email,Perfil,Ativo FROM Seguranca.Usuario WITH(UPDLOCK,HOLDLOCK) WHERE UsuarioId=${uid} AND ExcluidoEmUtc IS NULL`))[0]:null;
    if(uid&&!previous)fail('USUARIO_INDISPONIVEL',404);
    if((await db.query(`SELECT UsuarioId FROM Seguranca.Usuario WITH(UPDLOCK,HOLDLOCK) WHERE LOWER(LTRIM(RTRIM(Email)))=${s(v.email)}${uid?' AND UsuarioId<>'+uid:''}`)).length)fail('EMAIL_DUPLICADO',409);
    if(uid&&(!v.ativo||!v.funcoes.includes('ADMIN'))&&(await db.query(`SELECT r.UsuarioId FROM Seguranca.UsuarioRaiz r JOIN Seguranca.Usuario u WITH(UPDLOCK,HOLDLOCK) ON u.UsuarioId=r.UsuarioId WHERE u.Ativo=1 AND u.Perfil='ADMIN' AND u.UsuarioId<>${uid}`)).length===0)fail('ULTIMO_ADM_ATIVO',409);
@@ -119,7 +122,37 @@ export async function save(cfg,actor,token,body,id){
     UPDATE Seguranca.ConviteAtivacaoPiloto SET RevogadoUtc=SYSUTCDATETIME() WHERE UsuarioId=${targetId} AND ConsumidoUtc IS NULL AND RevogadoUtc IS NULL;`);
    const detail={antes:previous?{nome:previous.Nome,email:previous.Email,perfil:previous.Perfil,ativo:previous.Ativo,perfis:previousRoles.map(r=>r.Codigo),depositos:previousBranches.map(r=>String(r.DepositoId))}:null,depois:{nome:v.nome,email:v.email,funcoes:v.funcoes,depositos:v.depositos,ativo:v.ativo}};
    await db.query(`INSERT Seguranca.Auditoria(Entidade,EntidadeId,Acao,AtorUsuarioId,DetalhesJson) VALUES(N'Usuario',${targetId},N'PC01_${creating?'CRIAR':'ATUALIZAR'}',${n(actor)},${s(JSON.stringify(detail),'max')})`);
+   if(request){
+    await db.query(`UPDATE Seguranca.SolicitacaoAcesso SET Estado='APROVADA',DecididoPor=${n(actor)},DecididoEmUtc=SYSUTCDATETIME(),UsuarioId=${targetId} WHERE SolicitacaoId=${n(requestId)};
+     INSERT Seguranca.Auditoria(Entidade,EntidadeId,Acao,AtorUsuarioId) VALUES(N'SolicitacaoAcesso',${n(requestId)},N'ACESSO_APROVADO',${n(actor)});`);
+   }
    await db.commit();return {usuarioId:targetId,sessoesRevogadas:true};
   }catch(error){try{await db.rollback();}catch{}throw error;}
+ });
+}
+// Retain referenced identity/history, while permanently removing administrative access.
+export async function deleteAccount(cfg,actor,token,id){
+ const target=n(id),actorId=n(actor);
+ return withDb(cfg,async db=>{
+  await db.query('SET NOCOUNT ON;SET XACT_ABORT ON;SET LOCK_TIMEOUT 5000;SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;');
+  await db.beginTransaction();
+  try{
+   const locked=(await db.query("DECLARE @r int;EXEC @r=sys.sp_getapplock @Resource='JettaControl.PC01.Usuarios',@LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=5000;SELECT @r R;"))[0];
+   if(!locked||Number(locked.R)<0)fail('OPERACAO_OCUPADA',409);
+   await assertAdminDb(db,actor);await assertMfaDb(db,actor,token,cfg);
+   if(target===actorId)fail('AUTOEXCLUSAO_NEGADA',409);
+   const previous=(await db.query(`SELECT UsuarioId,Nome,Email,Perfil,Ativo FROM Seguranca.Usuario WITH(UPDLOCK,HOLDLOCK) WHERE UsuarioId=${target} AND ExcluidoEmUtc IS NULL`))[0];
+   if(!previous)fail('USUARIO_INDISPONIVEL',404);
+   if([true,1,1n,'1'].includes(previous.Ativo)&&previous.Perfil==='ADMIN'&&(await db.query(`SELECT UsuarioId FROM Seguranca.UsuarioRaiz WHERE UsuarioId=${target}`)).length&&!(await db.query(`SELECT r.UsuarioId FROM Seguranca.UsuarioRaiz r JOIN Seguranca.Usuario u WITH(UPDLOCK,HOLDLOCK) ON u.UsuarioId=r.UsuarioId WHERE u.Ativo=1 AND u.Perfil='ADMIN' AND u.UsuarioId<>${target}`)).length)fail('ULTIMO_ADM_ATIVO',409);
+   await db.query(`UPDATE Seguranca.Usuario SET Ativo=0,ExcluidoEmUtc=SYSUTCDATETIME(),ExcluidoPor=${actorId} WHERE UsuarioId=${target};
+    UPDATE Seguranca.SessaoWeb SET RevogadoEmUtc=SYSUTCDATETIME() WHERE UsuarioId=${target} AND RevogadoEmUtc IS NULL;
+    UPDATE Seguranca.ConviteAtivacaoPiloto SET RevogadoUtc=SYSUTCDATETIME() WHERE UsuarioId=${target} AND ConsumidoUtc IS NULL AND RevogadoUtc IS NULL;
+    DELETE Seguranca.UsuarioPerfil WHERE UsuarioId=${target};DELETE Seguranca.UsuarioRaiz WHERE UsuarioId=${target};
+    UPDATE Seguranca.UsuarioDeposito SET RevogadoEmUtc=SYSUTCDATETIME(),RevogadoPor=${actorId} WHERE UsuarioId=${target} AND RevogadoEmUtc IS NULL;
+    UPDATE Seguranca.GestorDeposito SET RevogadoEm=SYSUTCDATETIME(),RevogadoPorUsuarioId=${actorId} WHERE GestorUsuarioId=${target} AND RevogadoEm IS NULL;`);
+   const detail={antes:{nome:previous.Nome,email:previous.Email,perfil:previous.Perfil,ativo:[true,1,1n,'1'].includes(previous.Ativo)},historicoPreservado:true};
+   await db.query(`INSERT Seguranca.Auditoria(Entidade,EntidadeId,Acao,AtorUsuarioId,DetalhesJson) VALUES(N'Usuario',${target},N'PC01_EXCLUIR',${actorId},${s(JSON.stringify(detail),'max')})`);
+   await db.commit();return {usuarioId:target,excluido:true};
+  }catch(e){try{await db.rollback();}catch{}throw e;}
  });
 }

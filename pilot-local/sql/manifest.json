@@ -1,5 +1,5 @@
 {
-  "version": "1.15.0-depot-numbering",
+  "version": "1.17.0-delete-account",
   "purpose": "PILOTO_LOCAL_FINANCEIRO_CONTRATACOES",
   "files": [
     {
@@ -201,6 +201,16 @@
       "file": "36-contract-numbering.sql",
       "source": "pilot-local/contract-numbering.sql",
       "sha256": "4c92849fc3f5104d84a90b0b47a5380bcc7c30db7701e5596d87201294803f07"
+    },
+    {
+      "file": "37-access-requests.sql",
+      "source": "pilot-local/access-requests.sql",
+      "sha256": "b3b98d8f8f2008675a94222ab5cbdd036bf722fc67430383e9eeb9e8fd44a769"
+    },
+    {
+      "file": "38-delete-account.sql",
+      "source": "pilot-local/delete-account.sql",
+      "sha256": "53436e5b97901db96fdfa7e2c99faa0f7d65e6d2720fab03f2dd39faac4355b9"
     }
   ]
 }

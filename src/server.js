@@ -7,6 +7,7 @@ import {mountTokens} from './pc05-routes.js';
 import {mountProviders} from './pc03-routes.js';
 import {mountBranchCatalog} from './pc02-routes.js';
 import {mountUserAdmin} from './pc01-routes.js';
+import {mountAccessRequests,mountPublicAccessRequest} from './access-request-routes.js';
 import {mountFinalLab} from './final-lab-routes.js';
 import {mountProvisioning} from './b6-1-routes.js';
 import {mountF03} from './b5-3-f03-routes.js';
@@ -81,9 +82,11 @@ mountFinalLab(app,cfg,{session,sameOrigin});
 }
 // PC05 tablet has its own restricted credential; management checks MFA in its service.
 mountTokens(app,cfg,{session,sameOrigin});
+mountPublicAccessRequest(app,cfg,{sameOrigin});
 app.use(privilegedGate(cfg,session));
 app.use('/api',requireMfaMiddleware(cfg,session));
 mountUserAdmin(app,cfg,{session,sameOrigin});
+mountAccessRequests(app,cfg,{session,sameOrigin});
 mountBranchCatalog(app,cfg,{session,sameOrigin});
 mountProviders(app,cfg,{session,sameOrigin});
 mountContracts(app,cfg,{session,sameOrigin});

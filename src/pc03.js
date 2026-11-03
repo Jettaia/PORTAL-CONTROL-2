@@ -8,14 +8,14 @@ const cols='PrestadorId,Nome,CPF,Telefone,CNPJ,Ativo,Versao';
 const keys=(body,allowed)=>{if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).some(k=>!allowed.includes(k)))fail('CAMPOS_INVALIDOS');};
 export function documentNumber(value){if(typeof value!=='string'||!(/^[\d.\-/\s]+$/).test(value))fail('DOCUMENTO_INVALIDO');const digits=value.replace(/\D/g,'');if(![11,14].includes(digits.length))fail('DOCUMENTO_INVALIDO');return digits;}
 function input(body,editing){
- keys(body,['nome','documento','cpf','telefone','cnpj',...(editing?['ativo','versao']:['depositos'])]);
+ keys(body,['nome','documento','cpf','telefone','cnpj','depositos',...(editing?['ativo','versao']:[])]);
  const text=(key,max)=>{const value=body[key]??'';if(typeof value!=='string'||value.trim().length>max)fail('CAMPO_INVALIDO_'+key.toUpperCase());return value.trim();};
  if(body.cnpj!==undefined&&typeof body.cnpj!=='string')fail('CNPJ_INVALIDO');
  if(body.documento!==undefined&&(body.cpf!==undefined||body.cnpj!==undefined)||body.cpf&&body.cnpj)fail('DOCUMENTO_UNICO_OBRIGATORIO');
  const v={nome:text('nome',160),cpf:documentNumber(body.documento??body.cpf??body.cnpj),telefone:text('telefone',25),cnpj:''};
  if(!/^\S+\s+\S/.test(v.nome))fail('NOME_COMPLETO_OBRIGATORIO');
  if(editing){if(typeof body.ativo!=='boolean'||!Number.isSafeInteger(body.versao)||body.versao<1)fail('VERSAO_OU_SITUACAO_INVALIDA');v.ativo=body.ativo;v.versao=body.versao;}
- else{if(!Array.isArray(body.depositos)||!body.depositos.length||body.depositos.length>100||body.depositos.some(id=>typeof id!=='number'||!Number.isSafeInteger(id)||id<1)||new Set(body.depositos).size!==body.depositos.length)fail('DEPOSITOS_INVALIDAS');v.depositos=[...body.depositos].sort((a,b)=>a-b);}
+ if(!editing||body.depositos!==undefined){if(!Array.isArray(body.depositos)||!editing&&!body.depositos.length||body.depositos.length>100||body.depositos.some(id=>typeof id!=='number'||!Number.isSafeInteger(id)||id<1)||new Set(body.depositos).size!==body.depositos.length)fail('DEPOSITOS_INVALIDAS');v.depositos=[...body.depositos].sort((a,b)=>a-b);}
  return v;
 }
 async function actorDb(db,actor){
@@ -49,12 +49,19 @@ export async function read(cfg,actor,documento){
 export async function save(cfg,actor,token,body,id){
  const editing=id!==undefined,v=input(body,editing),target=editing?n(id):null;
  return mutate(cfg,actor,token,async(db,admin)=>{
-  let previous;
+  let previous,previousBranches,added=[],removed=[];
   if(editing){
    previous=(await db.query(`SELECT ${cols} FROM Cadastro.Prestador WITH(UPDLOCK,HOLDLOCK) WHERE PrestadorId=${target}`))[0];if(!previous)fail('PRESTADOR_INDISPONIVEL',404);
    if(!admin&&!(await db.query(`SELECT 1 V FROM Cadastro.PrestadorDeposito pf JOIN Cadastro.Deposito f ON f.DepositoId=pf.DepositoId WHERE pf.PrestadorId=${target} AND pf.RevogadoEmUtc IS NULL AND ${branchScope(actor,false)}`)).length)fail('PRESTADOR_FORA_ESCOPO',403);
    if(!admin&&(previous.CPF!==v.cpf||yes(previous.Ativo)!==v.ativo))fail('SOMENTE_ADM',403);
    if(Number(previous.Versao)!==v.versao)fail('REGISTRO_ALTERADO_ATUALIZE',409);
+   if(v.depositos){
+    // Replace only visible links. Links belonging to other managers are preserved.
+    previousBranches=(await db.query(`SELECT pf.DepositoId FROM Cadastro.PrestadorDeposito pf WITH(UPDLOCK,HOLDLOCK) JOIN Cadastro.Deposito f ON f.DepositoId=pf.DepositoId WHERE pf.PrestadorId=${target} AND pf.RevogadoEmUtc IS NULL AND ${branchScope(actor,admin)}`)).map(r=>Number(r.DepositoId));
+    added=v.depositos.filter(id=>!previousBranches.includes(id));removed=previousBranches.filter(id=>!v.depositos.includes(id));
+    if(added.length&&!v.ativo)fail('PRESTADOR_INATIVO',409);
+    for(const branch of v.depositos)await branchDb(db,actor,admin,branch,added.includes(branch));
+   }
   }else for(const branch of v.depositos)await branchDb(db,actor,admin,branch,true);
   if((await db.query(`SELECT PrestadorId FROM Cadastro.Prestador WITH(UPDLOCK,HOLDLOCK) WHERE CPF=${s(v.cpf,14)}${target?' AND PrestadorId<>'+target:''}`)).length)fail('CPF_DUPLICADO',409);
   let row;
@@ -63,13 +70,16 @@ export async function save(cfg,actor,token,body,id){
    row=(await db.query(`INSERT Cadastro.Prestador(Nome,CPF,Telefone,CNPJ) OUTPUT ${cols.split(',').map(c=>'inserted.'+c).join(',')} VALUES(${s(v.nome,160)},${s(v.cpf,14)},${s(v.telefone,25)},${s(v.cnpj,14)})`))[0];
    for(const branch of v.depositos)await linkDb(db,actor,row.PrestadorId,branch,true);
   }
-  await audit(db,actor,row.PrestadorId,editing?'EDITAR':'CRIAR',{antes:previous||null,depois:v});return row;
+  for(const branch of added){await linkDb(db,actor,row.PrestadorId,branch,true);await audit(db,actor,row.PrestadorId,'VINCULAR',{depositoId:String(branch),vinculado:true});}
+  for(const branch of removed){await linkDb(db,actor,row.PrestadorId,branch,false);await audit(db,actor,row.PrestadorId,'DESVINCULAR',{depositoId:String(branch),vinculado:false});}
+  await audit(db,actor,row.PrestadorId,editing?'EDITAR':'CRIAR',{antes:previous?{...previous,...(previousBranches?{depositos:previousBranches}:{})}:null,depois:v});return row;
  });
 }
-async function linkDb(db,actor,id,branch,linked){
+async function linkDb(db,actor,id,branch,linked,touchVersion=false){
  const provider=n(id),deposito=n(branch),uid=n(actor);
- if(linked)await db.query(`IF EXISTS(SELECT 1 FROM Cadastro.PrestadorDeposito WHERE PrestadorId=${provider} AND DepositoId=${deposito}) UPDATE Cadastro.PrestadorDeposito SET RevogadoEmUtc=NULL,RevogadoPor=NULL,ConcedidoPor=${uid},ConcedidoEmUtc=SYSUTCDATETIME() WHERE PrestadorId=${provider} AND DepositoId=${deposito} AND RevogadoEmUtc IS NOT NULL;ELSE INSERT Cadastro.PrestadorDeposito(PrestadorId,DepositoId,ConcedidoPor) VALUES(${provider},${deposito},${uid});`);
- else await db.query(`UPDATE Cadastro.PrestadorDeposito SET RevogadoEmUtc=SYSUTCDATETIME(),RevogadoPor=${uid} WHERE PrestadorId=${provider} AND DepositoId=${deposito} AND RevogadoEmUtc IS NULL`);
+ const version=touchVersion?`;IF @@ROWCOUNT>0 UPDATE Cadastro.Prestador SET Versao=Versao+1 WHERE PrestadorId=${provider};`:'';
+ if(linked)await db.query(`IF EXISTS(SELECT 1 FROM Cadastro.PrestadorDeposito WHERE PrestadorId=${provider} AND DepositoId=${deposito}) UPDATE Cadastro.PrestadorDeposito SET RevogadoEmUtc=NULL,RevogadoPor=NULL,ConcedidoPor=${uid},ConcedidoEmUtc=SYSUTCDATETIME() WHERE PrestadorId=${provider} AND DepositoId=${deposito} AND RevogadoEmUtc IS NOT NULL;ELSE INSERT Cadastro.PrestadorDeposito(PrestadorId,DepositoId,ConcedidoPor) VALUES(${provider},${deposito},${uid});${version}`);
+ else await db.query(`UPDATE Cadastro.PrestadorDeposito SET RevogadoEmUtc=SYSUTCDATETIME(),RevogadoPor=${uid} WHERE PrestadorId=${provider} AND DepositoId=${deposito} AND RevogadoEmUtc IS NULL${version}`);
 }
 export async function link(cfg,actor,token,id,branch,body){
  keys(body,['vinculado']);if(typeof body.vinculado!=='boolean')fail('VINCULO_INVALIDO');n(id);n(branch);
@@ -80,6 +90,6 @@ export async function link(cfg,actor,token,id,branch,body){
   if(!admin&&!(await db.query(`SELECT 1 V FROM Cadastro.PrestadorDeposito pf WITH(HOLDLOCK) JOIN Cadastro.Deposito f ON f.DepositoId=pf.DepositoId AND f.Ativo=1 WHERE pf.PrestadorId=${n(id)} AND pf.RevogadoEmUtc IS NULL AND ${branchScope(actor,false)}`)).length)fail('PRESTADOR_FORA_ESCOPO',403);
   const row=(await db.query(`SELECT ${cols} FROM Cadastro.Prestador WITH(UPDLOCK,HOLDLOCK) WHERE PrestadorId=${n(id)}`))[0];if(!row)fail('PRESTADOR_INDISPONIVEL',404);
   if(body.vinculado&&!yes(row.Ativo))fail('PRESTADOR_INATIVO',409);
-  await linkDb(db,actor,id,branch,body.vinculado);await audit(db,actor,id,body.vinculado?'VINCULAR':'DESVINCULAR',{depositoId:String(branch),vinculado:body.vinculado});return {ok:true};
+  await linkDb(db,actor,id,branch,body.vinculado,true);await audit(db,actor,id,body.vinculado?'VINCULAR':'DESVINCULAR',{depositoId:String(branch),vinculado:body.vinculado});return {ok:true};
  });
 }
