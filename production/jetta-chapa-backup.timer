@@ -1,0 +1,9 @@
+[Unit]
+Description=Daily encrypted Portal Control backup
+[Timer]
+OnCalendar=*-*-* 02:30:00 America/Sao_Paulo
+Persistent=true
+RandomizedDelaySec=120
+Unit=jetta-chapa-backup.service
+[Install]
+WantedBy=timers.target

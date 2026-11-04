@@ -1,0 +1,14 @@
+[Unit]
+Description=Unlock isolated encrypted Portal Control data
+After=local-fs.target
+Before=jetta-chapa.service
+RequiresMountsFor=/opt/jetta-chapa
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/jetta-chapa/unlock-storage.sh
+ExecStop=/usr/bin/umount /opt/jetta-chapa/data
+ExecStop=/usr/sbin/cryptsetup close jetta-chapa-data
+TimeoutStopSec=90
+[Install]
+WantedBy=multi-user.target

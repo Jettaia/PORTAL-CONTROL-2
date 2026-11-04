@@ -6,7 +6,11 @@ import crypto from 'node:crypto';
 import {hashPassword,hashToken,newToken,passwordValid} from './security.js';
 const sqlFlag=value=>value===true||value===1||value===1n||value==='1';
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-export function connectionString(cfg){return `Driver={${cfg.driver}};Server=${cfg.server};Database=${cfg.database};Trusted_Connection=Yes;Encrypt=Yes;TrustServerCertificate=${cfg.trust?'Yes':'No'};Connection Timeout=5;`;}
+export function connectionString(cfg){
+ const quote=value=>'{'+String(value).replaceAll('}','}}')+'}';
+ const auth=cfg.production?`UID=${quote(cfg.sqlAuth.user)};PWD=${quote(cfg.sqlAuth.password)};`:'Trusted_Connection=Yes;';
+ return `Driver={${cfg.driver}};Server=${cfg.server};Database=${cfg.database};${auth}Encrypt=Yes;TrustServerCertificate=${cfg.production?'No':cfg.trust?'Yes':'No'};Connection Timeout=5;`;
+}
 export async function withDb(cfg,fn){
  const started=performance.now();let db,failure;
  try{db=await odbc.connect(connectionString(cfg));await assertRuntimeIdentity(cfg,db);await verifyPilotDatabase(cfg,db);db=await observeConnection(cfg,db);emit(cfg,'sql.connected',{durationMs:Math.round(performance.now()-started)});return await fn(db);}

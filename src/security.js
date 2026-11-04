@@ -9,8 +9,10 @@ export function passwordValid(password,saltHex,stored){
  const got=Buffer.from(hashPassword(password,saltHex),'hex');
  return crypto.timingSafeEqual(got,Buffer.from(stored,'hex'));
 }
-export function cookieValue(raw){return `jetta_session=${raw}; HttpOnly; SameSite=Strict; Path=/api; Max-Age=28800`;}
-export function clearCookie(){return 'jetta_session=; HttpOnly; SameSite=Strict; Path=/api; Max-Age=0';}
-export function parseSessionCookie(header=''){
- const match=header.match(/(?:^|;\s*)jetta_session=([a-f0-9]{64})(?:;|$)/i);return match?.[1]||null;
+export function cookieValue(raw,cfg={}){return `${cfg.cookieName||'jetta_session'}=${raw};${cfg.cookieSecure?' Secure;':''} HttpOnly; SameSite=Strict; Path=${cfg.cookiePath||'/api'}; Max-Age=28800`;}
+export function clearCookie(cfg={}){return `${cfg.cookieName||'jetta_session'}=;${cfg.cookieSecure?' Secure;':''} HttpOnly; SameSite=Strict; Path=${cfg.cookiePath||'/api'}; Max-Age=0`;}
+export function parseSessionCookie(header='',cfg={}){
+ const name=cfg.cookieName||'jetta_session';
+ const value=header.split(';').map(part=>part.trim()).find(part=>part.startsWith(name+'='))?.slice(name.length+1);
+ return /^[a-f0-9]{64}$/i.test(value||'')?value:null;
 }

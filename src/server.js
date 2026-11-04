@@ -38,7 +38,7 @@ import {isRoot,catalog,createRole,setRolePermission,assignRole,can} from './rbac
 import {withDb} from './auth-db.js';
 import {b24Definition,listB24,createB24,updateCatalog,BranchError,validateB24} from './b24a.js';
 import {listDeposits,createDeposit,updateDeposit,listUsers,listScope,setScope} from './b24c.js';
-export function createApp(cfg){if(cfg.mfaRequired!==false)validateKeyConfig(process.env);const app=express();app.disable('x-powered-by');
+export function createApp(cfg){if(cfg.mfaRequired!==false)validateKeyConfig(process.env);const app=express();app.disable('x-powered-by');if(cfg.production)app.set('trust proxy',cfg.trustedProxy);
 // SQL Server BIGINT via ODBC: serialize without losing integer precision.
 app.set('json replacer', (_key, val) => {
  if(['Ativo','Critica','Sistema'].includes(_key)&&(val==='0'||val==='1'))return val==='1';
@@ -56,8 +56,8 @@ app.use('/api',rateLimit({windowMs:60000,limit:90,standardHeaders:'draft-7',lega
 const loginLimiter=rateLimit({windowMs:15*60000,limit:12,standardHeaders:'draft-7',legacyHeaders:false});
 app.use((req,res,next)=>{res.set('Cache-Control','no-store');next();});
 function authorizedDiagnostic(req,res,next){const a=Buffer.from(cfg.token),b=Buffer.from(req.get('x-diagnostic-token')||'');if(a.length!==b.length||!crypto.timingSafeEqual(a,b))return res.status(401).json({erro:'Nao autorizado'});next();}
-const sameOrigin=(req,res,next)=>{const origin=req.get('origin');const expected=`http://${cfg.host}:${cfg.port}`;if(origin!==expected)return res.status(403).json({erro:'Origem nao autorizada'});if(req.get('x-jetta-request')!=='web')return res.status(403).json({erro:'Cabecalho de protecao ausente'});next();};
-async function session(req,res,next){try{const token=parseSessionCookie(req.get('cookie')||'');if(token)bindSession(token);if(!token)return res.status(401).json({erro:'Login necessario'});const user=await findSession(cfg,token);if(!user)return res.status(401).json({erro:'Sessao invalida ou expirada'});req.user=user;req.rawSession=token;next();}catch(e){emit(cfg,'auth.failure',{errors:safeSqlErrors(e)});console.error('Falha sessao:',safeSqlErrors(e));res.status(503).json(cfg.b34?{erro:'ERRO_TECNICO',referencia:res.getHeader('X-Jetta-Correlation')}:{erro:'Servico indisponivel'});}}
+const sameOrigin=(req,res,next)=>{const origin=req.get('origin');const expected=cfg.production?cfg.publicOrigin:`http://${cfg.host}:${cfg.port}`;if(origin!==expected)return res.status(403).json({erro:'Origem nao autorizada'});if(req.get('x-jetta-request')!=='web')return res.status(403).json({erro:'Cabecalho de protecao ausente'});next();};
+async function session(req,res,next){try{const token=parseSessionCookie(req.get('cookie')||'',cfg);if(token)bindSession(token);if(!token)return res.status(401).json({erro:'Login necessario'});const user=await findSession(cfg,token);if(!user)return res.status(401).json({erro:'Sessao invalida ou expirada'});req.user=user;req.rawSession=token;next();}catch(e){emit(cfg,'auth.failure',{errors:safeSqlErrors(e)});console.error('Falha sessao:',safeSqlErrors(e));res.status(503).json(cfg.b34?{erro:'ERRO_TECNICO',referencia:res.getHeader('X-Jetta-Correlation')}:{erro:'Servico indisponivel'});}}
 // B4 management routes run before the tablet delegation; retain any existing global MFA policy.
 const b4Privileged=privilegedGate(cfg,session),b4Critical=requireMfaMiddleware(cfg,session);
 // FIN04 retires every old financial API, including reads and exports.
@@ -102,15 +102,15 @@ app.use('/api',(req,res,next)=>{
  if(cfg.pc01&&['POST','PUT','PATCH','DELETE'].includes(req.method)&&/^\/(?:b23\/(?:perfis|permissoes|usuarios\/perfis)|b24c\/abrangencias|b25\/usuarios-pendentes)(?:\/|$)/.test(req.path))return res.status(409).json({erro:'UTILIZE_ADMINISTRACAO_PC01'});
  next();
 });
-app.get('/api/health',(req,res)=>res.json({status:'UP',projeto:'Jetta Control',bloco:'B2.3',escopo:'local-auth-piloto'}));
+app.get('/api/health',(req,res)=>res.json(cfg.production?{status:'UP',projeto:'Portal Control'}:{status:'UP',projeto:'Jetta Control',bloco:'B2.3',escopo:'local-auth-piloto'}));
 app.post('/api/auth/login',loginLimiter,sameOrigin,async(req,res)=>{
  const {email,senha}=req.body||{};if(typeof email!=='string'||typeof senha!=='string'||email.length>256||senha.length>1024||!email.includes('@'))return res.status(400).json({erro:'Dados invalidos'});
  try{const out=await login(cfg,email,senha);if(!out)return res.status(401).json({erro:'Credenciais invalidas ou acesso temporariamente bloqueado'});
- res.set('Set-Cookie',cookieValue(out.token));return res.json({usuario:out.user,mfa:{habilitado:cfg.mfaRequired!==false,necessarioParaAcoesSensiveis:cfg.mfaRequired!==false}});
+ res.set('Set-Cookie',cookieValue(out.token,cfg));return res.json({usuario:out.user,mfa:{habilitado:cfg.mfaRequired!==false,necessarioParaAcoesSensiveis:cfg.mfaRequired!==false}});
  }catch(e){console.error('Falha login:',safeSqlErrors(e));res.status(503).json({erro:'Servico de login indisponivel'});}
 });
 app.get('/api/auth/me',session,(req,res)=>res.json({usuario:req.user,mfa:{habilitado:cfg.mfaRequired!==false,necessarioParaAcoesSensiveis:cfg.mfaRequired!==false}}));
-app.post('/api/auth/logout',sameOrigin,session,async(req,res)=>{try{await logout(cfg,req.rawSession);res.set('Set-Cookie',clearCookie());res.json({ok:true});}catch(e){console.error('Falha logout:',safeSqlErrors(e));res.status(503).json({erro:'Nao foi possivel encerrar sessao'});}});
+app.post('/api/auth/logout',sameOrigin,session,async(req,res)=>{try{await logout(cfg,req.rawSession);res.set('Set-Cookie',clearCookie(cfg));res.json({ok:true});}catch(e){console.error('Falha logout:',safeSqlErrors(e));res.status(503).json({erro:'Nao foi possivel encerrar sessao'});}});
 app.get('/api/depositos/permitidos',session,async(req,res)=>{if(!['GESTOR','ADMIN','FINANCEIRO'].includes(req.user.perfil))return res.status(403).json({erro:'Perfil sem acesso a consulta'});try{res.json({depositos:await depositsFor(cfg,req.user)});}catch(e){console.error('Falha depositos:',safeSqlErrors(e));res.status(503).json({erro:'Consulta indisponivel'});}});
 app.get('/api/admin/diagnostico',session,(req,res,next)=>{if(req.user.perfil!=='ADMIN')return res.status(403).json({erro:'Apenas ADMIN'});next();},authorizedDiagnostic,async(req,res)=>{try{res.json(await diagnostic(cfg));}catch(e){console.error('Falha SQL:',safeSqlErrors(e));res.status(503).json({erro:'Conexao SQL indisponivel'});}});
 // B2.3: RBAC APIs, all privileged mutations require authenticated root and same-origin header.
@@ -193,9 +193,9 @@ app.get('/api/mfa/status',session,async(req,res)=>{try{res.json(cfg.mfaRequired=
 app.post('/api/mfa/enroll',mfaLimiter,sameOrigin,session,async(req,res)=>{try{res.status(201).json(await enroll(cfg,req.user,req.rawSession));}catch(e){console.error('MFA enroll:',safeSqlErrors(e));res.status(400).json({erro:'Nao foi possivel configurar MFA'});}});
 app.post('/api/mfa/verify',mfaLimiter,sameOrigin,session,async(req,res)=>{try{const ok=await verify(cfg,req.user,req.rawSession,req.body?.code,req.body?.purpose);if(!ok)return res.status(401).json({erro:'Codigo invalido ou reutilizado'});res.json({ok:true});}catch(e){console.error('MFA verify:',safeSqlErrors(e));res.status(503).json({erro:'Verificacao MFA indisponivel'});}});
 // Revoga TODAS as sessoes do usuario, inclusive a atual, apos MFA recente.
-app.post('/api/mfa/revoke-own-sessions',mfaLimiter,sameOrigin,session,async(req,res)=>{try{await revokeOwnSessions(cfg,req.user.id,req.rawSession);res.set('Set-Cookie',clearCookie());return res.json({ok:true});}catch(e){console.error('B2C revoke:',safeSqlErrors(e));return res.status(403).json({erro:'Revogacao recusada: valide MFA recente'});}});
+app.post('/api/mfa/revoke-own-sessions',mfaLimiter,sameOrigin,session,async(req,res)=>{try{await revokeOwnSessions(cfg,req.user.id,req.rawSession);res.set('Set-Cookie',clearCookie(cfg));return res.json({ok:true});}catch(e){console.error('B2C revoke:',safeSqlErrors(e));return res.status(403).json({erro:'Revogacao recusada: valide MFA recente'});}});
 mountPlanning(app,cfg,{session,sameOrigin});
-const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../public');
+const root=cfg.publicRoot||path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../public');
 app.use((req,res,next)=>{
  let resource;try{resource=path.posix.normalize(decodeURIComponent(req.path).replaceAll('\\','/'));}catch{return res.status(400).json({erro:'CAMINHO_INVALIDO'});}
  // NTFS stream suffixes and Win32 trailing dots/spaces can address the same file.

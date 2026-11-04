@@ -1,0 +1,75 @@
+name: jetta-chapa
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-CU27-GDR1-ubuntu-22.04@sha256:cf8f0ab2ebe61feec2eed2629061a07d247f791c2a8ddda74a4ac9f06a291718
+    container_name: chapa-db
+    hostname: chapa-db
+    user: "10001:0"
+    restart: "on-failure:5"
+    stop_grace_period: 60s
+    healthcheck:
+      test: [CMD-SHELL, 'SQLCMDPASSWORD="$$(cat /run/secrets/sql-sa-password)" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -l 5 -Q "SELECT 1" -b -o /dev/null']
+      interval: 10s
+      timeout: 8s
+      retries: 12
+      start_period: 30s
+    mem_limit: 3g
+    cpus: 2
+    pids_limit: 512
+    security_opt: [no-new-privileges:true]
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Express
+      MSSQL_MEMORY_LIMIT_MB: "1536"
+    entrypoint: ["/bin/bash", "-c", "export MSSQL_SA_PASSWORD=$$(cat /run/secrets/sql-sa-password); exec /opt/mssql/bin/sqlservr"]
+    volumes:
+      - type: bind
+        source: /opt/jetta-chapa/data/mssql
+        target: /var/opt/mssql
+        bind: {create_host_path: false}
+      - type: bind
+        source: /opt/jetta-chapa/data/mssql-sa-password
+        target: /run/secrets/sql-sa-password
+        read_only: true
+        bind: {create_host_path: false}
+    networks: [database]
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+  api:
+    image: jetta-chapa:verified
+    container_name: chapa-api
+    user: "1000:1000"
+    restart: "on-failure:5"
+    read_only: true
+    init: true
+    mem_limit: 512m
+    cpus: 1
+    pids_limit: 128
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      NODE_ENV: production
+      NODE_OPTIONS: --max-old-space-size=384
+      CHAPA_CONFIG: /run/secrets/chapa-runtime.json
+      CHAPA_PUBLIC_ROOT: /app/chapa-public
+    tmpfs: ["/tmp:size=32m,noexec,nosuid,nodev"]
+    volumes:
+      - type: bind
+        source: /opt/jetta-chapa/data/runtime/runtime.json
+        target: /run/secrets/chapa-runtime.json
+        read_only: true
+        bind: {create_host_path: false}
+    networks:
+      database:
+      edge: {ipv4_address: 10.203.88.3}
+    depends_on:
+      db: {condition: service_healthy}
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+networks:
+  database:
+    name: jetta-chapa-db
+    internal: true
+    ipam: {config: [{subnet: 10.203.89.0/24}]}
+  edge:
+    name: jetta-chapa-edge
+    internal: true
+    ipam: {config: [{subnet: 10.203.88.0/24}]}

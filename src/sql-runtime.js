@@ -19,7 +19,8 @@ ALTER ROLE ${role} ADD MEMBER ${user};`;
 }
 export async function assertRuntimeIdentity(cfg,db){
  if(!cfg.sqlRuntimePrincipal)return;
- windowsPrincipal(cfg.sqlRuntimePrincipal);
+ if(cfg.production){if(cfg.sqlRuntimePrincipal!=='JettaChapaRuntime'||cfg.sqlAuth?.user!==cfg.sqlRuntimePrincipal)throw Error('Principal SQL de produção inválido');}
+ else windowsPrincipal(cfg.sqlRuntimePrincipal);
  const checks={Sysadmin:"IS_SRVROLEMEMBER('sysadmin')",DbOwner:"IS_MEMBER('db_owner')",ControlServer:"HAS_PERMS_BY_NAME(NULL,NULL,'CONTROL SERVER')",AlterAnyLogin:"HAS_PERMS_BY_NAME(NULL,NULL,'ALTER ANY LOGIN')",ControlDatabase:"HAS_PERMS_BY_NAME(DB_NAME(),'DATABASE','CONTROL')",AlterAnySchema:"HAS_PERMS_BY_NAME(DB_NAME(),'DATABASE','ALTER ANY SCHEMA')",CreateTable:"HAS_PERMS_BY_NAME(DB_NAME(),'DATABASE','CREATE TABLE')",AlterAnyUser:"HAS_PERMS_BY_NAME(DB_NAME(),'DATABASE','ALTER ANY USER')",BackupDatabase:"HAS_PERMS_BY_NAME(DB_NAME(),'DATABASE','BACKUP DATABASE')",AlterAnyRole:"HAS_PERMS_BY_NAME(DB_NAME(),'DATABASE','ALTER ANY ROLE')",AlterSettings:"HAS_PERMS_BY_NAME(NULL,NULL,'ALTER SETTINGS')",AlterAnyDatabase:"HAS_PERMS_BY_NAME(NULL,NULL,'ALTER ANY DATABASE')",ImpersonateAnyLogin:"HAS_PERMS_BY_NAME(NULL,NULL,'IMPERSONATE ANY LOGIN')",AlterAnyConnection:"HAS_PERMS_BY_NAME(NULL,NULL,'ALTER ANY CONNECTION')",AlterAnyLinkedServer:"HAS_PERMS_BY_NAME(NULL,NULL,'ALTER ANY LINKED SERVER')",BulkOperations:"HAS_PERMS_BY_NAME(NULL,NULL,'ADMINISTER BULK OPERATIONS')"};
  for(const schema of schemas)checks['Alter'+schema]=`HAS_PERMS_BY_NAME(N'${schema}','SCHEMA','ALTER')`;
  const row=(await db.query('SELECT ORIGINAL_LOGIN() LoginName,'+Object.entries(checks).map(([name,sql])=>sql+' '+name).join(',')))[0];

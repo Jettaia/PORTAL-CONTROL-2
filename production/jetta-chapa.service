@@ -1,0 +1,16 @@
+[Unit]
+Description=Portal Control isolated production containers
+Requires=docker.service jetta-chapa-storage.service
+After=docker.service jetta-chapa-storage.service network-online.target
+Wants=network-online.target
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/jetta-chapa
+ExecStartPre=/usr/bin/mountpoint -q /opt/jetta-chapa/data
+ExecStart=/usr/bin/docker compose up -d --wait --wait-timeout 180
+ExecStop=/usr/bin/docker compose stop --timeout 60
+TimeoutStartSec=240
+TimeoutStopSec=180
+[Install]
+WantedBy=multi-user.target

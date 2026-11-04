@@ -1,0 +1,8 @@
+[Unit]
+Description=Verified and encrypted Portal Control backup
+Requires=jetta-chapa.service
+After=jetta-chapa.service
+[Service]
+Type=oneshot
+ExecStart=/opt/jetta-chapa/backup.sh
+TimeoutStartSec=300

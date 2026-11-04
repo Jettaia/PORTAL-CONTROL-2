@@ -58,3 +58,6 @@ pilot-local/*.png
 
 # Arquivo local do operador
 /env.txt
+
+# Python operator bytecode
+/production/__pycache__/

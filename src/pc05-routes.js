@@ -1,5 +1,6 @@
 import rateLimit from 'express-rate-limit';
 import * as service from './pc05.js';
+import {parseSessionCookie} from './security.js';
 
 export function mountTokens(app,cfg,{session,sameOrigin}){
  if(!cfg.pc05)return;
@@ -13,11 +14,12 @@ export function mountTokens(app,cfg,{session,sameOrigin}){
  app.post('/api/pc05/tablets/:id/pareamento',sameOrigin,session,run(req=>service.rePair(cfg,req.user.id,req.rawSession,req.params.id,req.body)));
  app.post('/api/pc05/tablets/:id/cadastro',sameOrigin,session,run(req=>service.updateTablet(cfg,req.user.id,req.rawSession,req.params.id,req.body)));
  app.post('/api/pc05/contratacoes/:id/tokens',sameOrigin,session,run(req=>service.issue(cfg,req.user.id,req.rawSession,req.params.id,req.body)));
- app.use('/api/pc05/tablet',(req,res,next)=>{if(/(?:^|;\s*)jetta_session=/.test(req.get('cookie')||''))return res.status(403).json({erro:'UTILIZE_PERFIL_EXCLUSIVO_TABLET'});next();});
+ app.use('/api/pc05/tablet',(req,res,next)=>{if((req.get('cookie')||'').split(';').some(part=>part.trim().startsWith((cfg.cookieName||'jetta_session')+'=')))return res.status(403).json({erro:'UTILIZE_PERFIL_EXCLUSIVO_TABLET'});next();});
  const limiter=rateLimit({windowMs:60000,limit:20,standardHeaders:'draft-7',legacyHeaders:false,message:{erro:'TENTATIVAS_EXCEDIDAS'}});
  app.use(['/api/pc05/tablet/habilitar','/api/pc05/tablet/apontar'],limiter);
- const raw=req=>(req.get('cookie')||'').match(/(?:^|;\s*)jetta_pc05_tablet=([a-f0-9]{64})(?:;|$)/)?.[1];
- const cookie=(value,age)=>`jetta_pc05_tablet=${value}; HttpOnly; SameSite=Strict; Path=/api/pc05/tablet; Max-Age=${age}`;
+ const tabletName=cfg.production?'__Secure-jetta_chapa_tablet':'jetta_pc05_tablet';
+ const raw=req=>parseSessionCookie(req.get('cookie')||'',{cookieName:tabletName});
+ const cookie=(value,age)=>`${tabletName}=${value};${cfg.production?' Secure;':''} HttpOnly; SameSite=Strict; Path=${cfg.production?cfg.basePath:''}/api/pc05/tablet; Max-Age=${age}`;
  app.post('/api/pc05/tablet/habilitar',sameOrigin,async(req,res)=>{try{const out=await service.activate(cfg,req.body);res.set('Set-Cookie',cookie(out.token,34560000)).json({ok:true});}catch(e){error(res,e);}});
  app.get('/api/pc05/tablet/status',async(req,res)=>{try{const token=raw(req),out=await service.status(cfg,token);res.set('Set-Cookie',cookie(token,34560000)).json(out);}catch(e){error(res,e);}});
  app.post('/api/pc05/tablet/apontar',sameOrigin,run(req=>service.consume(cfg,raw(req),req.body)));
