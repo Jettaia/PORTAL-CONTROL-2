@@ -17,10 +17,10 @@ export function completeTestRun(summary){
  ['fail','cancelled','skipped','todo'].every(name=>summary[name]===0);
 }
 export function regressionTests(){
- return fs.readdirSync(path.join(root,'tests')).filter(f=>/\.test\.(js|mjs)$/.test(f)).sort().map(f=>'tests/'+f);
+ return ['tests','integration'].flatMap(directory=>fs.readdirSync(path.join(root,directory)).filter(f=>/\.test\.(js|mjs)$/.test(f)).sort().map(f=>directory+'/'+f));
 }
 export function regressionInputs(runtime){
- const files=[...regressionTests(),'scripts/test-all.mjs','scripts/validate-pilot.mjs','scripts/check-all.mjs'];
+ const files=[...regressionTests(),'scripts/test-all.mjs','scripts/validate-pilot.mjs','scripts/check-all.mjs','scripts/preview-ui.mjs','package.json','package-lock.json'];
  return [...runtime,...files.map(file=>({path:file,sha256:crypto.createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex')}))];
 }
 export function validateFullRegression(report,inputs,files){

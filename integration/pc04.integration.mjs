@@ -13,7 +13,7 @@ import {nvarcharLiteral as s} from '../src/auth-db.js';
 
 
 
-test('PC-04: criação, concorrência, horários, conferência, revisão e cancelamento SQL real',{skip:process.env.PC04_SQL_TESTS!=='YES'?'Requer PC04_SQL_TESTS=YES e PC04_SQL_SERVER local explícito.':false},async()=>{
+test('PC-04: criação, concorrência, horários, conferência, revisão e cancelamento SQL real',{skip:process.env.PC04_SQL_TESTS!=='YES'?'Requer PC04_SQL_TESTS=YES e PC04_SQL_SERVER local explícito.':false},async t=>{
  const sqlServer=process.env.PC04_SQL_SERVER;
  assert.match(sqlServer||'',/^(?:localhost|\.)(?:\\[A-Za-z0-9_]+)?$/,'Instância local explícita obrigatória');
  const database='JETTA_CONTROL_B3_TEST_'+crypto.randomBytes(6).toString('hex');
@@ -54,6 +54,7 @@ test('PC-04: criação, concorrência, horários, conferência, revisão e cance
   let row=(await creations.find(r=>r.status===201).json()).resultado;
   assert.equal(Number(row.GestorResponsavelId),Number(row.DepositoId)==1?aId:bId);
   const owner=row.DepositoId==1?a:b,other=row.DepositoId==1?b:a,id=row.ContratacaoId,number=row.Numero;
+  t.diagnostic(`Criação concorrente: depósito vencedor ${row.DepositoId}; sequência e conclusão validadas nesse depósito`);
   const detail=async cookie=>expectStatus(await call(root+'/'+id,{cookie}),200);
   await expectStatus(await call(root+'/'+id,{cookie:other}),404);
   await expectStatus(await post(owner,'/'+id+'/conferir',{versao:Number(row.Versao)}),409);
@@ -80,13 +81,14 @@ test('PC-04: criação, concorrência, horários, conferência, revisão e cance
   const history=await detail(owner);assert.ok(history.eventos.length>=5);
   await db.query(`UPDATE Cadastro.Prestador SET Ativo=1 WHERE PrestadorId=${provider};UPDATE Cadastro.PrestadorDeposito SET RevogadoEmUtc=NULL WHERE PrestadorId=${provider};UPDATE Cadastro.Deposito SET Ativo=1;UPDATE Cadastro.TipoServico SET Ativo=1;`);
   await expectStatus(await post(a,'',body),409);
-  const next={...body,dataServico:'2026-11-12',inicioPrevisto:'2026-11-12T08:00',fimPrevisto:'2026-11-12T12:00'};
-  let after=(await expectStatus(await post(a,'',next),201)).resultado;assert.ok(BigInt(after.Numero)>BigInt(number));
+  // Numbering is per depot (migration36); the earlier race may have been won by B.
+  const next={...body,depositoId:Number(row.DepositoId),gestorId:Number(row.GestorResponsavelId),dataServico:'2026-11-12',inicioPrevisto:'2026-11-12T08:00',fimPrevisto:'2026-11-12T12:00'};
+  let after=(await expectStatus(await post(owner,'',next),201)).resultado;assert.equal(String(after.DepositoId),String(row.DepositoId));assert.ok(BigInt(after.Numero)>BigInt(number));
   after=(await expectStatus(await post(admin,'/'+after.ContratacaoId+'/horarios',{versao:Number(after.Versao),entradaReal:next.inicioPrevisto,saidaReal:next.fimPrevisto,motivo:'Registro manual ADMIN'}),200)).resultado;
-  after=(await expectStatus(await post(a,'/'+after.ContratacaoId+'/conferir',{versao:Number(after.Versao)}),200)).resultado;
+  after=(await expectStatus(await post(owner,'/'+after.ContratacaoId+'/conferir',{versao:Number(after.Versao)}),200)).resultado;
   await db.query(`UPDATE Operacao.Contratacao SET PagoEmUtc=SYSUTCDATETIME() WHERE ContratacaoId=${after.ContratacaoId}`);
   const paid=(await db.query(`SELECT CONVERT(varchar(23),PagoEmUtc,126) PagoEmUtc FROM Operacao.Contratacao WHERE ContratacaoId=${after.ContratacaoId}`))[0].PagoEmUtc;
-  await expectStatus(await post(a,'/'+after.ContratacaoId+'/cancelar',{versao:Number(after.Versao),motivo:'Não deve apagar pagamento'}),409);
+  await expectStatus(await post(owner,'/'+after.ContratacaoId+'/cancelar',{versao:Number(after.Versao),motivo:'Não deve apagar pagamento'}),409);
   assert.equal((await db.query(`SELECT CONVERT(varchar(23),PagoEmUtc,126) PagoEmUtc FROM Operacao.Contratacao WHERE ContratacaoId=${after.ContratacaoId}`))[0].PagoEmUtc,paid);
   const cancellable=(await expectStatus(await post(a,'',{...body,dataServico:'2026-11-13',inicioPrevisto:'2026-11-13T08:00',fimPrevisto:'2026-11-13T12:00'}),201)).resultado;
   const cancelled=(await expectStatus(await post(a,'/'+cancellable.ContratacaoId+'/cancelar',{versao:Number(cancellable.Versao),motivo:'Antes da liberação'}),200)).resultado;assert.equal(cancelled.Status,'CANCELADA');

@@ -3,6 +3,29 @@ import assert from 'node:assert/strict';
 import {createApp} from '../src/server.js';
 import {pilotConfig} from '../pilot-local/runtime-config.mjs';
 
+test('SEG-02: arquivos aposentados não podem ser servidos por nomes de stream NTFS',async t=>{
+ const server=createApp({mfaRequired:false,host:'127.0.0.1',port:0,token:'test',fin01:true,pc01:true,pc02:true,pc03:true,pc04:true}).listen(0,'127.0.0.1');
+ await new Promise(r=>server.once('listening',r));t.after(()=>server.close());
+ const base=`http://127.0.0.1:${server.address().port}`;
+ const urls=['/pc08.js','/pc08.js::$DATA','/pc08.js%3A%3A%24DATA','/%70c08.js::$DATA','/PC08.JS::$data','//pc08.js::$DATA','/%5Cpc08.js::$DATA','/pc08.js::$DATA?cache=1','/pc10.js::$DATA','/pc11.js::$DATA','/consolidacao.html::$DATA','/pc08.js:audit:$DATA','/pc08.js.','/pc08.js%20','/pc08.js.%20::$DATA'];
+ for(const method of ['GET','HEAD'])for(const url of urls){
+  const response=await fetch(base+url,{method});
+  assert.equal(response.status,410,`${method} ${url}`);
+  if(method==='GET')assert.deepEqual(await response.json(),{erro:'FINANCEIRO_LEGADO_DESATIVADO'});
+  else assert.equal(await response.text(),'');
+ }
+ assert.equal((await fetch(base+'/fin01.js')).status,200);
+ assert.equal((await fetch(base+'/%ZZ')).status,400);
+});
+
+test('SEG-02: flag financeira desligada preserva arquivo legado normal',async t=>{
+ const server=createApp({mfaRequired:false,host:'127.0.0.1',port:0,token:'test',fin01:false}).listen(0,'127.0.0.1');
+ await new Promise(r=>server.once('listening',r));t.after(()=>server.close());
+ const response=await fetch(`http://127.0.0.1:${server.address().port}/pc08.js`);
+ assert.equal(response.status,200);
+ assert.match(await response.text(),/./);
+});
+
 test('FIN04: retired financial APIs and standalone pages cannot be used in the new runtime',async t=>{
  const cfg={mfaRequired:false,host:'127.0.0.1',port:0,token:'test',database:'JETTA_CONTROL_B3_TEST_012345abcdef',b32:true,b33:true,b34:true,b41:true,b42:true,b43:true,fin01:true,pc01:true,pc02:true,pc03:true,pc04:true,pc08:true,pc10:true,pc11:true,b51:true,b52:true,b52a:true,b52b:true,b52c:true,b53f01:true,b53f03:true,b61:true,finalLab:true};
  const server=createApp(cfg).listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>server.close());

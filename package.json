@@ -7,6 +7,7 @@
     "start": "node src/server.js",
     "check": "node scripts/check-all.mjs",
     "test": "node scripts/test-all.mjs",
+    "test:release": "node scripts/validate-pilot.mjs",
     "bootstrap:admin": "node scripts/criar-admin.cjs",
     "test:b3": "node --test integration/b3.integration.mjs",
     "gate:b3": "node scripts/run-b3.mjs",
@@ -43,11 +44,17 @@
   "engines": {
     "node": ">=20"
   },
+  "overrides": {
+    "body-parser": "^1.20.9"
+  },
   "dependencies": {
-    "express": "^4.21.2",
-    "helmet": "^8.0.0",
-    "odbc": "^2.4.9",
     "dotenv": "^16.4.7",
-    "express-rate-limit": "^7.5.0"
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "odbc": "^2.4.9"
+  },
+  "devDependencies": {
+    "playwright": "1.64.1"
   }
 }

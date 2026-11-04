@@ -1,9 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createRequire} from 'node:module';
+import {chromium} from 'playwright';
 import {createPreviewApp} from '../scripts/preview-ui.mjs';
-const require=createRequire(import.meta.url);
-const {chromium}=require('C:/Users/Jetta/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
 
 test('prévia: navegação real sem registros e sem gravação',async()=>{
  const server=createPreviewApp().listen(0,'127.0.0.1');
@@ -14,20 +12,30 @@ test('prévia: navegação real sem registros e sem gravação',async()=>{
   for(const method of ['POST','PUT','PATCH','DELETE'])assert.equal((await fetch(base+'/api/pc01/usuarios',{method})).status,405);
   assert.deepEqual((await (await fetch(base+'/api/pc01/usuarios')).json()).usuarios,[]);
   assert.equal((await fetch(base+'/api/not-available')).status,503);
-  browser=await chromium.launch({channel:'msedge',headless:true});
-  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
+  assert.deepEqual((await (await fetch(base+'/api/pc04/catalogo')).json()).depositos,[]);
+  const channel=process.env.PLAYWRIGHT_CHANNEL||(process.platform==='win32'?'msedge':undefined);
+  browser=await chromium.launch({channel,headless:true});
+  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[],apiFailures=[],writes=[];
+  page.setDefaultTimeout(10000);
   page.on('pageerror',e=>errors.push(e.message));
+  page.on('response',r=>{if(new URL(r.url()).pathname.startsWith('/api/')&&r.status()>=400)apiFailures.push(`${r.status()} ${new URL(r.url()).pathname}`);});
+  page.on('request',r=>{if(new URL(r.url()).pathname.startsWith('/api/')&&!['GET','HEAD'].includes(r.method()))writes.push(r.method()+' '+new URL(r.url()).pathname);});
   await page.goto(base+'/?page=contratacoes');
   await page.locator('#pc04Page form').first().waitFor({state:'visible'});
   await page.locator('#previewNotice').waitFor({state:'visible'});
-  const screens=[['usuarios','#pc01Form'],['filiais','#b24Form'],['servicos','#b24Form'],['chapas','#pc03Panel form'],['contratacoes','#pc04Page form'],['pagamentos','#pc08Page form'],['ajustes','#pc10Page form'],['extratos','#pc11Page form']];
-  for(const [name,selector] of screens){
+  const screens=[['usuarios','#pc01Form','#pc01Msg','Nenhuma conta encontrada.'],['depositos','#b24cDepForm','#b24cDepMsg','0 depósitos autorizados para consulta.'],['servicos','#b24Form','#b24Message','0 registros carregados, incluindo inativos.'],['chapas','#pc03Panel form','#pc03Panel p[role="status"]','Nenhum prestador encontrado.'],['contratacoes','#pc04Page form','#pc04Message','Consulta atualizada.'],['pagamentos','#fin01Filters','#fin01Message','Consulta atualizada.'],['extratoprestador','#fin05Filters','#fin05Message','Extrato atualizado.']];
+  for(const [name,selector,status,message] of screens){
    const button=page.locator(`#mainNav [data-page="${name}"]`);
    if(!await button.isVisible())await button.locator('xpath=ancestor::details[1]/summary').click();
    await button.click();
    await page.locator(selector).first().waitFor({state:'visible'});
    assert.equal(await page.locator(selector).first().isVisible(),true,name);
+   try{await page.waitForFunction(([selector,text])=>document.querySelector(selector)?.textContent===text,[status,message]);}
+   catch(error){throw Error(`${name}: status=${await page.locator(status).allTextContents()}; pageErrors=${JSON.stringify(errors)}; apiFailures=${JSON.stringify(apiFailures)}`,{cause:error});}
   }
+  assert.equal(await page.locator('#mainNav [data-page="filiais"],#mainNav [data-page="ajustes"],#mainNav [data-page="extratos"]').count(),0);
+  await page.locator('#fin05Filters').evaluate(form=>form.requestSubmit());
+  await page.waitForFunction(()=>document.querySelector('#previewFeedback').textContent.includes('nenhum dado foi enviado'));
   await page.goto(base+'/tablet.html');
   await page.locator('#pairCode').waitFor({state:'visible'});
   assert.equal(await page.locator('#pairCode').isVisible(),true);
@@ -36,5 +44,6 @@ test('prévia: navegação real sem registros e sem gravação',async()=>{
   await page.getByRole('button',{name:'Ver autorização',exact:true}).click();
   assert.equal(await page.locator('#pairCode').isVisible(),true);
   assert.deepEqual(errors,[]);
+  assert.deepEqual(apiFailures,[]);assert.deepEqual(writes,[]);
  }finally{if(browser)await browser.close();await new Promise(r=>server.close(r));}
 });

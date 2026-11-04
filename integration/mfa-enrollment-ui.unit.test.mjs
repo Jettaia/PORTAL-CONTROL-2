@@ -20,9 +20,39 @@ test('sessão protegida recolhe formulário e ação aguarda STEPUP antes de con
  const before=calls.filter(c=>c.url.endsWith('/verify')).length;await context.window.jettaEnsureRecentMfa();assert.equal(calls.filter(c=>c.url.endsWith('/verify')).length,before);
 });
 
-test('cadastro mantém campos e não envia gravação antes da confirmação',async()=>{
- const handlers={},elements={},calls=[];let unlock;
- const element=id=>elements[id]??=({value:'',hidden:false,disabled:false,textContent:'',addEventListener:(name,fn)=>{handlers[id+name]=fn;},querySelector:()=>element('saveButton'),reset(){this.resets=(this.resets||0)+1;},replaceChildren(){},append(){},before(){}});
- const context={document:{getElementById:element,createElement:()=>({append(){},addEventListener(){}})},window:{addEventListener(){},jettaEnsureRecentMfa:()=>new Promise(r=>{unlock=r;})},JSON,Error,fetch:async(url,opt)=>{calls.push({url,opt});return {ok:true,json:async()=>({registros:[]})};}};
- vm.runInNewContext(fs.readFileSync('public/b24a.js','utf8'),context);element('b24Nome').value='Filial de teste';element('b24Codigo').value='2';const saving=handlers.b24Formsubmit({preventDefault(){},currentTarget:element('b24Form')});await new Promise(r=>setImmediate(r));assert.equal(calls.length,0);assert.equal(element('b24Nome').value,'Filial de teste');assert.equal(element('saveButton').disabled,true);unlock();await saving;assert.equal(calls[0].opt.method,'POST');assert.deepEqual(JSON.parse(calls[0].opt.body),{nome:'Filial de teste',codigo:'2'});assert.equal(element('saveButton').disabled,false);assert.equal(element('b24Message').textContent,'Cadastro realizado.');
+test('cadastro mantém campos e aguarda confirmação ou cancelamento pelo wrapper real',async t=>{
+ for(const confirm of [true,false])await t.test(confirm?'confirmação envia uma única escrita':'cancelamento preserva campos sem escrita',async()=>{
+  const handlers={},elements={},calls=[];let decision,confirmations=0;
+  const element=id=>elements[id]??=({value:'',hidden:false,disabled:false,textContent:'',isConnected:true,
+   addEventListener:(name,fn)=>{handlers[id+name]=fn;},querySelector:()=>element('saveButton'),
+   reset(){this.resets=(this.resets||0)+1;},replaceChildren(){},append(){},prepend(){},before(){}
+  });
+  const context={document:{body:element('body'),getElementById:element,createElement:()=>element('generated'+Object.keys(elements).length),addEventListener(){}},window:{addEventListener(){}},
+   Option:class{constructor(text,value){this.text=text;this.value=value;}},MutationObserver:class{observe(){}},
+   fetch:async(url,opt)=>{calls.push({url,opt});return {ok:true,json:async()=>({registros:[],podeEditar:true})};}
+  };
+  const vmContext=vm.createContext(context);
+  vm.runInContext(fs.readFileSync('public/mfa-b2b.js','utf8'),vmContext);
+  // Keep the production protected-fetch wrapper; control only the user's decision.
+  context.window.jettaEnsureRecentMfa=()=>{confirmations++;return new Promise((resolve,reject)=>{decision={resolve,reject};});};
+  vm.runInContext(fs.readFileSync('public/b24a.js','utf8'),vmContext);
+  element('b24Nome').value='Carga e descarga';element('b24Descricao').value='Equipe para descarga';
+  const event={preventDefault(){},currentTarget:element('b24Form')};
+  const saving=handlers.b24Formsubmit(event);await new Promise(r=>setImmediate(r));
+  await handlers.b24Formsubmit(event); // double submit must not duplicate a pending action
+  assert.equal(confirmations,1);assert.equal(calls.length,0);
+  assert.equal(element('b24Nome').value,'Carga e descarga');assert.equal(element('b24Descricao').value,'Equipe para descarga');
+  assert.equal(element('b24Form').resets||0,0);assert.equal(element('saveButton').disabled,true);
+  if(confirm)decision.resolve();else decision.reject(Error('Operação cancelada.'));
+  await saving;assert.equal(element('saveButton').disabled,false);
+  if(confirm){
+   const writes=calls.filter(call=>call.opt?.method==='POST');assert.equal(writes.length,1);
+   assert.equal(writes[0].url,'/api/b24a/servicos');assert.deepEqual(JSON.parse(writes[0].opt.body),{nome:'Carga e descarga',descricao:'Equipe para descarga'});
+   assert.equal(element('b24Message').textContent,'Cadastro realizado.');assert.equal(element('b24Form').resets,1);
+  }else{
+   assert.equal(calls.length,0);assert.equal(element('b24Form').resets||0,0);
+   assert.equal(element('b24Nome').value,'Carga e descarga');assert.equal(element('b24Descricao').value,'Equipe para descarga');
+   assert.equal(element('b24Message').textContent,'Operação cancelada.');
+  }
+ });
 });

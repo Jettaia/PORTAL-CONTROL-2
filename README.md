@@ -23,11 +23,15 @@ node --test pilot-local/unit.test.mjs
 
 O pacote `odbc` também exige o ambiente nativo compatível. O acesso ao SQL Server requer Microsoft ODBC Driver 18.
 
+`npm test` descobre automaticamente os arquivos `*.test.js` e `*.test.mjs` na raiz de `tests/` e `integration/`, usando o mesmo inventário do gate do piloto. Inclui os testes de UI simulada e a prévia em navegador headless. Instale também as dependências de desenvolvimento (`npm ci --include=dev`): Playwright está fixado no lockfile. No Windows a prévia usa Microsoft Edge instalado; nas demais plataformas usa o Chromium do Playwright (`npx playwright install chromium`). Para escolher outro canal instalado, defina `PLAYWRIGHT_CHANNEL` (por exemplo, `chrome`). Qualquer falha é propagada no código de saída, inclusive dependência/navegador ausente. Não é necessário abrir o navegador interativamente.
+
 `npm start` executa o servidor legado, com configuração `.env` e destino `JETTA_CONTROL`; não é o iniciador do piloto mais recente. O piloto instalado usa `node pilot-local/start.mjs`, configuração privada em `secrets/pilot-local/runtime.json`, acesso local em `127.0.0.1:3211` e registro de pagamentos externos por contratação, sem execução bancária. A atualização financeira exige migrações 33, 34 e 35 em ordem, com piloto parado e backup verificado; veja `docs/BANCO-DE-DADOS.md`. Não copie configurações privadas de outra máquina nem execute o instalador como roteiro de produção.
 
 ## Regressão integral do piloto
 
-O PC-09 antigo foi aposentado em favor do FIN-02/03. `node scripts/validate-pilot.mjs` valida todos os testes atuais, sem exclusões, a sintaxe e os testes do piloto/gate/conexão SQL local. Requer a instância SQL Express e ODBC; gera `pilot-local/regression.json` com escopo `FULL`. Não gera liberação de instalação nem aprovação de produção. Relatórios históricos do perfil sem PC-09 não são aceitos pelo gate atual.
+O PC-09 antigo foi aposentado em favor do FIN-02/03. Execute `npm run test:release` (ou `node scripts/validate-pilot.mjs`) para validar o inventário compartilhado de `*.test.js/mjs` em `tests/` e `integration/`, a sintaxe e os testes do piloto/gate/conexão SQL local. Requer navegador da prévia, SQL Express e ODBC; gera `pilot-local/regression.json` com escopo `FULL`. O gate exige exit zero, todos os testes aprovados e nenhum skip/TODO/cancelamento; para na primeira etapa reprovada. A lista e os hashes dos testes de `integration/` fazem parte da evidência, invalidando relatórios antigos que os omitam. Não gera liberação de instalação nem aprovação de produção. Relatórios históricos do perfil sem PC-09 não são aceitos pelo gate atual.
+
+Os arquivos `*.integration.mjs` de SQL permanecem opt-in nos comandos específicos e não são ativados em massa por esse gate. Incluem suítes históricas e precisam de sua configuração isolada; o escopo `FULL` acima refere-se às etapas descritas, não homologa todas as integrações SQL ou jornadas de navegador. Por exemplo, a prova FIN03 executa com `$env:FIN03_SQL_TESTS='YES'; node --test integration/fin03.integration.mjs` em banco sintético descartável.
 
 ## Identidade SQL
 

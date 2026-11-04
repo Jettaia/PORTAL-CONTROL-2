@@ -198,7 +198,10 @@ mountPlanning(app,cfg,{session,sameOrigin});
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../public');
 app.use((req,res,next)=>{
  let resource;try{resource=path.posix.normalize(decodeURIComponent(req.path).replaceAll('\\','/'));}catch{return res.status(400).json({erro:'CAMINHO_INVALIDO'});}
- if(cfg.fin01&&/^\/(?:consolidacao|prontidao|minuta-recibo|regras-financeiras|contratacao-financeira|b5-1(?:-section)?|b5-2(?:b|c)?|b5-3-f0[13]|b6-1|final-lab|pc0[89]|pc1[01])\.(?:html|js|css)$/i.test(resource))return res.status(410).json({erro:'FINANCEIRO_LEGADO_DESATIVADO'});
+ // NTFS stream suffixes and Win32 trailing dots/spaces can address the same file.
+ const legacyResource=resource.split(':',1)[0].replace(/[. ]+$/,'');
+ if(!cfg.pc05&&/^\/tablet(?:-pc05)?\.html$/i.test(legacyResource))return res.status(404).json({erro:'Nao encontrado'});
+ if(cfg.fin01&&/^\/(?:consolidacao|prontidao|minuta-recibo|regras-financeiras|contratacao-financeira|b5-1(?:-section)?|b5-2(?:b|c)?|b5-3-f0[13]|b6-1|final-lab|pc0[89]|pc1[01])\.(?:html|js|css)$/i.test(legacyResource))return res.status(410).json({erro:'FINANCEIRO_LEGADO_DESATIVADO'});
  next();
 });
 app.get('/tablet.html',(req,res)=>cfg.pc05?res.sendFile(path.join(root,'tablet-pc05.html')):res.status(404).json({erro:'Nao encontrado'}));

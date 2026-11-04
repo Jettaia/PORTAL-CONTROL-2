@@ -33,7 +33,8 @@ test('liberação real exige regressão FULL atual e integração limpa',t=>{
  write();assert.doesNotThrow(()=>assertReleaseReady(directory));
  for(const patch of [
   {status:'FAIL'},{scope:'LOCAL_PILOT_WITHOUT_PC09'},{excludedTests:['tests/pc08.test.mjs']},
-  {tests:tests.slice(1)},{tests:[...tests,'tests/removed.test.mjs']},{inputs:[]},
+  {tests:tests.slice(1)},{tests:tests.filter(file=>!file.startsWith('integration/'))},{tests:[...tests,'tests/removed.test.mjs']},{inputs:[]},
+  {inputs:regression.inputs.filter(file=>file.path!=='scripts/preview-ui.mjs')},
   {inputs:regression.inputs.map((entry,index)=>index?entry:{...entry,sha256:'old'})},
   {steps:[]},{steps:[{name:'tests',exitCode:0}]},
   {steps:regression.steps.map(s=>({...s,exitCode:s.name==='syntax'?1:0}))},

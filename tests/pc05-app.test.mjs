@@ -3,6 +3,27 @@ import assert from 'node:assert/strict';
 import odbc from 'odbc';
 import {createApp} from '../src/server.js';
 
+test('SEG-03: ambas as páginas de tablet respeitam PC05 ligado, desligado e ausente',async t=>{
+ const pages=['/tablet.html','/tablet-pc05.html'];
+ const variants=['/tablet-pc05.html?cache=1','/%74ablet-pc05.html','/TABLET-PC05.HTML','//tablet-pc05.html','/%5Ctablet-pc05.html','/tablet-pc05.html::$DATA','/tablet-pc05.html%3A%3A%24DATA','/tablet-pc05.html.','/tablet-pc05.html%20','/tablet.html::$DATA'];
+ for(const active of [false,undefined,true]){
+  const cfg={mfaRequired:false,host:'127.0.0.1',port:0,token:'test',pc01:true,pc02:true,pc03:true,pc04:true};
+  if(active!==undefined)cfg.pc05=active;
+  const server=createApp(cfg).listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
+  try{
+   const base=`http://127.0.0.1:${server.address().port}`,contents=[];
+   for(const method of ['GET','HEAD'])for(const url of active?pages:[...pages,...variants]){
+    const response=await fetch(base+url,{method});
+    assert.equal(response.status,active?200:404,`pc05=${active}: ${method} ${url}`);
+    if(method==='HEAD')assert.equal(await response.text(),'');
+    else if(!active)assert.deepEqual(await response.json(),{erro:'Nao encontrado'});
+    else{const html=await response.text();assert.ok(html.includes('/tablet-pc05.js'));contents.push(html);}
+   }
+   if(active)assert.equal(contents[0],contents[1]);
+  }finally{await new Promise(r=>server.close(r));}
+ }
+});
+
 test('PC05 integrado ao app: tablet isolado passa pelos gates corretos e flag desligada retira tablet legado',async t=>{
  const names=['JETTA_MFA_KEY_HEX','JETTA_MFA_REQUIRE_PRIVILEGED','JETTA_MFA_ENFORCE_CRITICAL'],old=Object.fromEntries(names.map(k=>[k,process.env[k]]));
  process.env.JETTA_MFA_KEY_HEX='a'.repeat(64);process.env.JETTA_MFA_REQUIRE_PRIVILEGED='true';process.env.JETTA_MFA_ENFORCE_CRITICAL='true';
