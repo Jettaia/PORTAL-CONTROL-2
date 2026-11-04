@@ -3,6 +3,19 @@
  let enabled=false,current=false,epoch=0,busy=false,data=null,editing=null;
  const make=(tag,value)=>{const e=document.createElement(tag);if(value!==undefined)e.textContent=value;return e;};
  const active=v=>v===true||v===1||v==='1';
+ const formatDocument=value=>{
+  const digits=String(value||'').replace(/\D/g,'').slice(0,14);
+  const groups=digits.length<=11?[3,3,3,2]:[2,3,3,4,2],separators=digits.length<=11?['.','.','-']:['.','.','/','-'];
+  let result='',offset=0;
+  for(let i=0;i<groups.length&&offset<digits.length;i++){if(i)result+=separators[i-1];result+=digits.slice(offset,offset+groups[i]);offset+=groups[i];}
+  return result;
+ };
+ function maskDocument(input){
+  const value=input.value,caret=input.selectionStart,digitsBefore=value.slice(0,caret).replace(/\D/g,'').length;
+  input.value=formatDocument(value);
+  let position=0,count=0;while(position<input.value.length&&count<digitsBefore){if(/\d/.test(input.value[position]))count++;position++;}
+  input.setSelectionRange(position,position);input.setCustomValidity('');
+ }
  const message=make('p');message.role='status';
  const button=(label,action)=>{const b=make('button',label);b.type='button';if(action)b.addEventListener('click',action);return b;};
  const search=make('div');search.className='b24a-form';
@@ -11,7 +24,7 @@
  const branchLabel=make('label','Filtrar depósito'),branchFilter=make('select');branchLabel.append(branchFilter);search.append(searchLabel,situationLabel,branchLabel);
  const count=make('p');count.role='status';
  const form=make('form');form.className='b24a-form';const fields={};
- for(const [key,label,max]of [['nome','Nome completo',160],['documento','CPF ou CNPJ',18],['telefone','Telefone (opcional)',25]]){const l=make('label',label),input=make('input');input.maxLength=max;input.required=['nome','documento'].includes(key);input.name=key;input.id='pc03_'+key;if(key!=='nome')input.inputMode=key==='documento'?'numeric':'tel';if(key==='documento'){input.pattern='[0-9.\\/\\-\\s]+';input.placeholder='11 dígitos para CPF ou 14 para CNPJ';input.addEventListener('input',()=>input.setCustomValidity(''));}l.append(input);fields[key]=input;form.append(l);}
+ for(const [key,label,max]of [['nome','Nome completo',160],['documento','CPF ou CNPJ',18],['telefone','Telefone (opcional)',25]]){const l=make('label',label),input=make('input');input.maxLength=max;input.required=['nome','documento'].includes(key);input.name=key;input.id='pc03_'+key;if(key!=='nome')input.inputMode=key==='documento'?'numeric':'tel';if(key==='documento'){input.pattern='[0-9.\\/\\-\\s]+';input.placeholder='11 dígitos para CPF ou 14 para CNPJ';input.addEventListener('input',()=>maskDocument(input));}l.append(input);fields[key]=input;form.append(l);}
  const statusLabel=make('label','Situação'),status=make('select');for(const [v,label]of [['1','Ativo'],['0','Inativo']]){const o=make('option',label);o.value=v;status.append(o);}statusLabel.append(status);statusLabel.hidden=true;form.append(statusLabel);
  const branchControl=make('div');branchControl.className='pc03-branch-control';
  const branchTitle=make('span','Depósitos do cadastro inicial');branchTitle.id='pc03_depositos_label';
@@ -55,11 +68,11 @@
   const filtered=data.registros.filter(row=>(!query||row.Nome.toLocaleLowerCase('pt-BR').includes(query)||(digits&&String(row.CPF).replace(/\D/g,'').includes(digits)))&&(!situationFilter.value||active(row.Ativo)===(situationFilter.value==='1'))&&(!branchFilter.value||data.vinculos.some(v=>String(v.PrestadorId)===String(row.PrestadorId)&&String(v.DepositoId)===branchFilter.value)));
   count.textContent=filtered.length?`${filtered.length} de ${data.registros.length} prestadores exibidos.`:'Nenhum prestador encontrado com os filtros selecionados.';
   for(const row of filtered){
-   const tr=make('tr');for(const v of [row.Nome,row.CPF,row.Telefone||'—',active(row.Ativo)?'Ativo':'Inativo'])tr.append(make('td',String(v)));
+   const tr=make('tr');for(const v of [row.Nome,formatDocument(row.CPF),row.Telefone||'—',active(row.Ativo)?'Ativo':'Inativo'])tr.append(make('td',String(v)));
    const linkedBranches=data.depositos.filter(f=>data.vinculos.some(v=>String(v.PrestadorId)===String(row.PrestadorId)&&String(v.DepositoId)===String(f.DepositoId)));
    const links=make('td',linkedBranches.map(f=>f.Nome).join(', ')||'Nenhum depósito vinculado');
    tr.append(links);const actions=make('td'),canEdit=data.adm||data.vinculos.some(v=>String(v.PrestadorId)===String(row.PrestadorId));
-   if(canEdit)actions.append(button('Editar',()=>{if(busy)return;reset();editing=row;for(const k of ['nome','documento','telefone'])fields[k].value=row[({nome:'Nome',documento:'CPF',telefone:'Telefone'})[k]]||'';fields.documento.readOnly=!data.adm;status.value=active(row.Ativo)?'1':'0';statusLabel.hidden=!data.adm;renderBranches();cancel.hidden=false;submit.textContent='Salvar alterações';message.textContent='Edite os dados e selecione os depósitos autorizados. As alterações serão aplicadas ao salvar.';fields.nome.focus();}));tr.append(actions);table.append(tr);
+   if(canEdit)actions.append(button('Editar',()=>{if(busy)return;reset();editing=row;for(const k of ['nome','documento','telefone'])fields[k].value=row[({nome:'Nome',documento:'CPF',telefone:'Telefone'})[k]]||'';fields.documento.value=formatDocument(fields.documento.value);fields.documento.readOnly=!data.adm;status.value=active(row.Ativo)?'1':'0';statusLabel.hidden=!data.adm;renderBranches();cancel.hidden=false;submit.textContent='Salvar alterações';message.textContent='Edite os dados e selecione os depósitos autorizados. As alterações serão aplicadas ao salvar.';fields.nome.focus();}));tr.append(actions);table.append(tr);
   }rows.append(table);
  }
  async function load({after}={}){
