@@ -80,4 +80,15 @@ Usuário confirmou o plano e solicitou smart-orchestrator e jetta-qa. Gate de en
 - VPS: SQL TLS com CA verificada e conta restrita aprovados; volume LUKS2 ativo.
 - Homologação HTTP real: anônimo401, origem indevida403, login/cookie seguro, consultas ADMIN, escrita inválida400, logout/revogação e429 por limite: PASS. Credencial original restaurada e sessões de teste removidas.
 - Backup real cifrado na VPS, baixado e decifrado offhost, restaurado em banco novo, CHECKDB e ADMIN/contagens: PASS; banco de ensaio removido.
-- Resta testar disponibilidade pública após ativação da rota e registrar resultado final.
+- Disponibilidade pública e resultado final foram verificados abaixo.
+
+## Resultado final — 04/11/2026
+Publicado em https://app.jettatransportes.com.br/chapa/ . Código de runtime e publicação em b3ed274 (main enviada ao origin); imagem de produção jetta-chapa:b3ed274, recibo de fontes/hashes privado na VPS.
+
+Verificação pública PASS: página200/TLS válido, anônimo401, ADMIN autenticado por sessão QA nova nas consultas, origem indevida403, logout200 e sessão revogada401, raiz existente200. Credencial original (hash/salt) igual à origem; banco com um ADMIN e tabelas operacionais vazias; sessão QA removida. Senha humana não foi conhecida nem lida. Navegador Edge headless real: login visível, HTTPS validado, zero erros JS e zero falhas de assets.
+
+Serviços/storage/timer ativos, SQL saudável e portas da API/SQL sem publicação no host. Backup diário habilitado para02:30 America/Sao_Paulo com até120segundos de distribuição; execução manual do serviço terminou Result=success. Backup inicial cifrado e chaves de recuperação estão na pasta privada local; chave privada de backups não foi enviada à VPS. Recuperação real e ciclo de bloquear/desbloquear o volume foram provados antes da publicação.
+
+O Caddy existente usa admin off e v2.11.2. Após validar a configuração, o reload foi aplicado por SIGUSR1, com confirmação de sucesso nos logs. Backups da configuração original foram preservados. O teste do reconhecimento exato do domínio teve RED/GREEN e2/2PASS; evita confundir o host com referências em outros proxies. Revisões independentes aprovaram runtime, infraestrutura e correções finais.
+
+Limites documentados em production/README.md: desbloqueio automático mantém chave do volume no host; não protege contra root/comprometimento integral da VPS. Cópias diárias ficam na mesma VPS; foi baixada a cópia inicial cifrada. A senha original foi preservada por igualdade exata de credencial; login com senha sintética foi provado antes da publicação, enquanto a consulta autenticada final usa sessão QA nova posteriormente eliminada. Não declarar login com senha humana que não foi fornecida.

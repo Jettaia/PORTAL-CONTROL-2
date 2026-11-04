@@ -31,7 +31,7 @@ Microsoft ODBC 18 apresentou travamento/crash com binário Node oficial e OpenSS
 5. Construir a imagem com Dockerfile e promover somente depois de homologação, teste de backup/restauração e revisão. Serviços systemd exigem o volume montado antes dos contêineres. O banco precisa estar saudável antes da API.
 6. `run-staging.sh` e `verify-staging.mjs` são exclusivos da instalação nova AINDA NÃO PUBLICADA. Usam senha sintética temporária no ADMIN de destino e restauram o hash original em finally, com validação. Não executar esses scripts em produção com usuários ativos.
 7. `restore-proof.sh` restaura somente em banco de ensaio nomeado e verifica CHECKDB/ADMIN/contagens; nunca restaura sobre o banco operacional.
-8. `publish-route.py` conserva backups da configuração do edge, valida antes de reload e repõe a configuração anterior se falhar. O arquivo bind-mounted é escrito preservando seu inode. Não reinicia o Caddy nem os outros sistemas.
+8. `publish-route.py` conserva backups da configuração do edge, valida antes de reload (SIGUSR1 quando admin off e caddy run compatível) e repõe a configuração anterior se falhar. O arquivo bind-mounted é escrito preservando seu inode. Não reinicia o Caddy nem os outros sistemas.
 9. Validar publicamente HTTPS, assets, recusas anônimas e APIs autenticadas. A senha atual do usuário não foi lida: o login de ensaio usa credencial sintética em ambiente ainda privado; a preservação da senha real é comprovada por igualdade exata de hash/salt.
 
 ## Recuperação e rollback
