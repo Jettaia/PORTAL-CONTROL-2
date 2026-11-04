@@ -35,3 +35,10 @@ RED/GREEN no frontend real contra servidor HTTP de produção isolado; regressõ
 - Regressão de escrita protegida no mesmo browser: pedido PC01 não é enviado antes da verificação401 de sessão/MFA.
 - Revisão independente: PASS, sem achados materiais; preservadas exceções e proteção das demais escritas.
 - Suíte compartilhada:414/414 aprovados; sintaxe e7/7 verificações de piloto/conexão também aprovadas.
+
+## Resultado final
+Correção publicada na imagem jetta-chapa:803ccd6, fonte803ccd6 enviada à main. Backup anterior à atualização terminou Result=success. Foi reconstruída/trocada somente a API; sem migrations, bootstrap, mudanças de senha ou de dados operacionais, e sem alteração do Caddy. Imagem anterior b3ed274 permanece disponível para rollback.
+
+Browser Edge headless no domínio público: PASS. POST /chapa/api/auth/login chegou ao servidor: senha sintética acima do limite recebeu400/Dados invalidos; conta sintética inexistente com formato válido recebeu401/Credenciais invalidas. Nenhuma consulta MFA indevida no clique de login e zero erros JS. Nenhuma senha humana foi solicitada/lida/testada; validação pública prova a correção do bloqueio do formulário, não o conhecimento da senha do usuário. A escrita protegida continuou barrada antes do envio no teste local.
+
+Gate FULL aprovado:414/414 testes, sintaxe e7/7 piloto/conexão, zero skips/todos/cancelamentos. Revisão independente PASS. Serviço e backup timer ativos, página pública200/TLS válido. Status técnico: concluído; usuário deve recarregar a aba para carregar o JavaScript corrigido e tentar com sua credencial atual.
