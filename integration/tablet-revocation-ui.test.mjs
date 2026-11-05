@@ -30,10 +30,11 @@ test('tablet: sem autorrevogação, token funciona e revogação remota retorna 
  assert.equal(await page.locator('#message').isVisible(),false);
 
  assert.equal(await page.getByRole('button',{name:'Encerrar uso deste tablet',exact:true}).count(),0);
- assert.equal(await page.title(),'Jetta');
- assert.equal((await page.locator('header').innerText()).trim(),'JETTA');
+ assert.equal(await page.title(),'Digite seu token');
+ assert.equal(await page.locator('header,footer').count(),0);
+ assert.doesNotMatch(await page.locator('body').innerText(),/jetta/i);
  await page.getByRole('heading',{name:'Digite seu token',exact:true}).waitFor();
- await page.getByText('Use o código de oito dígitos recebido do responsável.',{exact:true}).waitFor();
+ await page.getByText('Use o código de 8 dígitos recebido',{exact:true}).waitFor();
  for(const text of ['Registro de entrada e saída','Token de entrada ou saída','A entrada deve ser registrada antes da saída.'])assert.equal(await page.getByText(text,{exact:true}).count(),0);
  assert.equal(await page.getByRole('textbox',{name:'Token',exact:true}).count(),1);
  assert.equal(await page.locator('#code').getAttribute('aria-describedby'),'tokenInstructions');
