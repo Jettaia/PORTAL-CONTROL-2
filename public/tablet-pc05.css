@@ -10,3 +10,5 @@ input{background:#fff;border-color:var(--jc-border,#c5d2df)}
 #submit:hover:not(:disabled){background:var(--jc-navy-hover,#0b2e51)}
 .keypad button:hover:not(:disabled),button.secondary:hover:not(:disabled){background:#dce7f2;color:#113d68}
 @media(max-width:600px){main{border:0;border-radius:0}header{border-radius:0}}
+
+#message:empty{display:none}

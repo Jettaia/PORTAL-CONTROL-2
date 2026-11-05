@@ -23,7 +23,21 @@ test('tablet: sem autorrevogação, token funciona e revogação remota retorna 
  await page.locator('#pairForm').waitFor({state:'visible'});
  await page.locator('#pairCode').fill('a'.repeat(64));await page.getByRole('button',{name:'Autorizar tablet',exact:true}).click();
  await page.locator('#operation').waitFor({state:'visible'});
+ assert.equal(await page.locator('#message').textContent(),'','ativação sem aviso redundante');
+ assert.equal(await page.locator('#message').isVisible(),false,'sem bloco vazio');
+ await page.reload();await page.locator('#operation').waitFor({state:'visible'});
+ assert.equal(await page.locator('#message').textContent(),'','reabertura autorizada sem aviso redundante');
+ assert.equal(await page.locator('#message').isVisible(),false);
+
  assert.equal(await page.getByRole('button',{name:'Encerrar uso deste tablet',exact:true}).count(),0);
+ assert.equal(await page.title(),'Jetta');
+ assert.equal((await page.locator('header').innerText()).trim(),'JETTA');
+ await page.getByRole('heading',{name:'Digite seu token',exact:true}).waitFor();
+ await page.getByText('Use o código de oito dígitos recebido do responsável.',{exact:true}).waitFor();
+ for(const text of ['Registro de entrada e saída','Token de entrada ou saída','A entrada deve ser registrada antes da saída.'])assert.equal(await page.getByText(text,{exact:true}).count(),0);
+ assert.equal(await page.getByRole('textbox',{name:'Token',exact:true}).count(),1);
+ assert.equal(await page.locator('#code').getAttribute('aria-describedby'),'tokenInstructions');
+
  await page.locator('#code').fill('0a12-34');assert.equal(await page.locator('#code').inputValue(),'01234');
  await page.getByRole('button',{name:'Limpar',exact:true}).click();
  for(const digit of '012345678')await page.getByRole('button',{name:digit,exact:true}).click();
@@ -31,6 +45,15 @@ test('tablet: sem autorrevogação, token funciona e revogação remota retorna 
  assert.equal(await page.locator('#code').evaluate(e=>e.type),'text','token deve mostrar os dígitos');
  assert.equal(await page.locator('#code').evaluate(e=>getComputedStyle(e).webkitTextSecurity),'none');
  fs.mkdirSync('artifacts/tablet-revocation',{recursive:true});await page.screenshot({path:'artifacts/tablet-revocation/token-visible.png',fullPage:true});
+ const evidenceDir='artifacts/tablet-simplified/'+new Date().toISOString().replace(/[:.]/g,'-');fs.mkdirSync(evidenceDir,{recursive:true});
+ for(const viewport of [{width:768,height:1100},{width:390,height:844}]){
+  await page.setViewportSize(viewport);await page.locator('#submit').scrollIntoViewIfNeeded();
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  assert.ok(await page.getByRole('button',{name:'Confirmar token',exact:true}).isVisible());
+  await page.screenshot({path:evidenceDir+'/'+viewport.width+'.png',fullPage:true});
+ }
+ console.log('Tablet simplified visual evidence: '+evidenceDir);
+
  await page.getByRole('button',{name:'Confirmar token',exact:true}).click();
  await page.getByText('Token aceito',{exact:true}).waitFor();assert.equal(await page.locator('#code').inputValue(),'');
  fs.mkdirSync('artifacts/tablet-revocation',{recursive:true});await page.screenshot({path:'artifacts/tablet-revocation/tablet.png',fullPage:true});
