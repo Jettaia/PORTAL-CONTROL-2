@@ -40,6 +40,8 @@ try{
   assert.deepEqual(queries[0],{});assert.equal(await page.locator('#fin05More').isVisible(),false);
   await page.getByRole('button',{name:'Ver extrato de José da Silva',exact:true}).click();await page.getByText('Exibindo 100 de 102 contratações.',{exact:true}).waitFor();
   assert.deepEqual(await page.locator('#fin05Head th').allTextContents(),['Número da contratação','Data de criação','Depósito','Centro de custo','Descrição da atividade','Valor devido','Data do pagamento','Valor pago','Consulta']);
+  for(const selector of ['#fin05Head th:first-child','#fin05Rows tr:first-child td:first-child'])assert.equal(await page.locator(selector).evaluate(e=>getComputedStyle(e).textAlign),'center','número da contratação centralizado na tela');
+  assert.equal(await page.locator('#fin05Rows tr:first-child td:first-child').evaluate(e=>getComputedStyle(e).verticalAlign),'middle');
   assert.deepEqual(await page.locator('#fin05Totals dd').allTextContents(),['R$ 10.200,00','R$ 100,00','R$ 10.100,00']);
   assert.equal(await page.locator('#fin05Rows tr').first().locator('td').nth(1).innerText(),'29/10/2026');assert.equal(await page.locator('#fin05Rows tr').first().locator('td').nth(6).innerText(),'30/10/2026');
   assert.equal(await page.locator('#fin05Rows tr').nth(1).locator('td').nth(6).innerText(),'—');assert.equal(await page.locator('#fin05Rows img').count(),0);
@@ -50,6 +52,12 @@ try{
    await popup.getByRole('heading',{name:'José da Silva',exact:true}).waitFor();assert.equal(await popup.locator('tbody tr').count(),102);assert.equal(await popup.locator('img,script').count(),0);
    assert.deepEqual(await popup.locator('.fin05-totals dd').allTextContents(),['R$ 10.200,00','R$ 100,00','R$ 10.100,00']);
    await popup.waitForFunction(()=>document.styleSheets.length>0);assert.equal(await popup.locator('body').evaluate(node=>getComputedStyle(node).fontFamily),'Arial, sans-serif');
+   for(const media of ['screen','print']){
+    await popup.emulateMedia({media});
+    for(const selector of ['thead th:first-child','tbody tr:first-child td:first-child'])assert.equal(await popup.locator(selector).evaluate(e=>getComputedStyle(e).textAlign),'center','número centralizado na impressão/PDF');
+    assert.equal(await popup.locator('tbody tr:first-child td:first-child').evaluate(e=>getComputedStyle(e).verticalAlign),'middle');
+   }
+   await popup.emulateMedia({media:'screen'});await popup.screenshot({path:'artifacts/fin05/print-alignment.png'});
    await popup.pdf({path:'artifacts/fin05/extrato.pdf',preferCSSPageSize:true});await popup.screenshot({path:'artifacts/fin05/print.png',fullPage:true});await popup.close();await page.getByLabel('Prestador do extrato',{exact:true}).selectOption('1');
   }
   await page.getByRole('button',{name:'Carregar mais',exact:true}).click();await page.getByText('Exibindo 102 de 102 contratações.',{exact:true}).waitFor();

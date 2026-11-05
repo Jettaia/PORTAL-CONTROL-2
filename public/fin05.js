@@ -27,10 +27,10 @@
   const isIndividual=individual(),headers=isIndividual?detailHeaders:summaryHeaders;
   $('fin05Title').textContent=isIndividual?'Extrato de '+providerName():'Resumo por prestador';
   $('fin05Back').hidden=!isIndividual;$('fin05Print').hidden=!isIndividual;$('fin05Print').disabled=!totals||!rows.length||printing;
-  const head=make('tr');for(const label of headers){const th=make('th',label);th.scope='col';head.append(th);}$('fin05Head').replaceChildren(head);
+  const head=make('tr');for(const [index,label]of headers.entries()){const th=make('th',label,isIndividual&&index===0?'fin05-number':'');th.scope='col';head.append(th);}$('fin05Head').replaceChildren(head);
   const body=$('fin05Rows');body.replaceChildren();
   for(const row of rows){const tr=make('tr');tr.dataset.key=isIndividual?row.ContratacaoId:row.PrestadorId;
-   for(const [index,value]of cells(row,isIndividual).entries())tr.append(make('td',value??'—',(isIndividual?[5,7]:[1,2,3]).includes(index)?'fin05-money':''));
+   for(const [index,value]of cells(row,isIndividual).entries())tr.append(make('td',value??'—',isIndividual&&index===0?'fin05-number':(isIndividual?[5,7]:[1,2,3]).includes(index)?'fin05-money':''));
    const td=make('td'),button=make('button',isIndividual?'Detalhes':'Ver extrato');button.type='button';button.setAttribute('aria-label',isIndividual?'Detalhes da contratação '+row.Numero:'Ver extrato de '+row.Prestador);
    button.addEventListener('click',()=>{if(isIndividual)window.dispatchEvent(new CustomEvent('jetta:fin01-open',{detail:String(row.ContratacaoId)}));else{const query=new URLSearchParams(applied);query.set('prestadorId',row.PrestadorId);syncForm(query);load(false,query);}});td.append(button);tr.append(td);body.append(tr);
   }
@@ -67,8 +67,8 @@
    const period=[query.get('inicio')?'Desde '+localDay(query.get('inicio')):'',query.get('fim')?'Até '+localDay(query.get('fim')):''].filter(Boolean).join(' · ')||'Todo o histórico';
    const depot=optionName('depositoId',query.get('depositoId')||'','Todos autorizados');
    const printButton=make('button','Imprimir / salvar PDF','fin05-print-action',doc);printButton.type='button';printButton.addEventListener('click',()=>popup.print());
-   const table=make('table',undefined,undefined,doc),thead=make('thead',undefined,undefined,doc),tr=make('tr',undefined,undefined,doc);for(const label of detailHeaders.slice(0,-1)){const th=make('th',label,undefined,doc);th.scope='col';tr.append(th);}thead.append(tr);table.append(thead);
-   const tbody=make('tbody',undefined,undefined,doc);for(const row of all){const line=make('tr',undefined,undefined,doc);for(const [index,value]of cells(row,true).entries())line.append(make('td',value??'—',[5,7].includes(index)?'fin05-money':'',doc));tbody.append(line);}table.append(tbody);
+   const table=make('table',undefined,undefined,doc),thead=make('thead',undefined,undefined,doc),tr=make('tr',undefined,undefined,doc);for(const [index,label]of detailHeaders.slice(0,-1).entries()){const th=make('th',label,index===0?'fin05-number':'',doc);th.scope='col';tr.append(th);}thead.append(tr);table.append(thead);
+   const tbody=make('tbody',undefined,undefined,doc);for(const row of all){const line=make('tr',undefined,undefined,doc);for(const [index,value]of cells(row,true).entries())line.append(make('td',value??'—',index===0?'fin05-number':[5,7].includes(index)?'fin05-money':'',doc));tbody.append(line);}table.append(tbody);
    const footer=make('section',undefined,'fin05-totals',doc);renderTotals(footer,first.totais,doc);doc.body.append(heading,provider,make('p','Depósito: '+depot+' · '+period,undefined,doc),printButton,table,footer);message('Extrato completo preparado para impressão.');
   }catch(error){if(stamp===printRevision&&error.name!=='AbortError'){await ready;if(stamp!==printRevision||popup.closed)return;popup.document.body.textContent='Impressão não preparada: '+error.message;message(error.message);}}
   finally{if(stamp===printRevision){printing=false;render();}}
