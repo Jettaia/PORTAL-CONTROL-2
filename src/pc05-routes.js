@@ -23,5 +23,4 @@ export function mountTokens(app,cfg,{session,sameOrigin}){
  app.post('/api/pc05/tablet/habilitar',sameOrigin,async(req,res)=>{try{const out=await service.activate(cfg,req.body);res.set('Set-Cookie',cookie(out.token,34560000)).json({ok:true});}catch(e){error(res,e);}});
  app.get('/api/pc05/tablet/status',async(req,res)=>{try{const token=raw(req),out=await service.status(cfg,token);res.set('Set-Cookie',cookie(token,34560000)).json(out);}catch(e){error(res,e);}});
  app.post('/api/pc05/tablet/apontar',sameOrigin,run(req=>service.consume(cfg,raw(req),req.body)));
- app.post('/api/pc05/tablet/sair',sameOrigin,async(req,res)=>{try{const out=await service.leave(cfg,raw(req));res.set('Set-Cookie',cookie('',0)).json(out);}catch(e){error(res,e);}});
 }

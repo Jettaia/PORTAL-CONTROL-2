@@ -64,7 +64,11 @@ test('PC05 HTTP com serviço real: tokens, autorização e horários',async t=>{
  await t.test('depósito diferente não consome token',()=>run({path:'tablet/apontar',body:{codigo:'12345678'},queue:[...pointPrefix(),[token],[{...row,DepositoId:2}],[]],status:409,inspect:sql=>assert.ok(!sql.some(q=>q.startsWith('UPDATE Operacao.ContratacaoToken')))}));
  await t.test('cadastro exige depósito válido antes do SQL',()=>run({path:'tablets',body:{nome:'Tablet'},queue:[],status:400}));
  await t.test('status não divulga dados',()=>run({path:'tablet/status',body:null,queue:[...pointPrefix()],check:o=>assert.deepEqual(o,{ok:true})}));
- await t.test('saída local revoga sessão',()=>run({path:'tablet/sair',body:{},queue:[...pointPrefix(),[],[]],check:(o,r)=>assert.match(r.headers.get('set-cookie'),/Max-Age=0/)}));
+ await t.test('tablet não pode revogar a própria autorização pela rota antiga',async()=>{
+  const mock=t.mock.method(odbc,'connect',async()=>{assert.fail('rota removida não pode acessar SQL');});
+  try{const r=await call('tablet/sair',{}, {'x-user':''});assert.equal(r.status,404);assert.equal(r.headers.get('set-cookie'),null);assert.equal(mock.mock.callCount(),0);}finally{mock.mock.restore();}
+ });
+ assert.equal((await call('tablets/5/revogar',{}, {'x-user':''})).status,401);
  await t.test('horários manuais ADMIN invalidam tokens na mesma transação',()=>run({path:'/api/pc04/contratacoes/7/horarios',body:{versao:1,entradaReal:'2026-10-28T10:00',saidaReal:'2026-10-28T11:00',motivo:'Esquecimento'},queue:[...prefix({...actor,Adm:1}).slice(0,4),[row],[],[],[],[],[{...row,EntradaReal:'2026-10-28T10:00',SaidaReal:'2026-10-28T11:00'}]],inspect:sql=>assert.ok(sql.some(q=>q.startsWith('UPDATE Operacao.ContratacaoToken')&&q.includes('InvalidadoEmUtc')))}));
  await t.test('gestor solicita horários e invalida tokens sem gravar o real',()=>run({path:'/api/pc04/contratacoes/7/horarios',body:{versao:1,entradaReal:'2026-10-28T10:00',saidaReal:'2026-10-28T11:00',motivo:'Esquecimento'},queue:[...prefix().slice(0,4),[row],[{SolicitacaoId:5}],[],[],[],[],[{...row,Versao:2,HorarioPendenteId:5}]],check:r=>assert.equal(r.resultado.HorarioSolicitado,true),inspect:sql=>assert.ok(sql.some(q=>q.startsWith('UPDATE Operacao.ContratacaoToken')&&q.includes('InvalidadoEmUtc')))}));
  await t.test('pendência não permite emitir token',()=>run({queue:[...prefix(),[{...row,HorarioPendenteId:5}]],status:409,check:r=>assert.equal(r.erro,'HORARIOS_PENDENTES_APROVACAO')}));

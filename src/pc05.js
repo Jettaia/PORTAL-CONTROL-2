@@ -95,7 +95,6 @@ export async function activate(cfg,body){keys(body,['pareamento']);if(!strong(bo
  const raw=newToken();await db.query(`UPDATE Operacao.TabletPC05 SET SessaoHash='${hashToken(raw)}',PareamentoHash=NULL,AtivadoEmUtc=SYSUTCDATETIME(),ExpiraEmUtc=NULL WHERE TabletId=${id(r.TabletId)}`);await audit(db,r.EmissorId,r.TabletId,'HABILITAR');return {token:raw};
 });}
 export async function status(cfg,raw){return tabletTx(cfg,async(db,now)=>{await authorizedTablet(db,raw,now);return {ok:true};});}
-export async function leave(cfg,raw){return tabletTx(cfg,async(db,now)=>{const r=await authorizedTablet(db,raw,now);await db.query(`UPDATE Operacao.TabletPC05 SET RevogadoEmUtc=SYSUTCDATETIME(),SessaoHash=NULL WHERE TabletId=${id(r.TabletId)}`);await audit(db,r.EmissorId,r.TabletId,'SAIR');return {ok:true};});}
 
 export async function consume(cfg,raw,body){keys(body,['codigo']);return tabletTx(cfg,async(db,now)=>{
  const t=await authorizedTablet(db,raw,now);

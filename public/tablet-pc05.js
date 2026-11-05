@@ -11,7 +11,6 @@
  document.querySelectorAll('[data-digit]').forEach(el=>el.addEventListener('click',()=>{if(!busy&&$('code').value.length<8)$('code').value+=el.dataset.digit;}));
  $('clear').addEventListener('click',()=>{$('code').value='';});$('erase').addEventListener('click',()=>{$('code').value=$('code').value.slice(0,-1);});
  $('pointForm').addEventListener('submit',async e=>{e.preventDefault();if(busy)return;const codigo=$('code').value;$('code').value='';if(!/^\d{8}$/.test(codigo)){show('Digite os oito dígitos do token.','error');return;}lock(true);try{await api('apontar',{codigo});show('Token aceito','success');}catch(e){show(e.message,'error');}finally{lock(false);}});
- $('leave').addEventListener('click',async()=>{if(busy)return;lock(true);try{await api('sair',{});state(false);show('Uso do tablet encerrado.','success');}catch(e){show(e.message,'error');}finally{lock(false);}});
  async function status(initial=false){if(busy||document.hidden)return;lock(true);try{await api('status');if(initial||!authorized)state(true);if(initial)show('Digite seu token.');}catch(e){state(false);if(initial)$('message').textContent='Solicite autorização ao gestor.';else show(e.message,'error');}finally{lock(false);}}
  status(true);setInterval(()=>{if(authorized)status();},10000);
 })();

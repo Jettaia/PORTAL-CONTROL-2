@@ -79,6 +79,10 @@ test('tablets permanentes: migração, gestão por depósito, sessões independe
   assert.equal((await db.query(`SELECT ExpiraEmUtc FROM Operacao.TabletPC05 WHERE TabletId=${firstId}`))[0].ExpiraEmUtc,null);
   await db.query(`UPDATE Operacao.TabletPC05 SET AtivadoEmUtc=DATEADD(hour,-12,SYSUTCDATETIME()) WHERE TabletId=${firstId}`);
   const renewed=await request(tabletStatus,cookieA);assert.equal(renewed.status,200);assert.match(renewed.setCookie||'',/Max-Age=\d+/);assert.ok(Number(renewed.setCookie.match(/Max-Age=(\d+)/)[1])>28800);
+  const beforeLocalExit=await snapshot(firstId);
+  const localExit=await fetch(origin+'/api/pc05/tablet/sair',{method:'POST',headers:{Origin:origin,'x-jetta-request':'web','Content-Type':'application/json',Cookie:cookieA},body:'{}'});
+  assert.equal(localExit.status,404);assert.equal(localExit.headers.get('set-cookie'),null);
+  assert.equal(await snapshot(firstId),beforeLocalExit);await expect(tabletStatus,cookieA);
   await expect(tabletStatus,cookieB);
   await closeServer();await start();await expect(tabletStatus,cookieA);await expect(tabletStatus,cookieB);
   const persisted=(await expect(base,admin)).registros.find(r=>Number(r.TabletId)===firstId);
