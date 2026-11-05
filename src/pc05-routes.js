@@ -10,6 +10,7 @@ export function mountTokens(app,cfg,{session,sameOrigin}){
  app.get('/api/pc05/status',session,(req,res)=>res.json({pc05:true}));
  app.get('/api/pc05/tablets',session,run(req=>service.tablets(cfg,req.user.id)));
  app.post('/api/pc05/tablets',sameOrigin,session,run(req=>service.pair(cfg,req.user.id,req.rawSession,req.body)));
+ app.post('/api/pc05/tablets/:id/excluir',sameOrigin,session,run(req=>service.deleteTablet(cfg,req.user.id,req.rawSession,req.params.id,req.body)));
  app.post('/api/pc05/tablets/:id/revogar',sameOrigin,session,run(req=>service.revoke(cfg,req.user.id,req.rawSession,req.params.id,req.body)));
  app.post('/api/pc05/tablets/:id/pareamento',sameOrigin,session,run(req=>service.rePair(cfg,req.user.id,req.rawSession,req.params.id,req.body)));
  app.post('/api/pc05/tablets/:id/cadastro',sameOrigin,session,run(req=>service.updateTablet(cfg,req.user.id,req.rawSession,req.params.id,req.body)));

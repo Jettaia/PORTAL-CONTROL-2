@@ -24,7 +24,7 @@ async function tabletTx(cfg,fn){return withDb(cfg,async db=>{
 const dates="CONVERT(varchar(23),t.ExpiraEmUtc,126) ExpiraEmUtc,CONVERT(varchar(23),t.PareamentoExpiraEmUtc,126) PareamentoExpiraEmUtc,t.RevogadoEmUtc,t.AtivadoEmUtc";
 async function authorizedTablet(db,raw,now){
  if(!strong(raw))fail('AUTORIZACAO_TABLET_INVALIDA',401);
- const t=(await db.query(`SELECT t.TabletId,t.DepositoId,t.EmissorId,t.Falhas,${dates} FROM Operacao.TabletPC05 t WITH(UPDLOCK,HOLDLOCK) WHERE t.SessaoHash='${hashToken(raw)}' AND ${issuerActive('t')} AND EXISTS(SELECT 1 FROM Cadastro.Deposito f WHERE f.DepositoId=t.DepositoId AND f.Ativo=1)`))[0];
+ const t=(await db.query(`SELECT t.TabletId,t.DepositoId,t.EmissorId,t.Falhas,${dates} FROM Operacao.TabletPC05 t WITH(UPDLOCK,HOLDLOCK) WHERE t.ExcluidoEmUtc IS NULL AND t.SessaoHash='${hashToken(raw)}' AND ${issuerActive('t')} AND EXISTS(SELECT 1 FROM Cadastro.Deposito f WHERE f.DepositoId=t.DepositoId AND f.Ativo=1)`))[0];
  if(!t||!t.DepositoId||t.RevogadoEmUtc||!t.AtivadoEmUtc||(t.ExpiraEmUtc!==null&&!after(t.ExpiraEmUtc,now.AgoraUtc))||Number(t.Falhas)>=5)fail('AUTORIZACAO_TABLET_INVALIDA',401);return t;
 }
 function open(row){if(row.Status!=='ABERTA'||row.PagoEmUtc||Number(row.LiberacaoBloqueada)===1)fail('CONTRATACAO_FECHADA',409);if(row.HorarioPendenteId)fail('HORARIOS_PENDENTES_APROVACAO',409);}
@@ -53,7 +53,7 @@ const depotScope=(actor,user,alias='f')=>user.admin?'1=1':`EXISTS(SELECT 1 FROM 
 const tabletScope=(actor,user)=>user.admin?'1=1':`((t.DepositoId IS NULL AND t.EmissorId=${id(actor)}) OR ${depotScope(actor,user,'t')})`;
 function tabletName(value){if(typeof value!=='string'||!value.trim()||value.trim().length>80)fail('NOME_INVALIDO');return value.trim();}
 async function checkDepot(db,actor,user,depot){if(!(await db.query(`SELECT f.DepositoId FROM Cadastro.Deposito f WITH(HOLDLOCK) WHERE f.DepositoId=${id(depot)} AND f.Ativo=1 AND ${depotScope(actor,user)}`)).length)fail('DEPOSITO_INDISPONIVEL',404);}
-async function managedTablet(db,actor,user,tabletId){const r=(await db.query(`SELECT t.TabletId,t.EmissorId,t.DepositoId FROM Operacao.TabletPC05 t WITH(UPDLOCK,HOLDLOCK) WHERE t.TabletId=${id(tabletId)} AND ${tabletScope(actor,user)}`))[0];if(!r)fail('TABLET_INDISPONIVEL',404);return r;}
+async function managedTablet(db,actor,user,tabletId){const r=(await db.query(`SELECT t.TabletId,t.EmissorId,t.DepositoId,t.RevogadoEmUtc FROM Operacao.TabletPC05 t WITH(UPDLOCK,HOLDLOCK) WHERE t.TabletId=${id(tabletId)} AND t.ExcluidoEmUtc IS NULL AND ${tabletScope(actor,user)}`))[0];if(!r)fail('TABLET_INDISPONIVEL',404);return r;}
 export async function pair(cfg,actor,session,body){
  keys(body,['nome','depositoId']);const name=tabletName(body.nome),depot=id(body.depositoId);
  return transaction(cfg,actor,session,true,async(db,user)=>{
@@ -71,7 +71,7 @@ export async function tablets(cfg,actor){return transaction(cfg,actor,null,false
  WHEN t.PareamentoHash IS NOT NULL AND t.PareamentoExpiraEmUtc>SYSUTCDATETIME() THEN 'PENDENTE' ELSE 'CODIGO_EXPIRADO' END Estado,
  CASE WHEN ${valid} AND t.AtivadoEmUtc IS NOT NULL AND t.SessaoHash IS NOT NULL THEN 1 ELSE 0 END Ativo,
  CONVERT(varchar(23),t.CriadoEmUtc,126) CriadoEmUtc,CONVERT(varchar(23),t.AtivadoEmUtc,126) AtivadoEmUtc
- FROM Operacao.TabletPC05 t LEFT JOIN Cadastro.Deposito f ON f.DepositoId=t.DepositoId WHERE ${tabletScope(actor,user)} ORDER BY t.TabletId DESC`);
+ FROM Operacao.TabletPC05 t LEFT JOIN Cadastro.Deposito f ON f.DepositoId=t.DepositoId WHERE t.ExcluidoEmUtc IS NULL AND ${tabletScope(actor,user)} ORDER BY t.TabletId DESC`);
  const depositos=await db.query(`SELECT f.DepositoId,f.Nome,f.CentroCusto FROM Cadastro.Deposito f WHERE f.Ativo=1 AND ${depotScope(actor,user)} ORDER BY f.Nome`);return {registros,depositos};
 });}
 export async function rePair(cfg,actor,session,tabletId,body){keys(body,[]);id(tabletId);return transaction(cfg,actor,session,true,async(db,user)=>{
@@ -89,8 +89,14 @@ export async function revoke(cfg,actor,session,tabletId,body){keys(body,[]);id(t
  await time(db);await managedTablet(db,actor,user,tabletId);
  await db.query(`UPDATE Operacao.TabletPC05 SET RevogadoEmUtc=COALESCE(RevogadoEmUtc,SYSUTCDATETIME()),SessaoHash=NULL,PareamentoHash=NULL WHERE TabletId=${id(tabletId)}`);await audit(db,actor,tabletId,'REVOGAR');return {ok:true};
 });}
+export async function deleteTablet(cfg,actor,session,tabletId,body){keys(body,[]);id(tabletId);return transaction(cfg,actor,session,true,async(db,user)=>{
+ if(!user.admin)fail('SOMENTE_ADM',403);
+ const row=await managedTablet(db,actor,user,tabletId);if(!row.RevogadoEmUtc)fail('TABLET_NAO_REVOGADO',409);
+ await db.query(`UPDATE Operacao.TabletPC05 SET ExcluidoEmUtc=SYSUTCDATETIME(),SessaoHash=NULL,PareamentoHash=NULL WHERE TabletId=${id(tabletId)} AND RevogadoEmUtc IS NOT NULL AND ExcluidoEmUtc IS NULL`);
+ await audit(db,actor,tabletId,'EXCLUIR');return {ok:true};
+});}
 export async function activate(cfg,body){keys(body,['pareamento']);if(!strong(body.pareamento))fail('AUTORIZACAO_TABLET_INVALIDA',401);return tabletTx(cfg,async(db,now)=>{
- const r=(await db.query(`SELECT t.TabletId,t.DepositoId,t.EmissorId,t.Falhas,${dates} FROM Operacao.TabletPC05 t WITH(UPDLOCK,HOLDLOCK) WHERE t.PareamentoHash='${hashToken(body.pareamento)}' AND ${issuerActive('t')} AND EXISTS(SELECT 1 FROM Cadastro.Deposito f WHERE f.DepositoId=t.DepositoId AND f.Ativo=1)`))[0];
+ const r=(await db.query(`SELECT t.TabletId,t.DepositoId,t.EmissorId,t.Falhas,${dates} FROM Operacao.TabletPC05 t WITH(UPDLOCK,HOLDLOCK) WHERE t.ExcluidoEmUtc IS NULL AND t.PareamentoHash='${hashToken(body.pareamento)}' AND ${issuerActive('t')} AND EXISTS(SELECT 1 FROM Cadastro.Deposito f WHERE f.DepositoId=t.DepositoId AND f.Ativo=1)`))[0];
  if(!r||!r.DepositoId||r.RevogadoEmUtc||r.AtivadoEmUtc||!after(r.PareamentoExpiraEmUtc,now.AgoraUtc)||(r.ExpiraEmUtc!==null&&!after(r.ExpiraEmUtc,now.AgoraUtc)))fail('AUTORIZACAO_TABLET_INVALIDA',401);
  const raw=newToken();await db.query(`UPDATE Operacao.TabletPC05 SET SessaoHash='${hashToken(raw)}',PareamentoHash=NULL,AtivadoEmUtc=SYSUTCDATETIME(),ExpiraEmUtc=NULL WHERE TabletId=${id(r.TabletId)}`);await audit(db,r.EmissorId,r.TabletId,'HABILITAR');return {token:raw};
 });}

@@ -1,5 +1,5 @@
 {
-  "version": "1.17.0-delete-account",
+  "version": "1.18.0-delete-tablet",
   "purpose": "PILOTO_LOCAL_FINANCEIRO_CONTRATACOES",
   "files": [
     {
@@ -211,6 +211,11 @@
       "file": "38-delete-account.sql",
       "source": "pilot-local/delete-account.sql",
       "sha256": "53436e5b97901db96fdfa7e2c99faa0f7d65e6d2720fab03f2dd39faac4355b9"
+    },
+    {
+      "file": "39-delete-tablet.sql",
+      "source": "pilot-local/delete-tablet.sql",
+      "sha256": "ebaf5c8c12ecb07aa6d432aaf1282861a0af59652e831c66eb408574985c05e7"
     }
   ]
 }

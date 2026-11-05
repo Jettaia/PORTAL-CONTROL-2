@@ -58,6 +58,16 @@ test('PC05 HTTP com serviço real: tokens, autorização e horários',async t=>{
  await t.test('habilitação única gera cookie separado',()=>run({path:'tablet/habilitar',body:{pareamento:'d'.repeat(64)},queue:[[],[{R:0}],[clock],[{...tablet,AtivadoEmUtc:null,PareamentoExpiraEmUtc:'2026-10-28T15:05:00.000'}],[],[]],check:(o,r)=>{assert.deepEqual(o,{ok:true});assert.match(r.headers.get('set-cookie'),/jetta_pc05_tablet=[a-f0-9]{64}; HttpOnly; SameSite=Strict; Path=\/api\/pc05\/tablet; Max-Age=34560000/);}}));
  await t.test('reuso pareamento negado',()=>run({path:'tablet/habilitar',body:{pareamento:'d'.repeat(64)},queue:[[],[{R:0}],[clock],[{...tablet,PareamentoExpiraEmUtc:'2026-10-28T15:05:00.000'}]],status:401}));
  await t.test('gestor não revoga tablet fora do depósito autorizado',()=>run({path:'tablets/5/revogar',body:{},queue:[...prefix(),[]],status:404}));
+ for(const [name,user,entry,status,error] of [
+  ['gestor não exclui tablet revogado',actor,{...tablet,RevogadoEmUtc:clock.AgoraUtc},403,'SOMENTE_ADM'],
+  ['admin não exclui tablet ativo',{...actor,Adm:1},tablet,409,'TABLET_NAO_REVOGADO'],
+  ['admin não exclui tablet inexistente',{...actor,Adm:1},null,404,'TABLET_INDISPONIVEL']
+ ])await t.test(name,()=>run({path:'tablets/5/excluir',body:{},queue:[...prefix(user).slice(0,4),...(status===403?[]:[entry?[entry]:[]])],status,check:o=>assert.equal(o.erro,error)}));
+ await t.test('admin exclui revogado e audita sem apagar tokens',()=>run({path:'tablets/5/excluir',body:{},queue:[...prefix({...actor,Adm:1}).slice(0,4),[{...tablet,RevogadoEmUtc:clock.AgoraUtc}],[],[]],inspect:sql=>{assert.ok(sql.some(q=>q.startsWith('UPDATE Operacao.TabletPC05 SET ExcluidoEmUtc=')));assert.ok(sql.some(q=>q.includes('INSERT Seguranca.Auditoria')));assert.ok(!sql.some(q=>/DELETE|UPDATE Operacao.ContratacaoToken/.test(q)));}}));
+ await t.test('auditoria falha e exclusão reverte',()=>run({path:'tablets/5/excluir',body:{},queue:[...prefix({...actor,Adm:1}).slice(0,4),[{...tablet,RevogadoEmUtc:clock.AgoraUtc}],[],Error('audit failure')],status:503}));
+ await t.test('MFA vencido bloqueia exclusão',()=>run({path:'tablets/5/excluir',body:{},queue:[[],[{R:0}],[{...actor,Adm:1}],[]],status:403}));
+ assert.equal((await call('tablets/5/excluir',{}, {'x-user':''})).status,401);
+ assert.equal((await call('tablets/5/excluir',{}, {origin:'http://evil.test'})).status,403);
  await t.test('emissor revoga imediatamente',()=>run({path:'tablets/5/revogar',body:{},queue:[...prefix(),[tablet],[],[]]}));
  await t.test('autorização permanente não vence depois de oito horas',()=>run({path:'tablet/status',body:null,queue:[...pointPrefix({...tablet,ExpiraEmUtc:null,AtivadoEmUtc:'2026-01-01T00:00:00.000'})],check:(o,r)=>{assert.equal(o.ok,true);assert.match(r.headers.get('set-cookie'),/Max-Age=34560000/);}}));
  await t.test('tablet sem depósito não consulta token',()=>run({path:'tablet/apontar',body:{codigo:'12345678'},queue:[...pointPrefix({...tablet,DepositoId:null})],status:401}));

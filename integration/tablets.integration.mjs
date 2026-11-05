@@ -125,6 +125,25 @@ test('tablets permanentes: migração, gestão por depósito, sessões independe
   const fresh=await expect(`${base}/${firstId}/pareamento`,b,{}),finalCookie=await activatePair(fresh.pareamento);
   await expect(`${base}/${firstId}/revogar`,b,{});await expect(tabletStatus,finalCookie,undefined,401);await expect(point,finalCookie,{codigo:codeA.codigo},401);
   await expect(tabletStatus,cookieB);assert.equal((await expect(base,admin)).registros.find(r=>Number(r.TabletId)===firstId).Estado,'REVOGADO');
+  // Additive deletion migration is safe to reapply; consumed tokens keep their FK.
+  const beforeDelete=await snapshot(firstId);
+  // Emulate the previous schema on this disposable database, with consumed tokens present.
+  await db.query('ALTER TABLE Operacao.TabletPC05 DROP CONSTRAINT CK_PC05_TabletExcluidoRevogado;ALTER TABLE Operacao.TabletPC05 DROP COLUMN ExcluidoEmUtc;');
+  const deletionSql=fs.readFileSync(new URL('../pilot-local/delete-tablet.sql',import.meta.url),'utf8').replace('/*PILOT_GUARD*/',`IF NOT (${targetGuard}) THROW 55900,N'Destino recusado',1;`);
+  for(let attempt=0;attempt<2;attempt++)for(const batch of deletionSql.split(/^\s*GO\s*$/im).filter(s=>s.trim()))await db.query(batch);
+  assert.equal(await snapshot(firstId),beforeDelete);
+  const tokensBefore=Array.from(await db.query(`SELECT * FROM Operacao.ContratacaoToken WHERE TabletId=${firstId} ORDER BY TokenId`));assert.ok(tokensBefore.length);
+  const eventsBefore=Array.from(await db.query(`SELECT * FROM Operacao.ContratacaoEvento WHERE ContratacaoId=${ca.ContratacaoId} ORDER BY EventoId`));
+  await expect(`${base}/${second.tabletId}/excluir`,admin,{},409);
+  await expect(`${base}/${firstId}/excluir`,b,{},403);
+  await expect(`${base}/${firstId}/excluir`,admin,{});
+  assert.equal((await expect(base,admin)).registros.some(r=>Number(r.TabletId)===firstId),false);
+  assert.equal((await expect(base,b)).registros.some(r=>Number(r.TabletId)===firstId),false);
+  assert.deepEqual(Array.from(await db.query(`SELECT * FROM Operacao.ContratacaoToken WHERE TabletId=${firstId} ORDER BY TokenId`)),tokensBefore);
+  assert.deepEqual(Array.from(await db.query(`SELECT * FROM Operacao.ContratacaoEvento WHERE ContratacaoId=${ca.ContratacaoId} ORDER BY EventoId`)),eventsBefore);
+  assert.equal(Number((await db.query(`SELECT COUNT(*) N FROM Seguranca.Auditoria WHERE Entidade=N'TabletPC05' AND EntidadeId=${firstId} AND Acao=N'PC05_EXCLUIR'`))[0].N),1);
+  for(const action of ['excluir','revogar','pareamento','cadastro'])await expect(`${base}/${firstId}/${action}`,admin,action==='cadastro'?{nome:'Restaurar',depositoId:aId}:{},404);
+  await expect(tabletStatus,finalCookie,undefined,401);
   t.diagnostic(`SQL real e HTTP verificados em ${database}; limpeza será executada no finally.`);
  }finally{
   await closeServer();if(db){try{await db.rollback();}catch{}await db.close();}

@@ -4,7 +4,7 @@ Destino: https://app.jettatransportes.com.br/chapa/ . Serviço independente em `
 
 ## Dados e credencial
 
-Instalação nova aplica o manifesto completo de 38 migrações. Importa somente o ADMIN raiz ativo e sua credencial scrypt (hash/salt), recria permissões técnicas e não transporta sessões, tokens ou dados operacionais. O banco local permanece intacto. `export-admin.mjs` escreve apenas em arquivo ignorado; não imprime a credencial. `bootstrap-run.mjs --new-empty-chapa` exige banco inexistente e recusa sobrescrita.
+Instalação nova aplica o manifesto completo de 39 migrações. Importa somente o ADMIN raiz ativo e sua credencial scrypt (hash/salt), recria permissões técnicas e não transporta sessões, tokens ou dados operacionais. O banco local permanece intacto. `export-admin.mjs` escreve apenas em arquivo ignorado; não imprime a credencial. `bootstrap-run.mjs --new-empty-chapa` exige banco inexistente e recusa sobrescrita.
 
 A API usa `JettaChapaRuntime`, sem sysadmin, db_owner, DDL, backup ou administração do servidor. Cada conexão confere identidade, privilégios e marcador da instalação. A credencial `sa` permanece somente no volume administrativo criptografado; não é montada na API.
 
