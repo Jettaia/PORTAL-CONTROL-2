@@ -60,9 +60,9 @@ test('PC05 HTTP com serviço real: tokens, autorização e horários',async t=>{
  await t.test('gestor não revoga tablet fora do depósito autorizado',()=>run({path:'tablets/5/revogar',body:{},queue:[...prefix(),[]],status:404}));
  for(const [name,user,entry,status,error] of [
   ['gestor não exclui tablet revogado',actor,{...tablet,RevogadoEmUtc:clock.AgoraUtc},403,'SOMENTE_ADM'],
-  ['admin não exclui tablet ativo',{...actor,Adm:1},tablet,409,'TABLET_NAO_REVOGADO'],
   ['admin não exclui tablet inexistente',{...actor,Adm:1},null,404,'TABLET_INDISPONIVEL']
  ])await t.test(name,()=>run({path:'tablets/5/excluir',body:{},queue:[...prefix(user).slice(0,4),...(status===403?[]:[entry?[entry]:[]])],status,check:o=>assert.equal(o.erro,error)}));
+ await t.test('admin exclui ativo revogando na mesma escrita',()=>run({path:'tablets/5/excluir',body:{},queue:[...prefix({...actor,Adm:1}).slice(0,4),[tablet],[],[]],inspect:sql=>{const update=sql.find(q=>q.startsWith('UPDATE Operacao.TabletPC05 SET ExcluidoEmUtc='));assert.match(update,/RevogadoEmUtc=COALESCE\(RevogadoEmUtc,SYSUTCDATETIME\(\)\)/);assert.match(update,/SessaoHash=NULL,PareamentoHash=NULL/);assert.ok(!sql.some(q=>/^DELETE|UPDATE Operacao.ContratacaoToken/.test(q)));}}));
  await t.test('admin exclui revogado e audita sem apagar tokens',()=>run({path:'tablets/5/excluir',body:{},queue:[...prefix({...actor,Adm:1}).slice(0,4),[{...tablet,RevogadoEmUtc:clock.AgoraUtc}],[],[]],inspect:sql=>{assert.ok(sql.some(q=>q.startsWith('UPDATE Operacao.TabletPC05 SET ExcluidoEmUtc=')));assert.ok(sql.some(q=>q.includes('INSERT Seguranca.Auditoria')));assert.ok(!sql.some(q=>/DELETE|UPDATE Operacao.ContratacaoToken/.test(q)));}}));
  await t.test('auditoria falha e exclusão reverte',()=>run({path:'tablets/5/excluir',body:{},queue:[...prefix({...actor,Adm:1}).slice(0,4),[{...tablet,RevogadoEmUtc:clock.AgoraUtc}],[],Error('audit failure')],status:503}));
  await t.test('MFA vencido bloqueia exclusão',()=>run({path:'tablets/5/excluir',body:{},queue:[[],[{R:0}],[{...actor,Adm:1}],[]],status:403}));

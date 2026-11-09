@@ -28,7 +28,7 @@ export async function read(cfg,actor,key,document=false){receiptId(key);return t
  }
  return {recibo:unpack((await db.query(readSql(key)))[0]),podeOperar:user.admin||user.finance};
 });}
-export async function issue(cfg,actor,token,key,body){
+export async function issue(cfg,actor,token,key,body,expected=null){
  receiptId(key);if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).length)fail('CAMPOS_INVALIDOS');
  // Use the existing actor/transaction boundary in read mode: PC04 write mode
  // intentionally excludes FINANCEIRO. Financial authorization and lock follow here.
@@ -39,8 +39,9 @@ export async function issue(cfg,actor,token,key,body){
   if(!lock||Number(lock.R)<0)fail('OPERACAO_OCUPADA',409);
   const origin=(await db.query(`SELECT c.ContratacaoId,c.Numero,c.Versao,c.DepositoId,c.PrestadorId,c.TipoServicoId,CONVERT(varchar(10),c.DataServico,23) DataServico,CONVERT(varchar(40),c.ValorLiberado) ValorLiberado,CONVERT(varchar(27),c.LiberadoEmUtc,126) LiberadoEmUtc,p.Nome Prestador,t.Nome Tipo,d.Cidade,d.Estado,d.CentroCusto,d.Nome Deposito,d.Rua,d.Numero NumeroEndereco,d.Bairro,d.CEP FROM Operacao.Contratacao c WITH(UPDLOCK,HOLDLOCK) JOIN Cadastro.Prestador p ON p.PrestadorId=c.PrestadorId JOIN Cadastro.TipoServico t ON t.TipoServicoId=c.TipoServicoId JOIN Cadastro.Deposito d ON d.DepositoId=c.DepositoId WHERE c.ContratacaoId=${receiptId(key)} AND ${receiptEligible}`))[0];
   if(!origin)fail('CONTRATACAO_INDISPONIVEL',404);
+  if(expected&&[['versao','Versao'],['depositoId','DepositoId'],['prestadorId','PrestadorId'],['tipoServicoId','TipoServicoId'],['dataServico','DataServico'],['valor','ValorLiberado'],['liberadoEmUtc','LiberadoEmUtc']].some(([key,column])=>String(expected[key])!==String(origin[column])))fail('PREVIA_ALTERADA',409);
   const previous=(await db.query(readSql(key)))[0];
-  if(previous){if(!(await db.query(`SELECT 1 V FROM Financeiro.ContratacaoRecibo r JOIN Operacao.Contratacao c ON c.ContratacaoId=r.ContratacaoId WHERE c.ContratacaoId=${receiptId(key)} AND ${receiptCompatible}`)).length)fail('RECIBO_ORIGEM_DIVERGENTE',409);return {recibo:unpack(previous),podeOperar:true};}
+  if(previous){if(!(await db.query(`SELECT 1 V FROM Financeiro.ContratacaoRecibo r JOIN Operacao.Contratacao c ON c.ContratacaoId=r.ContratacaoId WHERE c.ContratacaoId=${receiptId(key)} AND ${receiptCompatible}`)).length)fail('RECIBO_ORIGEM_DIVERGENTE',409);return {recibo:unpack(previous),podeOperar:true,jaExistia:true};}
   const instant=cfg.fin02Now?cfg.fin02Now():new Date();
   const local=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(instant);
   const snapshot={Numero:String(origin.Numero),ValorLiberado:origin.ValorLiberado,Prestador:origin.Prestador,Tipo:origin.Tipo,DataServico:origin.DataServico,Cidade:origin.Cidade,Estado:origin.Estado,CentroCusto:origin.CentroCusto,Deposito:origin.Deposito,Rua:origin.Rua,NumeroEndereco:origin.NumeroEndereco,Bairro:origin.Bairro,CEP:origin.CEP,Pagador:'JETTA TRANSPORTES E LOGISTICA LTDA',CnpjPagador:'15.387.508/0001-61'};

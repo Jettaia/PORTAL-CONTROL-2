@@ -134,7 +134,17 @@ test('tablets permanentes: migração, gestão por depósito, sessões independe
   assert.equal(await snapshot(firstId),beforeDelete);
   const tokensBefore=Array.from(await db.query(`SELECT * FROM Operacao.ContratacaoToken WHERE TabletId=${firstId} ORDER BY TokenId`));assert.ok(tokensBefore.length);
   const eventsBefore=Array.from(await db.query(`SELECT * FROM Operacao.ContratacaoEvento WHERE ContratacaoId=${ca.ContratacaoId} ORDER BY EventoId`));
-  await expect(`${base}/${second.tabletId}/excluir`,admin,{},409);
+  const secondBefore=await snapshot(secondId),secondTokens=Array.from(await db.query(`SELECT * FROM Operacao.ContratacaoToken WHERE TabletId=${secondId} ORDER BY TokenId`));
+  await expect(`${base}/${secondId}/excluir`,b,{},403);await expect(`${base}/${secondId}/excluir`,finance,{},403);assert.equal(await snapshot(secondId),secondBefore);
+  await db.query("CREATE TRIGGER Seguranca.TabletDeleteTestFail ON Seguranca.Auditoria AFTER INSERT AS BEGIN IF EXISTS(SELECT 1 FROM inserted WHERE Acao=N'PC05_EXCLUIR') THROW 55998,N'Falha sintetica de auditoria',1;END");
+  await expect(`${base}/${secondId}/excluir`,admin,{},503);assert.equal(await snapshot(secondId),secondBefore);await expect(tabletStatus,cookieB);
+  await db.query('DROP TRIGGER Seguranca.TabletDeleteTestFail');
+  await expect(`${base}/${secondId}/excluir`,admin,{});await expect(tabletStatus,cookieB,undefined,401);await expect(point,cookieB,{codigo:codeB.codigo},401);
+  const deletedActive=(await db.query(`SELECT ExcluidoEmUtc,RevogadoEmUtc,SessaoHash,PareamentoHash FROM Operacao.TabletPC05 WHERE TabletId=${secondId}`))[0];assert.ok(deletedActive.ExcluidoEmUtc);assert.ok(deletedActive.RevogadoEmUtc);assert.equal(deletedActive.SessaoHash,null);assert.equal(deletedActive.PareamentoHash,null);
+  assert.deepEqual(Array.from(await db.query(`SELECT * FROM Operacao.ContratacaoToken WHERE TabletId=${secondId} ORDER BY TokenId`)),secondTokens);
+  await expect(`${base}/${secondId}/excluir`,admin,{},404);
+  const pendingDelete=await expect(base,admin,{nome:'Pendente para excluir',depositoId:aId});await expect(`${base}/${pendingDelete.tabletId}/excluir`,admin,{});await expect(activate,null,{pareamento:pendingDelete.pareamento},401);
+
   await expect(`${base}/${firstId}/excluir`,b,{},403);
   await expect(`${base}/${firstId}/excluir`,admin,{});
   assert.equal((await expect(base,admin)).registros.some(r=>Number(r.TabletId)===firstId),false);

@@ -51,6 +51,7 @@ app.use('/api/final-lab/anexos',express.json({limit:'3mb'}));
 app.use('/api/pc08/pagamentos',express.json({limit:'15mb'}));
 app.use('/api/pc10',express.json({limit:'2mb'}));
 app.use('/api/financeiro/contratacoes',express.json({limit:'7mb'}));
+app.use('/api/financeiro/recibos',express.json({limit:'2mb'}));
 app.use(express.json({limit:'8kb'}));
 app.use('/api',rateLimit({windowMs:60000,limit:90,standardHeaders:'draft-7',legacyHeaders:false}));
 const loginLimiter=rateLimit({windowMs:15*60000,limit:12,standardHeaders:'draft-7',legacyHeaders:false});

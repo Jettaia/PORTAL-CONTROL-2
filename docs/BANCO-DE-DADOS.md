@@ -1,5 +1,37 @@
 # Banco de dados
 
+## Recibos por período — 09/11/2026
+
+Em Financeiro, ADMIN e FINANCEIRO podem informar Serviço desde/até e usar **Gerar recibos do período**. A prévia inclui ambas as datas e todas as contratações liberadas sem recibo, inclusive além da página atual. Depósito, prestador e número são opcionais; Situação não restringe esse lote. A tela mostra quantidade, total exato e quantos recibos existentes ficam fora da geração. Cancelar a prévia não escreve.
+
+**Confirmar geração** processa individualmente os registros conferidos. A prévia assinada fica vinculada ao usuário por 15 minutos; dados de origem alterados exigem nova prévia. Sessão, perfil, MFA e origem continuam validados. Emissões concorrentes e tentativas repetidas reutilizam recibos existentes, mantendo snapshot/data originais. Falhas são informadas por contratação; os sucessos ficam salvos e os pendentes podem ser tentados novamente. A emissão não confirma pagamento.
+
+**Imprimir recibos gerados** abre a impressão conjunta, com um recibo por página, e permite salvar como PDF no navegador. A impressão usa os snapshots existentes e valida todos os registros pedidos antes de entregar o documento. O CSS é servido por rota autenticada para respeitar a política de segurança da janela de impressão; não há escrita no banco nessa operação.
+
+Não há migração. O lote reutiliza a tabela, unicidade e auditoria FIN02 existentes. Endpoints: `GET /api/financeiro/recibos/previa`, `POST /api/financeiro/recibos/gerar`, `POST /api/financeiro/recibos/impressao` e CSS autenticado `GET /api/financeiro/recibos/estilo.css`. O corpo dessas operações aceita até 2 MiB; períodos cujo comprovante de prévia exceda o limite exigem divisão em períodos menores, sem truncamento silencioso.
+
+Provas: `node --test tests/fin02-batch.test.mjs integration/fin02-batch-ui.test.mjs` e `FIN02_BATCH_SQL_TESTS=YES node --test integration/fin02-batch.integration.mjs`. A integração usa SQL descartável, autorização real, mais de 100 registros, rollback por falha de auditoria, retry/concorrência e impressão em navegador autenticado com PDF nativo. Nenhum recibo operacional é emitido pela validação.
+
+## Exclusão direta de tablets — 09/11/2026
+
+Na aba Tablets, ADMIN pode excluir qualquer tablet cadastrado, inclusive ativo ou aguardando ativação. A confirmação informa o encerramento do acesso e a preservação dos apontamentos. Revogação e exclusão lógica são gravadas juntas: `RevogadoEmUtc` é preservado/preenchido, `ExcluidoEmUtc` é marcado e os hashes de sessão/pareamento são limpos. Tokens consumidos, apontamentos e histórico continuam intactos. GESTOR e FINANCEIRO não podem excluir.
+
+Sessão, mesma origem, MFA, trava transacional e auditoria existentes continuam obrigatórios. Falha na auditoria reverte também a exclusão e a revogação. Não há nova migração: usa a estrutura de `39-delete-tablet.sql` já existente; não executa limpeza nem exclusão física de dados.
+
+Provas focais: `node --test tests/pc05.test.mjs integration/tablet-deletion-ui.test.mjs` e `JETTA_B3_RUN_SQL_TESTS=YES JETTA_B3_SQL_SERVER=localhost\\SQLEXPRESS node --test integration/tablets.integration.mjs`, exclusivamente em banco descartável.
+
+## Previsão e múltiplas contratações — 09/11/2026
+
+A data operacional da contratação passa a ser derivada da entrada prevista; o formulário não solicita outra data. ADMIN e GESTOR com acesso ao depósito podem editar entrada/saída previstas na contratação aberta, com MFA, versão e auditoria. Liberação, pagamento, cancelamento e solicitação pendente mantêm os bloqueios existentes. Após registrar horários reais, a previsão pode mudar de horário, mas deve preservar o dia do serviço.
+
+A migração `40-contract-planning.sql` remove somente a exclusividade prestador/dia e acrescenta um índice não exclusivo e a ação histórica `PREVISTOS`. Preserva IDs, números, horários, valores e todo o histórico. Permite vários acordos no mesmo dia, inclusive após a liberação de outro acordo.
+
+Para instalação existente, com o piloto encerrado, executar `node scripts/upgrade-contract-planning.mjs` e iniciar pelo launcher habitual. O atualizador confere instalação e destino, exige backup verificado, aplica em transação e compara o conteúdo de todas as tabelas antes do commit. Pode ser repetido. Nesta máquina, a atualização foi aplicada com backup verificado e 74 tabelas preservadas. Novas instalações recebem a migração pelo manifesto.
+
+Rollback do aplicativo pode manter o schema expandido, que preserva os campos antigos. Não recriar a exclusividade ou a restrição antiga de eventos depois de existirem repetições ou eventos `PREVISTOS`; a reversão dessas restrições exige reconciliação explícita dos dados. Falha durante a migração reverte a transação automaticamente.
+
+Provas: `PC04_SQL_TESTS=YES PC04_SQL_SERVER=localhost\\SQLEXPRESS node --test integration/pc04.integration.mjs` (HTTP autenticado e SQL descartável) e `node --test integration/pc04-planned-ui.test.mjs` (UI real, APIs sintéticas, desktop e celular).
+
 ## Exclusão de contas — 03/11/2026
 
 Cadastro → Usuários oferece Excluir além da edição/inativação. A exclusão exige confirmação e ADM autenticado, remove a conta do catálogo, revoga sessões, convites e permissões e bloqueia edição/reativação/redefinição de senha. A própria conta e o último ADM ativo são protegidos. Identidade, auditoria e referências históricas permanecem; o e-mail da conta excluída continua reservado. Inativação permanece reversível pelo editor.
@@ -107,3 +139,22 @@ A instalação nova inclui `36-contract-numbering.sql`. Para atualizar o piloto 
 Na primeira execução, as contratações são renumeradas desde 1 dentro de cada depósito, ordenadas por `CriadoEmUtc, ContratacaoId`. `Operacao.ContratacaoNumeracaoMigracao` preserva `ContratacaoId`, depósito, número anterior e novo. Reexecuções não renumeram novamente. IDs, versões, pagamentos, eventos e recibos já emitidos permanecem intactos; documentos históricos conservam a numeração da emissão. A unicidade agora é `(DepositoId, Numero)` e novas contratações seguem o maior número do depósito, incluindo canceladas. A paginação PC04 usa o ID interno; filtros por número podem retornar vários depósitos.
 
 Para recuperação, use o backup verificado e o mapa de numeração. Não volte somente o código antigo: ele depende do default global removido. Inserts SQL de manutenção também precisam informar `Numero` explicitamente e respeitar a mesma transação/lock da API.
+
+
+## Exportação da tabela de contratações (09/11/2026)
+
+O menu Exportar oferece Excel (.xlsx) e PDF em A4 horizontal. Os arquivos usam os filtros aplicados, a mesma ordenação e as permissões da listagem, incluindo todas as páginas. Trazem as oito colunas da tabela, filtros, horário de Brasília, quantidade e soma dos valores exibidos. Não incluem a ação Editar. Alterações nos filtros precisam ser aplicadas antes da exportação.
+
+ADMIN consulta o escopo global; GESTOR consulta os depósitos vinculados; FINANCEIRO consulta somente as contratações LIBERADAS dos depósitos vinculados, conforme o PC04. A geração é somente leitura e não altera contratações, recibos ou auditoria de negócio. Não requer migração. Limites explícitos: 100.000 registros no Excel e 10.000 no PDF; acima disso, refine os filtros. O PDF permite uma geração simultânea por processo.
+
+Playwright agora integra as dependências de execução. No Windows requer Microsoft Edge instalado; em outras plataformas, o Chromium do Playwright. A planilha mantém datas e valores usuais como células nativas; valores acima da precisão segura do Excel são preservados como texto, com aviso no próprio arquivo. Esta entrega permanece somente local, sem publicação.
+
+
+## Exportação da tabela financeira (09/11/2026)
+
+O financeiro oferece o mesmo menu Exportar, em Excel e PDF, com todas as páginas dos filtros aplicados (número, depósito, prestador, início, fim e situação). O período considera a data do serviço. O arquivo contém Número, Prestador, Depósito, Atividade, Data do serviço, Valor liberado, Liberação em Brasília e Situação; as ações de consulta e recibo não são colunas do relatório. O total soma o valor liberado.
+
+O acesso segue o FIN01: ADMIN e FINANCEIRO consultam todos os depósitos; GESTOR somente os vinculados. A exportação inclui somente contratações elegíveis na fila financeira e não emite recibos nem confirma pagamentos. Reutiliza os geradores e limites de exportação acima, sem migração ou dependência adicional. Tudo permanece local.
+
+
+O filtro Data do serviço em Contratações agora oferece De e Até, com ambas as datas incluídas. Somente De consulta a partir dessa data; somente Até consulta até essa data; os dois vazios não restringem a data. Intervalos invertidos são recusados sem descartar o rascunho. Excel e PDF usam esse mesmo período aplicado em todas as páginas. A API mantém dataServico individual por compatibilidade e aceita inicio/fim para o intervalo.

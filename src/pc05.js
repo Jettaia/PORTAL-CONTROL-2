@@ -91,9 +91,9 @@ export async function revoke(cfg,actor,session,tabletId,body){keys(body,[]);id(t
 });}
 export async function deleteTablet(cfg,actor,session,tabletId,body){keys(body,[]);id(tabletId);return transaction(cfg,actor,session,true,async(db,user)=>{
  if(!user.admin)fail('SOMENTE_ADM',403);
- const row=await managedTablet(db,actor,user,tabletId);if(!row.RevogadoEmUtc)fail('TABLET_NAO_REVOGADO',409);
- await db.query(`UPDATE Operacao.TabletPC05 SET ExcluidoEmUtc=SYSUTCDATETIME(),SessaoHash=NULL,PareamentoHash=NULL WHERE TabletId=${id(tabletId)} AND RevogadoEmUtc IS NOT NULL AND ExcluidoEmUtc IS NULL`);
- await audit(db,actor,tabletId,'EXCLUIR');return {ok:true};
+ const row=await managedTablet(db,actor,user,tabletId);
+ await db.query(`UPDATE Operacao.TabletPC05 SET ExcluidoEmUtc=SYSUTCDATETIME(),RevogadoEmUtc=COALESCE(RevogadoEmUtc,SYSUTCDATETIME()),SessaoHash=NULL,PareamentoHash=NULL WHERE TabletId=${id(tabletId)} AND ExcluidoEmUtc IS NULL`);
+ await audit(db,actor,tabletId,'EXCLUIR',{revogadoNaExclusao:!row.RevogadoEmUtc});return {ok:true};
 });}
 export async function activate(cfg,body){keys(body,['pareamento']);if(!strong(body.pareamento))fail('AUTORIZACAO_TABLET_INVALIDA',401);return tabletTx(cfg,async(db,now)=>{
  const r=(await db.query(`SELECT t.TabletId,t.DepositoId,t.EmissorId,t.Falhas,${dates} FROM Operacao.TabletPC05 t WITH(UPDLOCK,HOLDLOCK) WHERE t.ExcluidoEmUtc IS NULL AND t.PareamentoHash='${hashToken(body.pareamento)}' AND ${issuerActive('t')} AND EXISTS(SELECT 1 FROM Cadastro.Deposito f WHERE f.DepositoId=t.DepositoId AND f.Ativo=1)`))[0];

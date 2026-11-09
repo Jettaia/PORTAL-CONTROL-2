@@ -25,7 +25,8 @@ function reason(value){if(typeof value!=='string'||!value.trim()||value.trim().l
 function version(value){if(!Number.isSafeInteger(value)||value<1)fail('VERSAO_INVALIDA');return value;}
 function creationInput(body){
  keys(body,['depositoId','prestadorId','tipoServicoId','gestorId','dataServico','inicioPrevisto','fimPrevisto','valor']);
- const v={depositoId:identifier(body.depositoId),prestadorId:identifier(body.prestadorId),tipoServicoId:identifier(body.tipoServicoId),gestorId:identifier(body.gestorId),dataServico:date(body.dataServico),inicioPrevisto:body.inicioPrevisto,fimPrevisto:body.fimPrevisto,valor:money(body.valor)};
+ const v={depositoId:identifier(body.depositoId),prestadorId:identifier(body.prestadorId),tipoServicoId:identifier(body.tipoServicoId),gestorId:identifier(body.gestorId),dataServico:timestamp(body.inicioPrevisto).slice(0,10),inicioPrevisto:body.inicioPrevisto,fimPrevisto:body.fimPrevisto,valor:money(body.valor)};
+ if(body.dataServico!==undefined&&date(body.dataServico)!==v.dataServico)fail('PERIODO_INVALIDO');
  period(v.inicioPrevisto,v.fimPrevisto,v.dataServico);return v;
 }
 async function actorDb(db,actor,write){
@@ -77,18 +78,21 @@ export async function catalog(cfg,actor){return transaction(cfg,actor,null,false
  return {depositosFiltro,pc04:true,podeOperar:true,podeAprovarHorarios:user.admin,depositos:await db.query(`SELECT f.DepositoId,f.Nome FROM Cadastro.Deposito f WHERE f.Ativo=1 AND ${scope(actor,user,'f')} ORDER BY f.Nome`),tipos:await db.query('SELECT TipoServicoId,Nome FROM Cadastro.TipoServico WHERE Ativo=1 ORDER BY Nome'),prestadores:await db.query(`SELECT p.PrestadorId,p.Nome,p.CPF,pf.DepositoId FROM Cadastro.Prestador p JOIN Cadastro.PrestadorDeposito pf ON pf.PrestadorId=p.PrestadorId AND pf.RevogadoEmUtc IS NULL JOIN Cadastro.Deposito f ON f.DepositoId=pf.DepositoId AND f.Ativo=1 WHERE p.Ativo=1 AND ${scope(actor,user,'f')} ORDER BY p.Nome,pf.DepositoId`),gestores:await db.query(`SELECT u.UsuarioId,u.Nome,f.DepositoId FROM Seguranca.Usuario u CROSS JOIN Cadastro.Deposito f WHERE u.Ativo=1 AND f.Ativo=1 AND ${scope(actor,user,'f')} AND ${responsibleScope('f.DepositoId')} ORDER BY u.Nome,u.UsuarioId,f.DepositoId`)};
 });}
 function listFilters(filters){
- keys(filters,['antes','numero','prestador','deposito','depositoId','centroCusto','gestor','dataServico','valor','situacao']);
+ keys(filters,['antes','numero','prestador','deposito','depositoId','centroCusto','gestor','dataServico','inicio','fim','valor','situacao']);
  const predicates=[];
  for(const [key,raw] of Object.entries(filters)){
   if(typeof raw!=='string')fail('FILTRO_INVALIDO');
   const value=raw.trim();if(!value||key==='antes')continue;
   if(key==='numero')predicates.push('c.Numero='+identifier(value));
   else if(key==='depositoId')predicates.push('c.DepositoId='+identifier(value));
+  else if(key==='inicio')predicates.push("c.DataServico>='"+date(value)+"'");
+  else if(key==='fim')predicates.push("c.DataServico<='"+date(value)+"'");
   else if(key==='dataServico')predicates.push("c.DataServico='"+date(value)+"'");
   else if(key==='valor')predicates.push('c.Valor='+money(value.replace(',','.')));
   else if(key==='situacao'){if(!['ABERTA','LIBERADA','CANCELADA'].includes(value))fail('FILTRO_INVALIDO');predicates.push("c.Status='"+value+"'");}
   else{if(value.length>150||value.includes('\0'))fail('FILTRO_INVALIDO');const column={prestador:'p.Nome',deposito:'f.Nome',centroCusto:'f.CentroCusto',gestor:'g.Nome'}[key];predicates.push('CHARINDEX('+s(value,150)+','+column+' COLLATE Latin1_General_100_CI_AI)>0');}
  }
+ if(filters.inicio?.trim()&&filters.fim?.trim()&&filters.inicio.trim()>filters.fim.trim())fail('PERIODO_FILTRO_INVALIDO');
  return predicates.length?' AND '+predicates.join(' AND '):'';
 }
 export async function list(cfg,actor,antes,filters={}){
@@ -97,6 +101,25 @@ export async function list(cfg,actor,antes,filters={}){
  return transaction(cfg,actor,null,false,async(db,user)=>{
   const rows=await db.query(`SELECT TOP(201) ${columns} FROM Operacao.Contratacao c${joins} WHERE ${visibility(actor,user)}${filtered}${before} ORDER BY c.ContratacaoId DESC`),registros=rows.slice(0,200);
   return {pc04:true,podeOperar:user.operational,registros,proximaPagina:rows.length>200?String(registros.at(-1).ContratacaoId):null};
+ });
+}
+// Export uses the very same filter/visibility predicates, with one consistent read across all pages.
+export async function exportData(cfg,actor,filters={},maxRows=100000){
+ keys(filters,['numero','prestador','deposito','depositoId','centroCusto','gestor','dataServico','inicio','fim','valor','situacao']);
+ const filtered=listFilters(filters);if(!Number.isSafeInteger(maxRows)||maxRows<1||maxRows>100000)fail('LIMITE_INVALIDO');
+ return transaction(cfg,actor,null,false,async(db,user)=>{
+  const registros=await db.query(`SELECT TOP(${maxRows+1}) c.ContratacaoId,c.Numero,p.Nome Prestador,f.Nome Deposito,f.CentroCusto,g.Nome GestorResponsavel,
+   CONVERT(varchar(10),c.DataServico,23) DataServico,CONVERT(varchar(40),c.Valor) Valor,c.Status
+   FROM Operacao.Contratacao c${joins} WHERE ${visibility(actor,user)}${filtered} ORDER BY c.ContratacaoId DESC`);
+  if(registros.length>maxRows)fail('EXPORTACAO_MUITOS_REGISTROS',413);
+  let depotName;if(filters.depositoId?.trim())depotName=(await db.query(`SELECT f.Nome FROM Cadastro.Deposito f WHERE f.DepositoId=${identifier(filters.depositoId.trim())} AND ${scope(actor,user,'f')}`))[0]?.Nome;
+  const used=Object.fromEntries(Object.entries(filters).map(([key,value])=>[key,value.trim()]).filter(([,value])=>value));
+  const labels={numero:'Número',prestador:'Prestador',deposito:'Depósito',depositoId:'Depósito',centroCusto:'Centro de custo',gestor:'Gestor responsável',dataServico:'Data do serviço',inicio:'Serviço desde',fim:'Serviço até',valor:'Valor (R$)',situacao:'Situação'};
+  const filtrosTexto=Object.entries(used).map(([key,value])=>labels[key]+': '+(key==='depositoId'?(depotName||'ID '+value):['dataServico','inicio','fim'].includes(key)?value.split('-').reverse().join('/'):value)).join('; ')||'Todos os registros autorizados, sem filtros adicionais';
+  const cents=registros.reduce((sum,row)=>sum+BigInt(String(row.Valor).replace('.','')),0n),total=String(cents/100n)+'.'+String(cents%100n).padStart(2,'0');
+  const instant=cfg.exportNow?cfg.exportNow():new Date(),geradoEmUtc=instant.toISOString();
+  const geradoEm=new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(instant)+' (Brasília)';
+  return {registros,filtros:used,filtrosTexto,geradoEmUtc,geradoEm,quantidade:registros.length,total};
  });
 }
 export async function detail(cfg,actor,id){identifier(id);return transaction(cfg,actor,null,false,async(db,user)=>{
@@ -109,29 +132,31 @@ export async function create(cfg,actor,token,body){const v=creationInput(body);r
  if(!(await db.query(`SELECT u.UsuarioId FROM Seguranca.Usuario u WITH(HOLDLOCK) WHERE u.UsuarioId=${v.gestorId} AND u.Ativo=1 AND ${responsibleScope(v.depositoId)}`)).length)fail('GESTOR_RESPONSAVEL_INDISPONIVEL',403);
  if(!(await db.query(`SELECT p.PrestadorId FROM Cadastro.Prestador p WITH(HOLDLOCK) JOIN Cadastro.PrestadorDeposito pf ON pf.PrestadorId=p.PrestadorId AND pf.DepositoId=${v.depositoId} AND pf.RevogadoEmUtc IS NULL WHERE p.PrestadorId=${v.prestadorId} AND p.Ativo=1`)).length)fail('PRESTADOR_SEM_VINCULO_ATIVO',409);
  if(!(await db.query(`SELECT TipoServicoId FROM Cadastro.TipoServico WITH(HOLDLOCK) WHERE TipoServicoId=${v.tipoServicoId} AND Ativo=1`)).length)fail('TIPO_INATIVO',409);
- // Global occupancy includes cancelled records; identity/history is never reused.
- if((await db.query(`SELECT ContratacaoId FROM Operacao.Contratacao WITH(UPDLOCK,HOLDLOCK) WHERE PrestadorId=${v.prestadorId} AND DataServico='${v.dataServico}'`)).length)fail('PRESTADOR_JA_CONTRATADO_NA_DATA',409);
- // Existing laboratory history also occupies the day; never silently duplicate it.
- if((await db.query(`SELECT p.ParticipacaoId FROM Operacao.Participacao p WITH(HOLDLOCK) JOIN Operacao.Atividade a WITH(HOLDLOCK) ON a.AtividadeId=p.AtividadeId WHERE p.PrestadorId=${v.prestadorId} AND a.DataServico='${v.dataServico}'`)).length)fail('PRESTADOR_JA_CONTRATADO_NA_DATA',409);
  // transaction() holds the PC04 application lock through commit; canceled rows retain their number.
  const inserted=(await db.query(`INSERT Operacao.Contratacao(Numero,DepositoId,PrestadorId,TipoServicoId,GestorResponsavelId,DataServico,InicioPrevisto,FimPrevisto,Valor,CriadoPor) OUTPUT inserted.ContratacaoId SELECT COALESCE(MAX(Numero),0)+1,${v.depositoId},${v.prestadorId},${v.tipoServicoId},${v.gestorId},'${v.dataServico}','${v.inicioPrevisto}:00','${v.fimPrevisto}:00',${v.valor},${identifier(actor)} FROM Operacao.Contratacao WITH(UPDLOCK,HOLDLOCK) WHERE DepositoId=${v.depositoId}`))[0];
  if(!inserted)throw Error('Contratação não persistida');await event(db,actor,inserted.ContratacaoId,'CRIAR',{dados:v});return record(db,actor,user,inserted.ContratacaoId,true);
 });}
 export async function change(cfg,actor,token,id,action,body){
- identifier(id);const fields={horarios:['entradaReal','saidaReal','motivo'],conferir:[],revisar:['valor','motivo'],cancelar:['motivo']};
+ identifier(id);const fields={previstos:['inicioPrevisto','fimPrevisto'],horarios:['entradaReal','saidaReal','motivo'],conferir:[],revisar:['valor','motivo'],cancelar:['motivo']};
  if(!Object.hasOwn(fields,action))fail('ACAO_INVALIDA');keys(body,['versao',...fields[action]]);version(body.versao);
- const why=action==='conferir'?null:reason(body.motivo),amount=action==='revisar'?money(body.valor):null;
+ const why=['conferir','previstos'].includes(action)?null:reason(body.motivo),amount=action==='revisar'?money(body.valor):null;
  if(action==='horarios')period(body.entradaReal,body.saidaReal);
+ if(action==='previstos')period(body.inicioPrevisto,body.fimPrevisto,timestamp(body.inicioPrevisto).slice(0,10));
  return transaction(cfg,actor,token,true,async(db,user)=>{
   const previous=await record(db,actor,user,id,true);
   if(Number(previous.Versao)!==body.versao)fail('REGISTRO_ALTERADO_ATUALIZE',409);
   if(yes(previous.LiberacaoBloqueada)||previous.Status==='LIBERADA')fail('CONTRATACAO_LIBERADA_BLOQUEADA',409);
   if(previous.PagoEmUtc)fail('CONTRATACAO_PAGA_PRESERVADA',409);
   if(previous.Status==='CANCELADA')fail('CONTRATACAO_CANCELADA',409);
-  if(previous.HorarioPendenteId&&['horarios','conferir'].includes(action))fail('HORARIOS_PENDENTES_APROVACAO',409);
+  if(previous.HorarioPendenteId&&['horarios','conferir','previstos'].includes(action))fail('HORARIOS_PENDENTES_APROVACAO',409);
   let set;
   const unrelease="Status='ABERTA',ValorLiberado=NULL,LiberadoEmUtc=NULL,ConferidoPor=NULL";
-  if(action==='horarios'){
+  if(action==='previstos'){
+   const serviceDate=body.inicioPrevisto.slice(0,10);
+   // Consumed tokens and real punches retain their original service-day context.
+   if((previous.EntradaReal||previous.SaidaReal)&&serviceDate!==previous.DataServico)fail('DATA_COM_HORARIOS_REAIS',409);
+   set=`DataServico='${serviceDate}',InicioPrevisto='${body.inicioPrevisto}:00',FimPrevisto='${body.fimPrevisto}:00'`;
+  }else if(action==='horarios'){
    period(body.entradaReal,body.saidaReal,previous.DataServico);
    if(!user.admin){
     const request=(await db.query(`INSERT Operacao.ContratacaoHorarioSolicitacao(ContratacaoId,EntradaReal,SaidaReal,Motivo,SolicitanteId) OUTPUT inserted.SolicitacaoId VALUES(${identifier(id)},'${body.entradaReal}:00','${body.saidaReal}:00',${s(why,800)},${identifier(actor)})`))[0];
@@ -151,8 +176,8 @@ export async function change(cfg,actor,token,id,action,body){
   if(cfg.pc10&&!cfg.fin01)await contractMovements(db,actor,previous,action,previous.Valor,why);
   await db.query(`UPDATE Operacao.Contratacao SET ${set},Versao=Versao+1 WHERE ContratacaoId=${identifier(id)} AND Versao=${body.versao}`);
   if(action==='cancelar'&&previous.HorarioPendenteId)await db.query(`UPDATE Operacao.ContratacaoHorarioSolicitacao SET Status='CANCELADA',DecididoPor=${identifier(actor)},DecididoEmUtc=SYSUTCDATETIME() WHERE ContratacaoId=${identifier(id)} AND Status='PENDENTE'`);
-  if(cfg.pc05&&['horarios','cancelar','conferir'].includes(action))await invalidateTokens(db,id);
-  await event(db,actor,id,action.toUpperCase(),{antes:previous,motivo:why,...(action==='horarios'?{entradaReal:body.entradaReal,saidaReal:body.saidaReal,origem:'MANUAL'}:{}),...(action==='revisar'?{valor:amount}:{})});
+  if(cfg.pc05&&['horarios','cancelar','conferir','previstos'].includes(action))await invalidateTokens(db,id);
+  await event(db,actor,id,action.toUpperCase(),{antes:previous,motivo:why,...(action==='previstos'?{inicioPrevisto:body.inicioPrevisto,fimPrevisto:body.fimPrevisto,dataServico:body.inicioPrevisto.slice(0,10)}:{}),...(action==='horarios'?{entradaReal:body.entradaReal,saidaReal:body.saidaReal,origem:'MANUAL'}:{}),...(action==='revisar'?{valor:amount}:{})});
   return record(db,actor,user,id,true);
  });
 }

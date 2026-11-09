@@ -5,7 +5,7 @@ import {chromium} from 'playwright';
 const app=express();app.use(express.static('public'));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
 const browser=await chromium.launch({channel:'msedge',headless:true});
 try{
- const page=await browser.newPage({viewport:{width:1440,height:1100}});page.setDefaultTimeout(8000);let created=false,rejectDuplicate=true;const requests=[],errors=[];
+ const page=await browser.newPage({viewport:{width:1440,height:1100}});page.setDefaultTimeout(8000);let created=false,rejectWrite=true;const requests=[],errors=[];
  page.on('pageerror',e=>errors.push(e.message));
  const row={ContratacaoId:999,Numero:999,DepositoId:1,PrestadorId:1,TipoServicoId:1,Prestador:'Prestador sintético',Deposito:'Depósito sintético',Tipo:'Descarga',DataServico:'2026-11-05',InicioPrevisto:'2026-11-05T08:00',FimPrevisto:'2026-11-05T18:00',Valor:'100.00',Status:'ABERTA',Versao:1,GestorResponsavelId:1,GestorResponsavel:'Administrador sintético',CriadoPor:1};
  await page.route('**/api/**',async route=>{
@@ -17,7 +17,7 @@ try{
  else if(p==='/api/pc04/horarios-pendentes')body={registros:[]};
  else if(p==='/api/pc05/status')body={pc05:true};
  else if(p==='/api/pc04/media')body={disponivel:false};
- else if(p==='/api/pc04/contratacoes'&&req.method()==='POST'){if(rejectDuplicate){body={erro:'PRESTADOR_JA_CONTRATADO_NA_DATA'};status=409;}else{created=true;body={ok:true,resultado:row};status=201;}}
+ else if(p==='/api/pc04/contratacoes'&&req.method()==='POST'){if(rejectWrite){body={erro:'CONTRATACOES_INDISPONIVEIS'};status=503;}else{created=true;body={ok:true,resultado:row};status=201;}}
  else if(p==='/api/pc04/contratacoes')body={registros:created?[row]:[],proximaPagina:null};
  else if(p==='/api/pc04/contratacoes/999')body={registro:row,eventos:[],podeOperar:true,pc05:true};
  await route.fulfill({status,json:body});
@@ -26,19 +26,19 @@ try{
  await page.locator('#mainNav summary').filter({hasText:'Operação'}).click();await page.locator('[data-page=contratacoes]').click();
  await page.getByRole('button',{name:'Criar contratação',exact:true}).waitFor();
  for(const [name,value]of [['prestadorId','1'],['tipoServicoId','1'],['gestorId','1']])await page.locator('#pc04_'+name).selectOption(value);
- for(const [name,value]of [['dataServico','2026-11-05'],['inicioPrevisto','2026-11-05T08:00'],['fimPrevisto','2026-11-05T18:00'],['valor','100,00']])await page.locator('#pc04_'+name).fill(value);
+ for(const [name,value]of [['inicioPrevisto','2026-11-05T08:00'],['fimPrevisto','2026-11-05T18:00'],['valor','100,00']])await page.locator('#pc04_'+name).fill(value);
  await page.getByRole('button',{name:'Criar contratação',exact:true}).click();
  const createForm=page.locator('#pc04_valor').locator('..').locator('..');
- const feedback=createForm.getByText('Operação recusada: Já existe contratação deste prestador para a data.',{exact:true});
+ const feedback=createForm.getByText('Operação recusada: Não foi possível consultar ou salvar. Atualize a consulta antes de repetir.',{exact:true});
  await feedback.waitFor({state:'visible',timeout:2500});
  assert.ok(await feedback.evaluate(e=>{const r=e.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;}),'recusa deve estar visível junto do botão');
- fs.mkdirSync('artifacts/pc04-feedback',{recursive:true});await page.screenshot({path:'artifacts/pc04-feedback/duplicate.png'});
+ fs.mkdirSync('artifacts/pc04-feedback',{recursive:true});await page.screenshot({path:'artifacts/pc04-feedback/unavailable.png'});
  assert.equal(await page.locator('#pc04_valor').inputValue(),'100,00');assert.equal(await page.getByRole('button',{name:'Criar contratação',exact:true}).isEnabled(),true);
  const postsBefore=requests.filter(r=>r==='POST /api/pc04/contratacoes').length;
  await page.locator('#pc04_valor').fill('inválido');await page.getByRole('button',{name:'Criar contratação',exact:true}).click();
  await createForm.getByText('Informe um valor com até duas casas decimais.',{exact:true}).waitFor();assert.equal(requests.filter(r=>r==='POST /api/pc04/contratacoes').length,postsBefore);
- await page.locator('#pc04_valor').fill('100');rejectDuplicate=false;
+ await page.locator('#pc04_valor').fill('100');rejectWrite=false;
  await page.getByRole('button',{name:'Criar contratação',exact:true}).click();
  await page.getByText('Contratação criada.',{exact:true}).waitFor();assert.ok(created);assert.deepEqual(errors,[]);
- console.log(JSON.stringify({status:'PASS',surface:'real UI, synthetic APIs, ADMIN duplicate feedback, invalid amount and successful creation',requests,errors}));
+ console.log(JSON.stringify({status:'PASS',surface:'real UI, synthetic APIs, ADMIN unavailable feedback, invalid amount and successful creation',requests,errors}));
 }finally{await browser.close();await new Promise(r=>server.close(r));}

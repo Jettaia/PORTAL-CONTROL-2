@@ -50,6 +50,27 @@ export async function list(cfg,actor,q={}){
   return {registros,proximaPagina:rows.length>100?Buffer.from(JSON.stringify([last.LiberadoEmUtc,String(last.ContratacaoId)])).toString('base64url'):null,podeOperar:user.admin||user.finance};
  });
 }
+// A single consistent read uses the same eligibility, access and ordering as the queue.
+// The paging cursor is deliberately not an export filter.
+export async function exportData(cfg,actor,q={},maxRows=100000){
+ if(q&&Object.hasOwn(q,'cursor'))fail('FILTRO_INVALIDO');
+ const predicates=filters(q);if(!Number.isSafeInteger(maxRows)||maxRows<1||maxRows>100000)fail('LIMITE_INVALIDO');
+ return transaction(cfg,actor,null,false,async(db,user)=>{
+  const where=[eligible,scope(actor,user),...predicates].join(' AND ');
+  const registros=await db.query(`SELECT TOP(${maxRows+1}) ${columns} FROM Operacao.Contratacao c${joins} WHERE ${where} ORDER BY c.LiberadoEmUtc,c.ContratacaoId`);
+  if(registros.length>maxRows)fail('EXPORTACAO_MUITOS_REGISTROS',413);
+  const used=Object.fromEntries(Object.entries(q).filter(([,value])=>value));
+  // Names are selected only through the authorized financial view; foreign IDs reveal no labels.
+  let depotName,providerName;
+  if(q.depositoId)depotName=(await db.query(`SELECT TOP(1) d.Nome FROM Operacao.Contratacao c${joins} WHERE ${where}`))[0]?.Nome;
+  if(q.prestadorId)providerName=(await db.query(`SELECT TOP(1) p.Nome FROM Operacao.Contratacao c${joins} WHERE ${where}`))[0]?.Nome;
+  const names={numero:'Número',depositoId:'Depósito',prestadorId:'Prestador',inicio:'Serviço desde',fim:'Serviço até',situacao:'Situação'},states={AGUARDANDO_PAGAMENTO:'Aguardando pagamento',RECIBO_GERADO:'Recibo gerado',PAGO:'Pago'};
+  const filtrosTexto=Object.entries(used).map(([key,value])=>names[key]+': '+(key==='depositoId'?(depotName||'ID '+value):key==='prestadorId'?(providerName||'ID '+value):key==='situacao'?states[value]:['inicio','fim'].includes(key)?value.split('-').reverse().join('/'):value)).join('; ')||'Todos os registros autorizados, sem filtros adicionais';
+  const cents=registros.reduce((sum,row)=>sum+BigInt(String(row.ValorLiberado).replace('.','')),0n),total=String(cents/100n)+'.'+String(cents%100n).padStart(2,'0');
+  const instant=cfg.exportNow?cfg.exportNow():new Date(),geradoEmUtc=instant.toISOString(),geradoEm=new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(instant)+' (Brasília)';
+  return {registros,filtros:used,filtrosTexto,geradoEmUtc,geradoEm,quantidade:registros.length,total};
+ });
+}
 // GET /api/financeiro/contratacoes/:ContratacaoId: same eligibility/access.
 export async function detail(cfg,actor,key){id(key);return transaction(cfg,actor,null,false,async(db,user)=>{
  const registro=(await db.query(`SELECT ${columns},c.Status,CONVERT(varchar(40),c.Valor) Valor,
