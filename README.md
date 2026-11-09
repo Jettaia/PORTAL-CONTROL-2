@@ -13,7 +13,7 @@ Portal mais recente da Jetta, preservado na branch `main`. A branch `antigo` con
 
 ## Desenvolvimento
 
-Requer Node.js >=20. Após instalar as dependências com `npm ci`, os comandos sem banco são:
+Requer Node.js >=22.13 (a leitura local de PDFs usa PDF.js). Após instalar as dependências com `npm ci`, os comandos sem banco são:
 
 ```powershell
 npm run check
@@ -26,6 +26,12 @@ O pacote `odbc` também exige o ambiente nativo compatível. O acesso ao SQL Ser
 `npm test` descobre automaticamente os arquivos `*.test.js` e `*.test.mjs` na raiz de `tests/` e `integration/`, usando o mesmo inventário do gate do piloto. Inclui os testes de UI simulada e a prévia em navegador headless. Playwright está fixado no lockfile como dependência de execução, pois também gera os PDFs de contratações. No Windows a prévia e a exportação PDF usam Microsoft Edge instalado; nas demais plataformas usa o Chromium do Playwright (`npx playwright install chromium`). Para escolher outro canal instalado, defina `PLAYWRIGHT_CHANNEL` (por exemplo, `chrome`). Qualquer falha é propagada no código de saída, inclusive dependência/navegador ausente. Não é necessário abrir o navegador interativamente.
 
 `npm start` executa o servidor legado, com configuração `.env` e destino `JETTA_CONTROL`; não é o iniciador do piloto mais recente. O piloto instalado usa `node pilot-local/start.mjs`, configuração privada em `secrets/pilot-local/runtime.json`, acesso local em `127.0.0.1:3211` e registro de pagamentos externos por contratação, sem execução bancária. A atualização financeira exige migrações 33, 34 e 35 em ordem, com piloto parado e backup verificado; veja `docs/BANCO-DE-DADOS.md`. Não copie configurações privadas de outra máquina nem execute o instalador como roteiro de produção.
+
+## Importação de recibos assinados
+
+No Financeiro, **Importar recibos assinados** recebe um PDF de até 50 MiB e 100 páginas. O processamento de QR Code e OCR em português ocorre localmente, com modelo incluído nas dependências. Novos recibos impressos incluem QR de identificação; documentos antigos podem ser reconhecidos por texto/OCR ou vinculados manualmente pelo depósito e número da contratação. Na prévia, abra as páginas, confira assinatura, contratação, depósito e valor; agrupe páginas do mesmo recibo e marque somente os pagamentos conferidos antes de confirmar. A identificação automática não valida a assinatura.
+
+A prévia é privada do usuário, expira em 15 minutos e desaparece ao reiniciar o processo; descartar não registra pagamento. Cada pagamento confirmado recebe um PDF separado com suas páginas (limite de 5 MiB por anexo). O resultado informa sucessos e falhas por contratação; pagamentos concluídos não são repetidos. A confirmação registra pagamentos externos já realizados, sem transferência bancária. Teste SQL isolado: `$env:FIN03_IMPORT_SQL_TESTS='YES'; node --test integration/fin03-import.integration.mjs`.
 
 ## Regressão integral do piloto
 

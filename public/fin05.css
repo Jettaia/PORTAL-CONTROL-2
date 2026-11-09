@@ -4,3 +4,44 @@
 #fin05Page .fin05-money,.fin05-print .fin05-money{white-space:nowrap}
 
 #dashboard #fin05Page .fin05-number,.fin05-print .fin05-number{text-align:center;vertical-align:middle}
+
+/* Deposit summaries and the provider's statement share the existing FIN05 surface. */
+#fin05Page .fin05-movement{flex-direction:row;align-items:center;font-weight:400;gap:8px;margin-right:12px}
+#fin05Page .fin05-movement input{width:18px;height:18px;min-width:18px;padding:0;accent-color:#123656}
+#fin05Page .fin05-actions{align-items:center}
+#fin05Page .fin05-depot{margin:20px 0 28px;border:1px solid #dbe3ec;border-radius:8px;overflow:hidden;background:#fff}
+#fin05Page .fin05-depot-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 20px;background:#123656;color:#fff;border-bottom:3px solid #ed8b36}
+#fin05Page .fin05-depot-heading h4{margin:0;font-size:1.1rem;color:inherit;overflow-wrap:anywhere}
+#fin05Page .fin05-depot-heading p{margin:0;white-space:nowrap;color:inherit}
+#fin05Page .fin05-depot-totals{padding:16px 20px;background:#f6f8fb}
+#fin05Page .fin05-depot-totals h3{margin:0 0 12px;font-size:.9rem;color:#475569}
+#fin05Page .fin05-depot-totals dl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:0}
+#fin05Page .fin05-depot-totals dt{font-size:.85rem;color:#475569;margin-bottom:5px}
+#fin05Page .fin05-depot-totals dd{margin:0;font-size:1.1rem;font-weight:700;font-variant-numeric:tabular-nums}
+#dashboard #fin05Page .fin05-provider-scroll{margin:0;border:0;border-radius:0}
+#fin05Page .fin05-providers{min-width:850px}
+#dashboard #fin05Page .fin05-provider-toggle{display:flex;align-items:center;gap:10px;text-align:left;color:#123656;background:transparent;border:0;padding:7px 0;font-weight:600;min-width:160px;max-width:340px;white-space:normal}
+#fin05Page .fin05-provider-toggle span{overflow-wrap:anywhere}
+#fin05Page .fin05-provider-toggle svg{width:18px;height:18px;flex:none;stroke:#d66b13;fill:none;stroke-width:2;transition:transform .18s ease-out}
+#fin05Page .fin05-provider-toggle[aria-expanded=true] svg{transform:rotate(90deg)}
+#fin05Page .fin05-provider-toggle:hover span{text-decoration:underline;text-underline-offset:3px}
+#dashboard #fin05Page .fin05-detail-row>td{padding:0;background:#f6f8fb}
+#fin05Page .fin05-inline{padding:18px 20px;border-top:1px solid #dbe3ec;border-bottom:1px solid #dbe3ec}
+#fin05Page .fin05-detail-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+#fin05Page .fin05-detail-toolbar h4{margin:0;font-size:1rem;overflow-wrap:anywhere}
+#fin05Page .fin05-inline .fin05-scroll{max-height:470px;background:#fff}
+#fin05Page .fin05-contracts{min-width:1250px}
+#fin05Page .fin05-detail-total{font-weight:600;color:#123656}
+#fin05Page .fin05-detail-count,#fin05Page .fin05-depot-count{font-size:.9rem;color:#475569}
+#fin05Page .fin05-depot-count{padding:0 20px}
+#fin05Page .fin05-empty{padding:22px 0;color:#475569}
+@media(max-width:600px){#fin05Page .fin05-depot-heading{padding:14px}#fin05Page .fin05-depot-totals{padding:14px}#fin05Page .fin05-depot-totals dl{grid-template-columns:1fr;gap:12px}#fin05Page .fin05-inline{padding:14px}#fin05Page .fin05-movement{flex:1 1 100%;margin-right:0}#fin05Page .fin05-detail-toolbar{align-items:flex-start}}
+@media(prefers-reduced-motion:reduce){#fin05Page .fin05-provider-toggle svg{transition:none}}
+/* Keep expanded statements inside the visible depot width, with their own scroll. */
+#fin05Page .fin05-depot{container-type:inline-size}
+#fin05Page .fin05-providers{table-layout:fixed}
+#fin05Page .fin05-providers>thead th:first-child{width:28%}
+#fin05Page .fin05-providers>thead th:nth-child(2){width:20%}
+#fin05Page .fin05-providers>thead th:nth-child(3){width:12%}
+#fin05Page .fin05-providers>thead th:nth-child(n+4){width:13.333%}
+#fin05Page .fin05-inline{box-sizing:border-box;width:100cqw;max-width:100%}

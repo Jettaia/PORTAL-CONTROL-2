@@ -120,7 +120,7 @@ async function findSessionConsistent(cfg,token){
 
 async function accountContext(db,cfg,user){
  if(!cfg.pc01)return user;
- const roles=await db.query(`SELECT pa.Codigo FROM Seguranca.UsuarioPerfil up JOIN Seguranca.PerfilAcesso pa ON pa.PerfilId=up.PerfilId AND pa.Ativo=1 WHERE up.UsuarioId=${intLiteral(user.id)} AND pa.Codigo IN('PC01_ADMIN','PC01_GESTOR','PC01_FINANCEIRO')`);
+ const roles=await db.query(`SELECT pa.Codigo FROM Seguranca.UsuarioPerfil up JOIN Seguranca.PerfilAcesso pa ON pa.PerfilId=up.PerfilId AND pa.Ativo=1 WHERE up.UsuarioId=${intLiteral(user.id)} AND pa.Codigo IN('PC01_ADMIN','PC01_COORDENADOR','PC01_GESTOR','PC01_FINANCEIRO')`);
  return {...user,pc01:true,pc02:cfg.pc02===true,pc03:cfg.pc03===true,pc04:cfg.pc04===true,pc05:cfg.pc05===true,fin01:cfg.fin01===true,pc08:cfg.pc08===true,pc10:cfg.pc10===true,pc11:cfg.pc11===true,funcoes:roles.map(r=>r.Codigo.slice(5)),depositos:(await db.query(`SELECT DepositoId FROM Seguranca.UsuarioDeposito WHERE UsuarioId=${intLiteral(user.id)} AND RevogadoEmUtc IS NULL`)).map(r=>String(r.DepositoId))};
 }
 

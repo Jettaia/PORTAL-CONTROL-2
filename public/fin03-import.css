@@ -1,0 +1,18 @@
+#fin03Import:empty{display:none}
+#fin03Import{margin:20px 0;padding:20px;border:1px solid var(--jc-border,#dbe3ec);border-radius:8px;background:var(--jc-subtle,#f6f8fb);min-width:0;overflow-wrap:anywhere}
+#fin03Import h3,#fin03Import h4{margin-top:0}
+#fin03Import .fin03-import-list{display:grid;gap:14px;margin:18px 0}
+#fin03Import .fin03-import-item{padding:16px;background:#fff;border:1px solid var(--jc-border,#dbe3ec);border-radius:6px;min-width:0}
+#fin03Import .fin03-import-item-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px}
+#fin03Import .fin03-import-item-heading h4{margin:0}
+#fin03Import dl{display:grid;grid-template-columns:minmax(100px,auto) minmax(0,1fr);gap:8px 16px;margin:12px 0}
+#fin03Import dt{font-weight:600}#fin03Import dd{margin:0}
+#fin03Import .fin03-import-check{flex-direction:row;align-items:center;gap:10px;margin:18px 0}
+#fin03Import .fin03-import-check input{width:20px;height:20px;flex:0 0 20px;margin:0}
+#fin03Import .fin03-import-manual,#fin03Import .fin03-import-upload{max-width:700px;margin:18px 0;display:grid;gap:10px}
+#fin03Import .fin03-import-manual{padding-block:18px;border-block:1px solid var(--jc-border,#dbe3ec)}
+#fin03Import .fin03-import-manual label,#fin03Import .fin03-import-upload label{margin:0}
+#fin03Import p{margin:8px 0 14px}
+#fin03ImportViewer:not(:empty){margin-top:20px;padding-top:20px;border-top:1px solid var(--jc-border,#dbe3ec)}
+#fin03ImportViewer img{display:block;width:100%;height:auto;max-width:900px;margin:14px auto;border:1px solid var(--jc-border,#dbe3ec);background:#fff}
+@media(max-width:600px){#fin03Import{padding:14px}#fin03Import .fin03-import-item{padding:12px}#fin03Import dl{grid-template-columns:1fr;gap:4px}#fin03Import dd{margin-bottom:8px}#fin03Import .fin01-actions>*{flex:1 1 180px}}

@@ -1,0 +1,16 @@
+{
+  "base": "043999899eaccb341ca66dbc769f8a08dce4a2ae",
+  "sha256": {
+    "src/receipt-upload.js": "cd30d23909fed002e559b141cd84557f9385fed16449c6ce3067cbd8f5c247da",
+    "src/fin03-import.js": "b481ee29448d9da619c41ec76fa124746fa8f485e44cbcfa7ffdf939bed4cdf4",
+    "src/server.js": "f661be1890368c3653b4d0c8c198d4362c3ef45e92fa59231de25e5b83fc6b8b",
+    "src/receipt-pdf.js": "d8858076b05be6000726e16d325724854b365f243eb7aba5ad21db3c3ea435d2",
+    "src/receipt-pdf-worker.js": "8dfd9535b1b0b6b8d61c930873a69eacb14332957de20de51caf5ecb2caab4c1",
+    "public/fin03-import.js": "ba5556e720a181413eee9f330d406ad2e536fde3681ab99b385a2671f7f78ab3",
+    "tests/receipt-upload.test.mjs": "d93e865d599c701fdbd609a2c873ee3485d62e809c9cb01ad41068866491781c",
+    "tests/fin03-import.test.mjs": "75b250bafd389bc4c5461e88c7ea2ecba84e957c4b7e55d4543e6641a7244093",
+    "integration/fin03-import-ui.test.mjs": "77b537191f1638c4b2389a1c2f3b3831cd2e980634e85775d741a1758c951136",
+    "integration/fin03-import.integration.mjs": "390a1036b05277e6b7cc38055b2a3917498d8ac1ca3d9974c687d4b767bb7c5c",
+    "README.md": "ad1173599328cab00fbe3391f92a11c34e95b1166f94cd61bd7b5087ff38fab1"
+  }
+}

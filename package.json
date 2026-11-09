@@ -42,17 +42,24 @@
     "gate:uat": "node scripts/run-final-lab.mjs --uat"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.13.0"
   },
   "overrides": {
     "body-parser": "^1.20.9"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^1.1.0",
+    "@tesseract.js-data/por": "^1.0.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.0.0",
+    "jsqr": "^1.4.0",
     "odbc": "^2.4.9",
-    "playwright": "1.64.1"
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.5.438",
+    "playwright": "1.64.1",
+    "qrcode-generator": "^2.0.4",
+    "tesseract.js": "^7.0.0"
   }
 }

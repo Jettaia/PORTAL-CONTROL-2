@@ -30,9 +30,9 @@ function creationInput(body){
  period(v.inicioPrevisto,v.fimPrevisto,v.dataServico);return v;
 }
 async function actorDb(db,actor,write){
- const uid=identifier(actor),row=(await db.query(`SELECT u.UsuarioId,CASE WHEN ${roleSql(uid,'ADMIN')} AND u.Perfil='ADMIN' THEN 1 ELSE 0 END Adm,CASE WHEN ${roleSql(uid,'GESTOR')} THEN 1 ELSE 0 END Gestor,CASE WHEN ${roleSql(uid,'FINANCEIRO')} THEN 1 ELSE 0 END Financeiro FROM Seguranca.Usuario u WITH(HOLDLOCK) WHERE u.UsuarioId=${uid} AND u.Ativo=1`))[0];
- if(!row||!yes(row.Adm)&&!yes(row.Gestor)&&(write||!yes(row.Financeiro)))fail('PERMISSAO_NEGADA',403);
- return {admin:yes(row.Adm),operational:yes(row.Adm)||yes(row.Gestor),finance:yes(row.Financeiro)};
+ const uid=identifier(actor),row=(await db.query(`SELECT u.UsuarioId,CASE WHEN ${roleSql(uid,'ADMIN')} AND u.Perfil='ADMIN' THEN 1 ELSE 0 END Adm,CASE WHEN ${roleSql(uid,'COORDENADOR')} THEN 1 ELSE 0 END Coordenador,CASE WHEN ${roleSql(uid,'GESTOR')} THEN 1 ELSE 0 END Gestor,CASE WHEN ${roleSql(uid,'FINANCEIRO')} THEN 1 ELSE 0 END Financeiro FROM Seguranca.Usuario u WITH(HOLDLOCK) WHERE u.UsuarioId=${uid} AND u.Ativo=1`))[0];
+ if(!row||!yes(row.Adm)&&!yes(row.Coordenador)&&!yes(row.Gestor)&&(write||!yes(row.Financeiro)))fail('PERMISSAO_NEGADA',403);
+ return {admin:yes(row.Adm),coordinator:yes(row.Coordenador),operational:yes(row.Adm)||yes(row.Coordenador)||yes(row.Gestor),finance:yes(row.Financeiro)};
 }
 const scope=(actor,user,alias='c')=>user.admin?'1=1':`EXISTS(SELECT 1 FROM Seguranca.UsuarioDeposito uf WHERE uf.UsuarioId=${identifier(actor)} AND uf.DepositoId=${alias}.DepositoId AND uf.RevogadoEmUtc IS NULL)`;
 // Financial permission grants the released view only inside assigned depots.
@@ -75,7 +75,7 @@ async function contractHistory(db,id){return db.query(`SELECT e.EventoId,e.Acao,
 export async function catalog(cfg,actor){return transaction(cfg,actor,null,false,async(db,user)=>{
  const depositosFiltro=await db.query(`SELECT f.DepositoId,f.Nome FROM Cadastro.Deposito f WHERE ${scope(actor,user,'f')} ORDER BY f.Nome,f.DepositoId`);
  if(!user.operational)return {depositosFiltro,pc04:true,podeOperar:false,podeAprovarHorarios:false,depositos:[],tipos:[],prestadores:[],gestores:[]};
- return {depositosFiltro,pc04:true,podeOperar:true,podeAprovarHorarios:user.admin,depositos:await db.query(`SELECT f.DepositoId,f.Nome FROM Cadastro.Deposito f WHERE f.Ativo=1 AND ${scope(actor,user,'f')} ORDER BY f.Nome`),tipos:await db.query('SELECT TipoServicoId,Nome FROM Cadastro.TipoServico WHERE Ativo=1 ORDER BY Nome'),prestadores:await db.query(`SELECT p.PrestadorId,p.Nome,p.CPF,pf.DepositoId FROM Cadastro.Prestador p JOIN Cadastro.PrestadorDeposito pf ON pf.PrestadorId=p.PrestadorId AND pf.RevogadoEmUtc IS NULL JOIN Cadastro.Deposito f ON f.DepositoId=pf.DepositoId AND f.Ativo=1 WHERE p.Ativo=1 AND ${scope(actor,user,'f')} ORDER BY p.Nome,pf.DepositoId`),gestores:await db.query(`SELECT u.UsuarioId,u.Nome,f.DepositoId FROM Seguranca.Usuario u CROSS JOIN Cadastro.Deposito f WHERE u.Ativo=1 AND f.Ativo=1 AND ${scope(actor,user,'f')} AND ${responsibleScope('f.DepositoId')} ORDER BY u.Nome,u.UsuarioId,f.DepositoId`)};
+ return {depositosFiltro,pc04:true,podeOperar:true,podeAprovarHorarios:user.admin||user.coordinator,depositos:await db.query(`SELECT f.DepositoId,f.Nome FROM Cadastro.Deposito f WHERE f.Ativo=1 AND ${scope(actor,user,'f')} ORDER BY f.Nome`),tipos:await db.query('SELECT TipoServicoId,Nome FROM Cadastro.TipoServico WHERE Ativo=1 ORDER BY Nome'),prestadores:await db.query(`SELECT p.PrestadorId,p.Nome,p.CPF,pf.DepositoId FROM Cadastro.Prestador p JOIN Cadastro.PrestadorDeposito pf ON pf.PrestadorId=p.PrestadorId AND pf.RevogadoEmUtc IS NULL JOIN Cadastro.Deposito f ON f.DepositoId=pf.DepositoId AND f.Ativo=1 WHERE p.Ativo=1 AND ${scope(actor,user,'f')} ORDER BY p.Nome,pf.DepositoId`),gestores:await db.query(`SELECT u.UsuarioId,u.Nome,f.DepositoId FROM Seguranca.Usuario u CROSS JOIN Cadastro.Deposito f WHERE u.Ativo=1 AND f.Ativo=1 AND ${scope(actor,user,'f')} AND ${responsibleScope('f.DepositoId')} ORDER BY u.Nome,u.UsuarioId,f.DepositoId`)};
 });}
 function listFilters(filters){
  keys(filters,['antes','numero','prestador','deposito','depositoId','centroCusto','gestor','dataServico','inicio','fim','valor','situacao']);
@@ -108,7 +108,7 @@ export async function exportData(cfg,actor,filters={},maxRows=100000){
  keys(filters,['numero','prestador','deposito','depositoId','centroCusto','gestor','dataServico','inicio','fim','valor','situacao']);
  const filtered=listFilters(filters);if(!Number.isSafeInteger(maxRows)||maxRows<1||maxRows>100000)fail('LIMITE_INVALIDO');
  return transaction(cfg,actor,null,false,async(db,user)=>{
-  const registros=await db.query(`SELECT TOP(${maxRows+1}) c.ContratacaoId,c.Numero,p.Nome Prestador,f.Nome Deposito,f.CentroCusto,g.Nome GestorResponsavel,
+  const registros=await db.query(`SELECT TOP(${maxRows+1}) c.ContratacaoId,c.Numero,p.Nome Prestador,p.CPF,f.Nome Deposito,f.CentroCusto,g.Nome GestorResponsavel,
    CONVERT(varchar(10),c.DataServico,23) DataServico,CONVERT(varchar(40),c.Valor) Valor,c.Status
    FROM Operacao.Contratacao c${joins} WHERE ${visibility(actor,user)}${filtered} ORDER BY c.ContratacaoId DESC`);
   if(registros.length>maxRows)fail('EXPORTACAO_MUITOS_REGISTROS',413);
@@ -123,11 +123,11 @@ export async function exportData(cfg,actor,filters={},maxRows=100000){
  });
 }
 export async function detail(cfg,actor,id){identifier(id);return transaction(cfg,actor,null,false,async(db,user)=>{
- const row=await record(db,actor,user,id);return {registro:row,pc10:cfg.pc10===true&&!cfg.fin01,podeOperar:user.operational&&(user.admin||await branchAllowed(db,actor,row.DepositoId)),podeAprovarHorarios:user.admin,solicitacoesHorarios:user.operational?await db.query(`SELECT hs.SolicitacaoId,CONVERT(varchar(16),hs.EntradaReal,126) EntradaReal,CONVERT(varchar(16),hs.SaidaReal,126) SaidaReal,hs.Motivo,hs.SolicitanteId,u.Nome Solicitante,hs.Status,hs.DecididoPor,CONVERT(varchar(23),hs.DecididoEmUtc,126) DecididoEmUtc FROM Operacao.ContratacaoHorarioSolicitacao hs JOIN Seguranca.Usuario u ON u.UsuarioId=hs.SolicitanteId WHERE hs.ContratacaoId=${identifier(id)} ORDER BY hs.SolicitacaoId DESC`):[],...(cfg.pc05?{pc05:true,entradaTokenUsada:(await db.query(`SELECT TOP(1) 1 V FROM Operacao.ContratacaoToken WHERE ContratacaoId=${identifier(id)} AND Tipo='ENTRADA' AND ConsumidoEmUtc IS NOT NULL`)).length>0}:{}),eventos:await contractHistory(db,id)};
+ const row=await record(db,actor,user,id);return {registro:row,pc10:cfg.pc10===true&&!cfg.fin01,podeRegistrarHorariosDireto:user.admin,podeOperar:user.operational&&(user.admin||await branchAllowed(db,actor,row.DepositoId)),podeAprovarHorarios:user.admin||user.coordinator,solicitacoesHorarios:user.operational?await db.query(`SELECT hs.SolicitacaoId,CONVERT(varchar(16),hs.EntradaReal,126) EntradaReal,CONVERT(varchar(16),hs.SaidaReal,126) SaidaReal,hs.Motivo,hs.SolicitanteId,u.Nome Solicitante,hs.Status,hs.DecididoPor,CONVERT(varchar(23),hs.DecididoEmUtc,126) DecididoEmUtc FROM Operacao.ContratacaoHorarioSolicitacao hs JOIN Seguranca.Usuario u ON u.UsuarioId=hs.SolicitanteId WHERE hs.ContratacaoId=${identifier(id)} ORDER BY hs.SolicitacaoId DESC`):[],...(cfg.pc05?{pc05:true,entradaTokenUsada:(await db.query(`SELECT TOP(1) 1 V FROM Operacao.ContratacaoToken WHERE ContratacaoId=${identifier(id)} AND Tipo='ENTRADA' AND ConsumidoEmUtc IS NOT NULL`)).length>0}:{}),eventos:await contractHistory(db,id)};
 });}
 async function branchAllowed(db,actor,branch){return (await db.query(`SELECT 1 V FROM Seguranca.UsuarioDeposito WHERE UsuarioId=${identifier(actor)} AND DepositoId=${identifier(branch)} AND RevogadoEmUtc IS NULL`)).length>0;}
 export async function create(cfg,actor,token,body){const v=creationInput(body);return transaction(cfg,actor,token,true,async(db,user)=>{
- if(!user.admin&&v.gestorId!==identifier(actor))fail('GESTOR_RESPONSAVEL_FIXO',403);
+ if(!user.admin&&!user.coordinator&&v.gestorId!==identifier(actor))fail('GESTOR_RESPONSAVEL_FIXO',403);
  if(!(await db.query(`SELECT f.DepositoId FROM Cadastro.Deposito f WITH(HOLDLOCK) WHERE f.DepositoId=${v.depositoId} AND f.Ativo=1 AND ${scope(actor,user,'f')}`)).length)fail('DEPOSITO_NAO_AUTORIZADA',403);
  if(!(await db.query(`SELECT u.UsuarioId FROM Seguranca.Usuario u WITH(HOLDLOCK) WHERE u.UsuarioId=${v.gestorId} AND u.Ativo=1 AND ${responsibleScope(v.depositoId)}`)).length)fail('GESTOR_RESPONSAVEL_INDISPONIVEL',403);
  if(!(await db.query(`SELECT p.PrestadorId FROM Cadastro.Prestador p WITH(HOLDLOCK) JOIN Cadastro.PrestadorDeposito pf ON pf.PrestadorId=p.PrestadorId AND pf.DepositoId=${v.depositoId} AND pf.RevogadoEmUtc IS NULL WHERE p.PrestadorId=${v.prestadorId} AND p.Ativo=1`)).length)fail('PRESTADOR_SEM_VINCULO_ATIVO',409);
@@ -183,19 +183,20 @@ export async function change(cfg,actor,token,id,action,body){
 }
 async function invalidateTokens(db,id){await db.query(`UPDATE Operacao.ContratacaoToken SET InvalidadoEmUtc=SYSUTCDATETIME() WHERE ContratacaoId=${identifier(id)} AND ConsumidoEmUtc IS NULL AND InvalidadoEmUtc IS NULL`);}
 export async function pendingHours(cfg,actor){return transaction(cfg,actor,null,false,async(db,user)=>{
- if(!user.admin)fail('SOMENTE_ADM',403);
- return {registros:await db.query(`SELECT hs.SolicitacaoId,c.ContratacaoId,c.Numero,c.Versao,p.Nome Prestador,d.Nome Deposito,CONVERT(varchar(16),hs.EntradaReal,126) EntradaReal,CONVERT(varchar(16),hs.SaidaReal,126) SaidaReal,hs.Motivo,hs.SolicitanteId,u.Nome Solicitante FROM Operacao.ContratacaoHorarioSolicitacao hs JOIN Operacao.Contratacao c ON c.ContratacaoId=hs.ContratacaoId JOIN Cadastro.Prestador p ON p.PrestadorId=c.PrestadorId JOIN Cadastro.Deposito d ON d.DepositoId=c.DepositoId JOIN Seguranca.Usuario u ON u.UsuarioId=hs.SolicitanteId WHERE hs.Status='PENDENTE' AND c.Status='ABERTA' AND c.LiberacaoBloqueada=0 ORDER BY hs.CriadoEmUtc,hs.SolicitacaoId`)};
+ if(!user.admin&&!user.coordinator)fail('SOMENTE_ADM',403);
+ return {registros:await db.query(`SELECT hs.SolicitacaoId,c.ContratacaoId,c.Numero,c.Versao,p.Nome Prestador,d.Nome Deposito,CONVERT(varchar(16),hs.EntradaReal,126) EntradaReal,CONVERT(varchar(16),hs.SaidaReal,126) SaidaReal,hs.Motivo,hs.SolicitanteId,u.Nome Solicitante FROM Operacao.ContratacaoHorarioSolicitacao hs JOIN Operacao.Contratacao c ON c.ContratacaoId=hs.ContratacaoId JOIN Cadastro.Prestador p ON p.PrestadorId=c.PrestadorId JOIN Cadastro.Deposito d ON d.DepositoId=c.DepositoId JOIN Seguranca.Usuario u ON u.UsuarioId=hs.SolicitanteId WHERE hs.Status='PENDENTE' AND c.Status='ABERTA' AND c.LiberacaoBloqueada=0 AND ${scope(actor,user)} ORDER BY hs.CriadoEmUtc,hs.SolicitacaoId`)};
 });}
 export async function decideHours(cfg,actor,token,id,requestId,body){
  identifier(id);identifier(requestId);keys(body,['versao','aprovar']);version(body.versao);if(typeof body.aprovar!=='boolean')fail('DECISAO_INVALIDA');
  return transaction(cfg,actor,token,true,async(db,user)=>{
-  if(!user.admin)fail('SOMENTE_ADM',403);
+  if(!user.admin&&!user.coordinator)fail('SOMENTE_ADM',403);
   const previous=await record(db,actor,user,id,true);
   if(Number(previous.Versao)!==body.versao)fail('REGISTRO_ALTERADO_ATUALIZE',409);
   if(yes(previous.LiberacaoBloqueada)||previous.Status==='LIBERADA')fail('CONTRATACAO_LIBERADA_BLOQUEADA',409);
   if(previous.Status!=='ABERTA'||previous.PagoEmUtc)fail('CONTRATACAO_FECHADA',409);
   const request=(await db.query(`SELECT SolicitacaoId,SolicitanteId,Motivo,CONVERT(varchar(16),EntradaReal,126) EntradaReal,CONVERT(varchar(16),SaidaReal,126) SaidaReal FROM Operacao.ContratacaoHorarioSolicitacao WITH(UPDLOCK,HOLDLOCK) WHERE SolicitacaoId=${identifier(requestId)} AND ContratacaoId=${identifier(id)} AND Status='PENDENTE'`))[0];
   if(!request)fail('SOLICITACAO_INDISPONIVEL',409);
+  if(!user.admin&&String(request.SolicitanteId)===String(actor))fail('AUTOAPROVACAO_NEGADA',403);
   period(request.EntradaReal,request.SaidaReal,previous.DataServico);
   await db.query(`UPDATE Operacao.ContratacaoHorarioSolicitacao SET Status='${body.aprovar?'APROVADA':'NEGADA'}',DecididoPor=${identifier(actor)},DecididoEmUtc=SYSUTCDATETIME() WHERE SolicitacaoId=${identifier(requestId)} AND ContratacaoId=${identifier(id)} AND Status='PENDENTE'`);
   await db.query(`UPDATE Operacao.Contratacao SET ${body.aprovar?`EntradaReal='${request.EntradaReal}:00',SaidaReal='${request.SaidaReal}:00',EntradaOrigem='MANUAL',SaidaOrigem='MANUAL',`:''}Versao=Versao+1 WHERE ContratacaoId=${identifier(id)} AND Versao=${body.versao}`);

@@ -1,5 +1,10 @@
+import * as imports from './fin03-import.js';
 import * as payments from './fin03.js';
 export function mountSettlements(app,cfg,{session,sameOrigin}){
+ const prefix='/api/financeiro/recibos/importacao';
+ for(const [suffix,fn] of [['/previa',imports.preview],['/vincular',imports.bind],['/confirmar',imports.confirm]])app.post(prefix+suffix,sameOrigin,session,async(req,res)=>{try{res.set('Cache-Control','no-store').json(await fn(cfg,req.user.id,req.rawSession,req.body));}catch(e){error(res,e);}});
+ app.get(prefix+'/:previa/paginas/:pagina',session,async(req,res)=>{try{res.set('Cache-Control','no-store').type('png').send(await imports.image(cfg,req.user.id,req.rawSession,req.params.previa,req.params.pagina));}catch(e){error(res,e);}});
+ app.delete(prefix+'/:previa',sameOrigin,session,async(req,res)=>{try{res.json(await imports.discard(cfg,req.user.id,req.rawSession,req.params.previa));}catch(e){error(res,e);}});
  const route='/api/financeiro/contratacoes/:id';
  const error=(res,e)=>res.status(e.status||503).json({erro:e.status?e.message:'PAGAMENTO_INDISPONIVEL'});
  for(const [suffix,fn] of [['/pagamento',payments.confirm],['/pagamento/desfazer',payments.undo],['/pagamento/anexo',payments.replace]])app.post(route+suffix,sameOrigin,session,async(req,res)=>{try{res.json(await fn(cfg,req.user.id,req.rawSession,req.params.id,req.body));}catch(e){error(res,e);}});

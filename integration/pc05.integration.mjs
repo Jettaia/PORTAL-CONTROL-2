@@ -2,6 +2,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import {targetGuard} from '../pilot-local/build-schema.mjs';
+import {snapshot} from '../pilot-local/recovery.mjs';
 import {connectPilot,installSchema} from '../pilot-local/database.mjs';
 import {seedCatalog} from '../pilot-local/seed-catalog.mjs';
 import {completeSetup} from '../pilot-local/app.mjs';
@@ -53,7 +56,13 @@ test('PC-05: tokens, tablets por depósito, persistência, consumo concorrente, 
   await expect(await call(tokens+ca.ContratacaoId+'/tokens',{body:{versao:1,tipo:'ENTRADA'}}),401);
   await expect(await call(tokens+ca.ContratacaoId+'/tokens',{cookie:b.cookie,body:{versao:1,tipo:'ENTRADA'}}),404);
   await issue(a,ca,'SAIDA',409);
-  const first=await issue(a,ca,'ENTRADA'),replacement=await issue(a,ca,'ENTRADA');assert.match(replacement.codigo,/^\d{8}$/);assert.notEqual(first.codigo,replacement.codigo);
+  const first=await issue(a,ca,'ENTRADA'),replacement=await issue(a,ca,'ENTRADA');assert.match(replacement.codigo,/^\d{4}$/);assert.notEqual(first.codigo,replacement.codigo);
+  const migrate=async(file)=>{await db.beginTransaction();try{const sql=fs.readFileSync(new URL('../pilot-local/'+file,import.meta.url),'utf8').replace('/*PILOT_GUARD*/',`IF NOT (${targetGuard}) THROW 55900,N'Destino recusado',1;`);for(const batch of sql.split(/^\s*GO\s*$/im).filter(s=>s.trim()))await db.query(batch);await db.commit();}catch(e){await db.rollback();throw e;}};
+  const beforeMigration=await snapshot(db);
+  await migrate('pc05-four-digit-tokens-down.sql');
+  assert.equal(Number((await db.query("SELECT COUNT(*) N FROM sys.key_constraints WHERE name='UQ_PC05_Codigo'"))[0].N),1);
+  await migrate('pc05-four-digit-tokens.sql');await migrate('pc05-four-digit-tokens.sql');
+  assert.deepEqual(await snapshot(db),beforeMigration,'Migração e repetição preservam todos os dados');
   const issued=(await db.query(`SELECT CodigoHash,ConsumidoEmUtc,InvalidadoEmUtc,DATEDIFF(second,CriadoEmUtc,ExpiraEmUtc) Segundos FROM Operacao.ContratacaoToken WHERE ContratacaoId=${ca.ContratacaoId} AND Tipo='ENTRADA' ORDER BY TokenId`));
   assert.equal(issued.length,2);assert.ok(issued[0].InvalidadoEmUtc);assert.equal(issued[1].InvalidadoEmUtc,null);assert.ok(Number(issued[1].Segundos)>=3599&&Number(issued[1].Segundos)<=3600);assert.notEqual(issued[1].CodigoHash,replacement.codigo);
   const pair=await expect(await call('/api/pc05/tablets',{cookie:a.cookie,body:{nome:'Tablet A',depositoId:1}}),200);
@@ -75,8 +84,12 @@ test('PC-05: tokens, tablets por depósito, persistência, consumo concorrente, 
   assert.equal(Number((await db.query(`SELECT COUNT(*) Q FROM Operacao.ContratacaoToken WHERE ContratacaoId=${ca.ContratacaoId} AND Tipo='ENTRADA' AND ConsumidoEmUtc IS NOT NULL`))[0].Q),1);
   assert.equal(Number((await db.query(`SELECT COUNT(*) Q FROM Operacao.ContratacaoEvento WHERE ContratacaoId=${ca.ContratacaoId} AND Acao='TOKEN_USAR'`))[0].Q),1);
   const exit=await issue(a,ca,'SAIDA');
+  assert.match(exit.codigo,/^\d{4}$/);
+  // Existing eight-digit codes still work through the public consumption route.
+  const legacy='12345678',digest=code=>crypto.createHmac('sha256',cfg.token).update('PC05:'+code).digest('hex');
+  await db.query(`UPDATE Operacao.ContratacaoToken SET CodigoHash='${digest(legacy)}' WHERE ContratacaoId=${ca.ContratacaoId} AND Tipo='SAIDA' AND CodigoHash='${digest(exit.codigo)}'`);
   // datetime2(0) records full seconds. A real second must elapse before a later exit.
-  await db.query("WAITFOR DELAY '00:00:01.100'");await consume(exit.codigo);
+  await db.query("WAITFOR DELAY '00:00:01.100'");await consume(legacy);
   const completed=await detail(a,ca);assert.ok(completed.SaidaReal);assert.equal(completed.SaidaOrigem,'TOKEN');assert.equal(completed.Valor,'125.50');
   const pairB=await expect(await call('/api/pc05/tablets',{cookie:b.cookie,body:{nome:'Tablet B',depositoId:2}}),200);
   const activatedB=await call('/api/pc05/tablet/habilitar',{body:{pareamento:pairB.pareamento}});await expect(activatedB,200);const tabletB=cookieOf(activatedB);
@@ -94,6 +107,32 @@ test('PC-05: tokens, tablets por depósito, persistência, consumo concorrente, 
   await expect(await call(contracts+cb.ContratacaoId+'/horarios',{cookie:admin.cookie,body:{versao:Number(beforeManual.Versao),entradaReal:today+'T00:00',saidaReal:today+'T00:01',motivo:'Correção justificada do apontamento ADMIN'}}),200);
   await consumeB(exitB.codigo,409);const manual=await detail(b,cb);assert.equal(manual.EntradaOrigem,'MANUAL');assert.equal(manual.SaidaOrigem,'MANUAL');assert.equal(manual.Valor,'125.50');
   assert.ok((await db.query(`SELECT InvalidadoEmUtc FROM Operacao.ContratacaoToken WHERE ContratacaoId=${cb.ContratacaoId} AND Tipo='SAIDA' AND ConsumidoEmUtc IS NULL`))[0].InvalidadoEmUtc);
+  // Concurrent replacements with the same version have one winner only.
+  const pc=await provider(a,'Pessoa C','12345678903',1),cc=await create(a,1,pc);
+  const emit=versao=>call(tokens+cc.ContratacaoId+'/tokens',{cookie:a.cookie,body:{versao,tipo:'ENTRADA'}});
+  const generated=await Promise.all([emit(Number(cc.Versao)),emit(Number(cc.Versao))]);
+  assert.deepEqual(generated.map(r=>r.status).sort(),[200,409]);
+  const current=await generated.find(r=>r.status===200).json();
+  const reserved=new Set((await db.query('SELECT CodigoHash FROM Operacao.ContratacaoToken WHERE ExpiraEmUtc>SYSUTCDATETIME()')).map(r=>r.CodigoHash));
+  const available=Array.from({length:10000},(_,i)=>String(i).padStart(4,'0')).filter(code=>!reserved.has(digest(code)));
+  const reusedCode=available[0],maxId=Number((await db.query('SELECT MAX(TokenId) N FROM Operacao.ContratacaoToken'))[0].N);
+  // Fill every remaining code, including consumed and invalidated reservations.
+  for(let start=0;start<available.length;start+=400){const values=available.slice(start,start+400).map((code,i)=>`(${cc.ContratacaoId},'ENTRADA','${digest(code)}',${a.id},DATEADD(hour,1,SYSUTCDATETIME()),${i%3===0?'SYSUTCDATETIME()':'NULL'},${i%3===1?'SYSUTCDATETIME()':'NULL'},${i%3===0?pair.tabletId:'NULL'})`);await db.query(`INSERT Operacao.ContratacaoToken(ContratacaoId,Tipo,CodigoHash,EmissorId,ExpiraEmUtc,ConsumidoEmUtc,InvalidadoEmUtc,TabletId) VALUES${values.join(',')}`);}
+  const full=Array.from(await db.query(`SELECT * FROM Operacao.ContratacaoToken ORDER BY TokenId`)),beforeFull=await detail(a,cc);
+  const unavailable=await issue(a,cc,'ENTRADA',503);assert.equal(unavailable.erro,'GERACAO_INDISPONIVEL');
+  assert.deepEqual(Array.from(await db.query('SELECT * FROM Operacao.ContratacaoToken ORDER BY TokenId')),full,'Saturação não invalida nem grava tokens');
+  assert.equal((await detail(a,cc)).Versao,beforeFull.Versao);
+  // Expire fixture reservations; force selection of an expired historical code.
+  await db.query(`UPDATE Operacao.ContratacaoToken SET CriadoEmUtc=DATEADD(hour,-2,SYSUTCDATETIME()),ExpiraEmUtc=DATEADD(hour,-1,SYSUTCDATETIME()) WHERE TokenId>${maxId}`);
+  const rng=crypto.randomInt;let reused;try{crypto.randomInt=()=>Number(reusedCode);reused=await issue(a,cc,'ENTRADA');}finally{crypto.randomInt=rng;}
+  assert.equal(reused.codigo,reusedCode);assert.match(reused.codigo,/^\d{4}$/);
+  const history=await db.query(`SELECT TokenId,ConsumidoEmUtc,InvalidadoEmUtc FROM Operacao.ContratacaoToken WHERE CodigoHash='${digest(reusedCode)}' ORDER BY TokenId`);assert.equal(history.length,2);assert.ok(history[0].ConsumidoEmUtc);assert.equal(history[1].ConsumidoEmUtc,null);
+  await db.query(`UPDATE Operacao.TabletPC05 SET Falhas=0 WHERE TabletId=${pair.tabletId}`);
+  await consume(reused.codigo);assert.ok((await detail(a,cc)).EntradaReal,'Consumo escolhe nova emissão, sem confundir com histórico');
+  const old=await db.query(`SELECT ConsumidoEmUtc FROM Operacao.ContratacaoToken WHERE TokenId=${history[0].TokenId}`);assert.deepEqual(old[0].ConsumidoEmUtc,history[0].ConsumidoEmUtc);
+  await consume(reused.codigo,409);
+  await assert.rejects(()=>migrate('pc05-four-digit-tokens-down.sql'),'Rollback com duplicatas deve ser recusado sem apagar histórico');
+  assert.equal(Number((await db.query(`SELECT COUNT(*) N FROM Operacao.ContratacaoToken WHERE CodigoHash='${digest(reusedCode)}'`))[0].N),2);
   await expect(await call('/api/pc05/tablets/'+pair.tabletId+'/revogar',{cookie:b.cookie,body:{}}),404);
   await expect(await call('/api/pc05/tablets/'+pair.tabletId+'/revogar',{cookie:admin.cookie,body:{}}),200);
   await expect(await call('/api/pc05/tablet/status',{cookie:tablet}),401);

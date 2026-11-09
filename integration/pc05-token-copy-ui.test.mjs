@@ -24,7 +24,7 @@ try{
  else if(p==='/api/pc04/media')body={media:null,quantidade:0,minimo:3};
  else if(p==='/api/pc04/contratacoes'&&req.method()==='POST'){const b=req.postDataJSON();assert.equal(b.dataServico,undefined);assert.equal(b.inicioPrevisto,'2026-11-05T08:00');created=true;body={ok:true,resultado:row};status=201;}
  else if(p==='/api/pc04/contratacoes')body={registros:created?[row]:[],proximaPagina:null};
- else if(p==='/api/pc05/contratacoes/999/tokens'){if(failNext){failNext=false;status=409;body={erro:'TOKEN_INDISPONIVEL'};}else{issued++;row.Versao++;body={codigo:issued===1?'01234567':'87654321',versao:row.Versao,expiraEmUtc:new Date(Date.now()+3600000).toISOString()};}}
+ else if(p==='/api/pc05/contratacoes/999/tokens'){if(failNext){failNext=false;status=409;body={erro:'TOKEN_INDISPONIVEL'};}else{issued++;row.Versao++;body={codigo:issued===1?'0123':'8765',versao:row.Versao,expiraEmUtc:new Date(Date.now()+3600000).toISOString()};}}
  else if(p==='/api/pc04/contratacoes/999/previstos'){const b=req.postDataJSON();assert.equal(b.versao,row.Versao);row.InicioPrevisto=b.inicioPrevisto;row.FimPrevisto=b.fimPrevisto;row.DataServico=b.inicioPrevisto.slice(0,10);row.Versao++;body={ok:true,resultado:row};}
  else if(p==='/api/pc04/contratacoes/999')body={registro:row,eventos:[],podeOperar:true,pc05:true,entradaTokenUsada:true};
  await route.fulfill({status,json:body});
@@ -41,33 +41,48 @@ try{
  await page.clock.install();
  await page.getByRole('button',{name:'Gerar / substituir entrada',exact:true}).click();
  const code=page.getByRole('textbox',{name:'Token gerado',exact:true});
- await code.waitFor();assert.equal(await code.inputValue(),'01234567');
+ await code.waitFor();assert.equal(await code.inputValue(),'0123');
  await page.clock.fastForward(31000);
- assert.equal(await code.inputValue(),'01234567');
+ assert.equal(await code.inputValue(),'0123');
  await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));Object.defineProperty(document,'hidden',{configurable:true,value:false});document.dispatchEvent(new Event('visibilitychange'));});
- assert.equal(await code.inputValue(),'01234567');
+ assert.equal(await code.inputValue(),'0123');
  assert.ok(!(await page.locator('#pc05Secret').innerText()).includes('30 segundos'));
  await page.getByRole('button',{name:'Copiar token',exact:true}).click();
  await page.getByText('Token copiado!',{exact:true}).waitFor();
- assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),'01234567');
+ assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),'Token de entrada: 0123');
+ await page.evaluate(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:()=>Promise.reject(new DOMException('Negado','NotAllowedError'))}}));
+ await page.getByRole('button',{name:'Copiar token',exact:true}).click();
+ await page.getByText('Texto selecionado. Use a opção Copiar do seu dispositivo.',{exact:true}).waitFor();
+ assert.equal(await code.inputValue(),'Token de entrada: 0123');
+ assert.ok(await code.evaluate(e=>e.scrollWidth<=e.clientWidth),'Texto completo visível para cópia manual');
+ assert.deepEqual(await code.evaluate(e=>[e.selectionStart,e.selectionEnd]),[0,'Token de entrada: 0123'.length]);
+ await page.evaluate(()=>delete navigator.clipboard);
+ await page.getByRole('button',{name:'Copiar token',exact:true}).click();
+ await page.getByText('Token copiado!',{exact:true}).waitFor();
+ assert.equal(await code.inputValue(),'0123');
  failNext=true;
  await page.getByRole('button',{name:'Gerar / substituir entrada',exact:true}).click();
  await page.waitForFunction(()=>document.querySelector('#pc04Message').textContent.includes('Operação recusada'));
- assert.equal(await code.inputValue(),'01234567');
+ assert.equal(await code.inputValue(),'0123');
  await page.getByRole('button',{name:'Gerar / substituir entrada',exact:true}).click();
- await page.waitForFunction(()=>document.querySelector('[aria-label="Token gerado"]')?.value==='87654321');
+ await page.waitForFunction(()=>document.querySelector('[aria-label="Token gerado"]')?.value==='8765');
  row.EntradaReal='2026-11-05T08:00';
  // A fresh detail refresh permits saída; generation must replace the displayed code.
  await page.getByRole('button',{name:'Editar',exact:true}).click();
  await page.getByRole('button',{name:'Gerar / substituir saída',exact:true}).click();
- await code.waitFor();assert.equal(await code.inputValue(),'87654321');
+ await code.waitFor();assert.equal(await code.inputValue(),'8765');
+ await page.getByRole('button',{name:'Copiar token',exact:true}).click();
+ assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),'Token de saída: 8765');
  await page.evaluate(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:()=>Promise.reject(new DOMException('Negado','NotAllowedError'))}}));
  await page.getByRole('button',{name:'Copiar token',exact:true}).click();
- await page.getByText('Código selecionado. Use a opção Copiar do seu dispositivo.',{exact:true}).waitFor();
- assert.deepEqual(await code.evaluate(e=>[e.selectionStart,e.selectionEnd]),[0,8]);
+ await page.getByText('Texto selecionado. Use a opção Copiar do seu dispositivo.',{exact:true}).waitFor();
+ assert.equal(await code.inputValue(),'Token de saída: 8765');
+ assert.ok(await code.evaluate(e=>e.scrollWidth<=e.clientWidth),'Texto completo visível para cópia manual');
+ assert.deepEqual(await code.evaluate(e=>[e.selectionStart,e.selectionEnd]),[0,'Token de saída: 8765'.length]);
  await page.evaluate(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:undefined}));
  await page.getByRole('button',{name:'Copiar token',exact:true}).click();
- assert.deepEqual(await code.evaluate(e=>[e.selectionStart,e.selectionEnd]),[0,8]);
+ assert.equal(await code.inputValue(),'Token de saída: 8765');
+ assert.deepEqual(await code.evaluate(e=>[e.selectionStart,e.selectionEnd]),[0,'Token de saída: 8765'.length]);
  assert.deepEqual(errors,[]);
  fs.mkdirSync('artifacts/pc05-copy',{recursive:true});
  await page.locator('#pc05Secret').screenshot({path:'artifacts/pc05-copy/'+(mobile?'mobile':'desktop')+'.png'});

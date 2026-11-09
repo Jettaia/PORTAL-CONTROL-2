@@ -19,7 +19,7 @@ function input(body,editing){
  return v;
 }
 async function actorDb(db,actor){
- const uid=n(actor),u=(await db.query(`SELECT u.UsuarioId,CASE WHEN ${roleSql(uid,'ADMIN')} AND u.Perfil='ADMIN' THEN 1 ELSE 0 END Adm,CASE WHEN ${roleSql(uid,'GESTOR')} THEN 1 ELSE 0 END Gestor FROM Seguranca.Usuario u WITH(HOLDLOCK) WHERE u.UsuarioId=${uid} AND u.Ativo=1`))[0];
+ const uid=n(actor),u=(await db.query(`SELECT u.UsuarioId,CASE WHEN ${roleSql(uid,'ADMIN')} AND u.Perfil='ADMIN' THEN 1 ELSE 0 END Adm,CASE WHEN ${roleSql(uid,'GESTOR')} OR ${roleSql(uid,'COORDENADOR')} THEN 1 ELSE 0 END Gestor FROM Seguranca.Usuario u WITH(HOLDLOCK) WHERE u.UsuarioId=${uid} AND u.Ativo=1`))[0];
  if(!u||!yes(u.Adm)&&!yes(u.Gestor))fail('PERMISSAO_NEGADA',403);return {admin:yes(u.Adm)};
 }
 const branchScope=(actor,admin,alias='f')=>admin?'1=1':`EXISTS(SELECT 1 FROM Seguranca.UsuarioDeposito uf WHERE uf.UsuarioId=${n(actor)} AND uf.DepositoId=${alias}.DepositoId AND uf.RevogadoEmUtc IS NULL)`;

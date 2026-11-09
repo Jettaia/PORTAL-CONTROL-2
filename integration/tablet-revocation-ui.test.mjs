@@ -15,7 +15,7 @@ test('tablet: sem autorrevogação, token funciona e revogação remota retorna 
  await page.route('**/api/pc05/tablet/*',async route=>{
   const action=new URL(route.request().url()).pathname.split('/').pop();
   if(action==='habilitar'){assert.deepEqual(route.request().postDataJSON(),{pareamento:'a'.repeat(64)});authorized=true;}
-  else if(action==='apontar')assert.deepEqual(route.request().postDataJSON(),{codigo:'01234567'});
+  else if(action==='apontar')assert.ok(['0123','01234567'].includes(route.request().postDataJSON().codigo));
   else assert.equal(action,'status','nenhuma chamada de encerramento');
   await route.fulfill({status:authorized?200:401,json:authorized?{ok:true}:{erro:'AUTORIZACAO_TABLET_INVALIDA'}});
  });
@@ -34,7 +34,7 @@ test('tablet: sem autorrevogação, token funciona e revogação remota retorna 
  assert.equal(await page.locator('header,footer').count(),0);
  assert.doesNotMatch(await page.locator('body').innerText(),/jetta/i);
  await page.getByRole('heading',{name:'Digite seu token',exact:true}).waitFor();
- await page.getByText('Use o código de 8 dígitos recebido',{exact:true}).waitFor();
+ await page.getByText('Use o código de 4 dígitos recebido. Códigos antigos de 8 dígitos continuam válidos até expirar.',{exact:true}).waitFor();
  for(const text of ['Registro de entrada e saída','Token de entrada ou saída','A entrada deve ser registrada antes da saída.'])assert.equal(await page.getByText(text,{exact:true}).count(),0);
  assert.equal(await page.getByRole('textbox',{name:'Token',exact:true}).count(),1);
  assert.equal(await page.locator('#code').getAttribute('aria-describedby'),'tokenInstructions');
@@ -55,6 +55,11 @@ test('tablet: sem autorrevogação, token funciona e revogação remota retorna 
  }
  console.log('Tablet simplified visual evidence: '+evidenceDir);
 
+ await page.getByRole('button',{name:'Confirmar token',exact:true}).click();
+ await page.getByText('Token aceito',{exact:true}).waitFor();assert.equal(await page.locator('#code').inputValue(),'');
+ for(const invalid of ['123','12345','123456','1234567']){await page.locator('#code').fill(invalid);assert.equal(await page.locator('#code').evaluate(e=>e.checkValidity()),false);}
+ await page.getByRole('button',{name:'Limpar',exact:true}).click();
+ for(const digit of '0123')await page.getByRole('button',{name:digit,exact:true}).click();
  await page.getByRole('button',{name:'Confirmar token',exact:true}).click();
  await page.getByText('Token aceito',{exact:true}).waitFor();assert.equal(await page.locator('#code').inputValue(),'');
  fs.mkdirSync('artifacts/tablet-revocation',{recursive:true});await page.screenshot({path:'artifacts/tablet-revocation/tablet.png',fullPage:true});

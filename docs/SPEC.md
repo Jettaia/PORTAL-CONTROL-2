@@ -186,7 +186,7 @@ Não haverá prazo de pagamento, vencimento ou classificação de atraso nesta e
 - O gestor comunica o código oralmente ou por WhatsApp, fora do aplicativo. Não há mensageria interna nem envio automático.
 - Aceitar o token grava o horário real de forma confiável no servidor e mostra confirmação simples, como “Token aceito”. Depois, limpar a tela.
 - Códigos incorretos, expirados, substituídos ou utilizados não geram nova movimentação e recebem mensagem de erro apropriada, sem expor dados pessoais desnecessários.
-- Como o tablet não informa filial ou pessoa, códigos simultaneamente válidos precisam resolver sem ambiguidade uma única ação. Comprimento e estratégia de colisões são decisões técnicas pendentes.
+- Como o tablet não informa filial ou pessoa, códigos simultaneamente válidos precisam resolver sem ambiguidade uma única ação. Decisão aprovada em 09/11/2026: novos tokens têm quatro dígitos, preservam zeros à esquerda e reservam o número até expirar, inclusive após uso ou substituição; podem reutilizá-lo depois sem remover histórico.
 - Registro manual do horário invalida o token correspondente ainda utilizável.
 - No PC-05, consumo de saída exige entrada registrada; geração de saída exige também token de entrada consumido. Correção manual justificada preserva histórico e invalida tokens pendentes. Reentradas e intervalos permanecem fora do escopo aprovado.
 - Propostas técnicas: consumo atômico para impedir uso concorrente e proteção contra tentativas repetidas. Não escolher uma quantidade de dígitos ou limites operacionais sem dimensionar uso e validar a experiência.
@@ -492,7 +492,7 @@ As dependências abaixo são por contrato, implementação ou integração: não
 
 **Dependências por etapa:** contrato de identidade, estado e atualização de horário de PC-04 e habilitação autenticada de PC-01. Integrar a decisão de exceção de PC-06 antes de disponibilizar tokens para contratações que excedam limite; fluxo normal e interface podem ser desenvolvidos antes disso.
 
-**Decisão P03 e desenho técnico:** usuário confirmou entrada registrada antes do consumo da saída e depois tornou obrigatório usar o token de entrada antes de gerar saída. Horário exclusivamente manual não substitui o uso do token para essa geração. Pareamento aleatório de 256 bits, cinco minutos, uso único; sessão de oito horas revogável, sem filial, com revalidação do emissor. Tokens numéricos de oito dígitos armazenados como HMAC, sem reutilização histórica; cinco falhas invalidam a sessão para apontamentos e exigem nova habilitação. Reentradas e intervalos não têm regra aprovada.
+**Decisão P03 e desenho técnico:** usuário confirmou entrada registrada antes do consumo da saída e depois tornou obrigatório usar o token de entrada antes de gerar saída. Horário exclusivamente manual não substitui o uso do token para essa geração. Pareamento aleatório de 256 bits, cinco minutos, uso único; sessão de oito horas revogável, sem filial, com revalidação do emissor. Tokens numéricos de quatro dígitos armazenados como HMAC, reservados globalmente até expirar e reutilizáveis depois, preservando histórico; cinco falhas invalidam a sessão para apontamentos e exigem nova habilitação. Reentradas e intervalos não têm regra aprovada.
 
 **Verificação focal:** adaptar testes existentes de códigos, provar consumo concorrente e fronteira de uma hora com tempo controlado mais persistência SQL; testar tablet habilitado, resposta/limpeza e duas filiais. Revalidar apenas os controles de acesso atingidos pela retirada do vínculo do aparelho.
 

@@ -1,8 +1,9 @@
+import {formatProviderDocument} from './document-format.js';
 import { zip } from './b5-xlsx.js';
 
 const namespace = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
-const defaultHeaders = ['Número', 'Prestador', 'Depósito', 'Centro de custo', 'Gestor responsável', 'Data do serviço', 'Valor (R$)', 'Situação'];
-const defaultFields = ['Numero', 'Prestador', 'Deposito', 'CentroCusto', 'GestorResponsavel', 'DataServico', 'Valor', 'Status'];
+const defaultHeaders = ['Número', 'Prestador', 'CPF/CNPJ do prestador', 'Depósito', 'Centro de custo', 'Gestor responsável', 'Data do serviço', 'Valor (R$)', 'Situação'];
+const defaultFields = ['Numero', 'Prestador', 'CPF', 'Deposito', 'CentroCusto', 'GestorResponsavel', 'DataServico', 'Valor', 'Status'];
 const xml = value => String(value ?? '')
   .replace(/[^\u0009\u000a\u000d\u0020-\ud7ff\ue000-\ufffd\u{10000}-\u{10ffff}]/gu, '')
   .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;');
@@ -60,15 +61,17 @@ export function contractsWorkbook(report, options = {}) {
         const serial = dateSerial(record[field]);
         return serial === null ? textCell(address, record[field]) : numberCell(address, serial, 5);
       }
-      return textCell(address, record[field]);
+      return textCell(address, field === 'CPF' ? formatProviderDocument(record[field]) : record[field]);
     });
     rows.push(`<row r="${row}" ht="32" customHeight="1">${cells.join('')}</row>`);
   }
   const totalRow = report.registros.length + 6;
   rows.push(`<row r="${totalRow}" ht="28" customHeight="1">${textCell(`${totalLabelColumn}${totalRow}`, 'Total (R$)', 4)}${total.numeric ? numberCell(`${moneyColumn}${totalRow}`, total.raw, 6) : textCell(`${moneyColumn}${totalRow}`, total.raw, 4)}</row>`);
   if (preservePrecision) rows.push(`<row r="${totalRow + 1}" ht="34" customHeight="1">${textCell(`A${totalRow + 1}`, 'Para preservar a precisão, valores que excedem a capacidade numérica do Excel são apresentados como texto.')}</row>`);
-  const merges = ['A1:H1', 'A2:H2', 'A3:H3', 'A4:H4', ...(preservePrecision ? [`A${totalRow + 1}:H${totalRow + 1}`] : [])];
-  const sheet = `<worksheet xmlns="${namespace}"><sheetViews><sheetView workbookViewId="0"><pane ySplit="5" topLeftCell="A6" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${[24, 38, 25, 30, 32, 20, 26, 22].map((width, i) => `<col min="${i + 1}" max="${i + 1}" width="${width}" customWidth="1"/>`).join('')}</cols><sheetData>${rows.join('')}</sheetData><autoFilter ref="A5:H${Math.max(5, totalRow - 1)}"/><mergeCells count="${merges.length}">${merges.map(ref => `<mergeCell ref="${ref}"/>`).join('')}</mergeCells></worksheet>`;
+  const lastColumn = String.fromCharCode(64 + headers.length);
+  const widths = options.fields ? [24, 38, 25, 30, 32, 20, 26, 22] : [24, 38, 26, 25, 30, 32, 20, 26, 22];
+  const merges = [`A1:${lastColumn}1`, `A2:${lastColumn}2`, `A3:${lastColumn}3`, `A4:${lastColumn}4`, ...(preservePrecision ? [`A${totalRow + 1}:${lastColumn}${totalRow + 1}`] : [])];
+  const sheet = `<worksheet xmlns="${namespace}"><sheetViews><sheetView workbookViewId="0"><pane ySplit="5" topLeftCell="A6" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${widths.map((width, i) => `<col min="${i + 1}" max="${i + 1}" width="${width}" customWidth="1"/>`).join('')}</cols><sheetData>${rows.join('')}</sheetData><autoFilter ref="A5:${lastColumn}${Math.max(5, totalRow - 1)}"/><mergeCells count="${merges.length}">${merges.map(ref => `<mergeCell ref="${ref}"/>`).join('')}</mergeCells></worksheet>`;
   return zip([
     ['[Content_Types].xml', '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'],
     ['_rels/.rels', '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],

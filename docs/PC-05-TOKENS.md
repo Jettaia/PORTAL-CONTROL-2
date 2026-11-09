@@ -1,10 +1,10 @@
 # PC-05 — Tokens e página do tablet
 
-28/10/2026. Implementação local pronta e revisão independente sem achados materiais. **Aceite integrado INCONCLUSIVE/BLOCKED** pela indisponibilidade de SQL Server local. Preservadas todas as alterações anteriores PC-01 a PC-04. Sem commit, push, deploy ou alteração do banco/configuração privada instalados.
+Registro histórico de 28/10/2026 (a validação atual de quatro dígitos está abaixo). Implementação local pronta e revisão independente sem achados materiais. **Aceite integrado INCONCLUSIVE/BLOCKED** pela indisponibilidade de SQL Server local. Preservadas todas as alterações anteriores PC-01 a PC-04. Sem commit, push, deploy ou alteração do banco/configuração privada instalados.
 
 ## Comportamento entregue
 
-Gestor/ADM com acesso atual à filial e MFA recente gera ou substitui token de entrada/saída no detalhe da contratação aberta, com versão obrigatória. Token numérico de oito dígitos, uma hora de validade e uso único. Substituição invalida imediatamente o anterior. Código exibido uma vez na resposta, retirado da interface em 30 segundos/navegação/logout/ocultação; banco e auditoria não guardam código puro. HMAC usa a chave privada estável `cfg.token`; alterar essa chave invalida os códigos pendentes. Colisões verificadas globalmente sob trava e repetidas até dez vezes, sem reutilizar códigos históricos.
+Gestor/ADM com acesso atual à filial e MFA recente gera ou substitui token de entrada/saída no detalhe da contratação aberta, com versão obrigatória. Token numérico de quatro dígitos, uma hora de validade e uso único. Substituição invalida imediatamente o anterior. Código retornado somente na geração e mantido no detalhe até navegação, atualização do detalhe ou logout; banco e auditoria não guardam código puro. HMAC usa a chave privada estável `cfg.token`; alterar essa chave invalida os códigos pendentes. Códigos reservados globalmente sob trava até a expiração original, inclusive após consumo ou substituição. Após expirar, o número pode ser reutilizado sem apagar o histórico. A geração sorteia sem repetição entre os 10.000 números; se todos estiverem reservados, retorna GERACAO_INDISPONIVEL sem substituir o anterior.
 
 **Decisão explícita do usuário:** o token de entrada precisa ser usado antes de gerar saída. A API exige token de entrada consumido e horário de entrada existente; entrada exclusivamente manual não satisfaz essa condição. O consumo da saída também exige entrada. A SPEC foi atualizada, substituindo a regra anterior de somente gerar entrada primeiro.
 
@@ -13,6 +13,20 @@ Na seção de autorizações, gestor/ADM emite pareamento aleatório de 256 bits
 O tablet tem teclado numérico, botão de confirmação, mensagem “Token aceito” e limpeza do campo. Atualizar a página restaura sessão válida; polling verifica revogação/expiração. Cinco falhas de código persistidas bloqueiam o tablet e pedem nova autorização, distinto do limite HTTP temporário de 20 requisições/minuto/IP para habilitar/apontar. Sessão tem máximo de oito horas; origem e cabeçalho de proteção exigidos nas mutações.
 
 Horário vem do relógio SQL, convertido para Brasília para compatibilidade com datetime2 local PC-04, conservando UTC no evento. Entrada na data do serviço; saída posterior até o dia seguinte. Consumo grava horário/origem TOKEN, versão, identificação do emissor e tablet, evento e auditoria na mesma transação/trava PC-04. Não altera diária nem libera pagamento. Horários manuais justificados e cancelamento invalidam tokens pendentes na transação PC-04. Históricos anteriores e tokens consumidos são preservados.
+
+## Atualização de quatro dígitos — 09/11/2026
+
+O botão de cópia inclui o tipo: `Token de entrada: 0042` ou `Token de saída: 0042`. Sem permissão de clipboard, o campo apresenta e seleciona o texto completo para cópia manual. Tokens novos têm quatro dígitos, inclusive zeros à esquerda. O tablet aceita quatro dígitos e, para transição, oito dígitos antigos ainda válidos; comprimentos intermediários são recusados.
+
+O instalador inclui `42-pc05-four-digit-tokens.sql`. Essa migração troca a unicidade histórica por índices de hash/prazo e preserva todas as linhas. Geração e consumo usam a mesma trava transacional PC04; consumo procura a emissão não expirada mais recente. Tokens usados ou substituídos continuam reservando seu número até ExpiraEmUtc. Emissões e respostas mantêm os mesmos campos da API; `codigo` permanece string.
+
+Bases existentes: encerrar **todas** as instâncias, verificar backup e executar localmente `scripts/upgrade-token-digits.mjs` com `JETTA_TOKEN_DIGITS_UPGRADE=YES`. O script exige destino local, configuração/identidade válidas, porta parada, backup verificado e compara os dados antes/depois. Não é executado no startup. Publicar backend e tablet compatíveis juntos, após a migração e antes de retomar o runtime; versões antigas não podem operar após a primeira reutilização.
+
+Rollback offline: o mesmo script com `--rollback` restaura a constraint antiga somente se ainda não existirem hashes repetidos. Depois de reutilizar um número, o rollback de schema é recusado sem excluir dados; manter uma versão da aplicação compatível com histórico repetido. Não reverter apenas o código antigo sobre a base com números reutilizados.
+
+A atualização de schema foi exercitada somente em banco descartável de teste. A base operacional não foi migrada nem houve deploy.
+
+Validação atual: 69 testes aprovados em execuções focais (64 HTTP/serviço, 2 app, 1 fluxo de cópia desktop/mobile, 1 tablet e 1 fluxo HTTP/SQL Server real). Cobertos saturação e último código disponível, reserva de consumidos/invalidados, expiração/reuso com histórico, consumo concorrente e legado, isolamento por depósito, migração reaplicável e rollback condicionado. Verificação sintática: 768 arquivos, zero falhas. Revisão independente sem achados materiais. Evidências detalhadas em `.requirements/20261109T195726Z_tokens_quatro_digitos/REQUIREMENTS.md`.
 
 ## Ativação e persistência
 

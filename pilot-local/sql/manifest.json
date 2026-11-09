@@ -1,5 +1,5 @@
 {
-  "version": "1.19.0-contract-planning",
+  "version": "1.21.0-pc05-four-digit-tokens",
   "purpose": "PILOTO_LOCAL_FINANCEIRO_CONTRATACOES",
   "files": [
     {
@@ -221,6 +221,16 @@
       "file": "40-contract-planning.sql",
       "source": "pilot-local/contract-planning.sql",
       "sha256": "4ed1636abbb245e5ac7568e9e99e6d4a561930bd1a77dac2413f599bcafa7612"
+    },
+    {
+      "file": "41-coordinator-access.sql",
+      "source": "pilot-local/coordinator-access.sql",
+      "sha256": "f4b44bfd27d5b02690667794b9fe770b5bf0e749b81023305f1160aa96272f0f"
+    },
+    {
+      "file": "42-pc05-four-digit-tokens.sql",
+      "source": "pilot-local/pc05-four-digit-tokens.sql",
+      "sha256": "a578e598f897da3ed082284c816b97d5be1332a18f9d5e1c2a9550c0fe1f74a2"
     }
   ]
 }

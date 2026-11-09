@@ -17,3 +17,4 @@
 #pc04Panel .pc05-token{display:flex;align-items:center;flex-wrap:wrap;gap:10px}#pc04Panel .pc05-token input{width:150px;font-variant-numeric:tabular-nums;font-weight:700;letter-spacing:2px}#pc04Panel .pc05-token [role="status"]{flex-basis:100%;font-size:.9rem}
 
 #pc04Panel .pc04-date-range{display:grid;gap:6px;min-width:170px}#pc04Page #pc04Panel .pc04-date-range label{display:grid;grid-template-columns:26px minmax(0,1fr);align-items:center;gap:5px;color:#fff;font-size:12px;text-align:left}#pc04Panel .pc04-date-range input{min-width:0;width:100%}
+#pc04Panel .pc05-token input.pc05-copy-text{width:min(100%,24rem);max-width:100%;letter-spacing:normal}

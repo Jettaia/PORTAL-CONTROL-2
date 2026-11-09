@@ -1,4 +1,6 @@
 import {mountFinanceQueue} from './fin01-routes.js';
+import {receiptUploadBody} from './receipt-upload.js';
+import {authorizeImport} from './fin03-import.js';
 import {mountPayments} from './pc08-routes.js';
 import {mountAdjustments} from './pc10-routes.js';
 import {mountStatements} from './pc11-routes.js';
@@ -51,6 +53,7 @@ app.use('/api/final-lab/anexos',express.json({limit:'3mb'}));
 app.use('/api/pc08/pagamentos',express.json({limit:'15mb'}));
 app.use('/api/pc10',express.json({limit:'2mb'}));
 app.use('/api/financeiro/contratacoes',express.json({limit:'7mb'}));
+app.post('/api/financeiro/recibos/importacao/previa',...receiptUploadBody({sameOrigin:(...args)=>sameOrigin(...args),session,authorize:req=>authorizeImport(cfg,req.user.id,req.rawSession)}));
 app.use('/api/financeiro/recibos',express.json({limit:'2mb'}));
 app.use(express.json({limit:'8kb'}));
 app.use('/api',rateLimit({windowMs:60000,limit:90,standardHeaders:'draft-7',legacyHeaders:false}));
@@ -112,7 +115,7 @@ app.post('/api/auth/login',loginLimiter,sameOrigin,async(req,res)=>{
 });
 app.get('/api/auth/me',session,(req,res)=>res.json({usuario:req.user,mfa:{habilitado:cfg.mfaRequired!==false,necessarioParaAcoesSensiveis:cfg.mfaRequired!==false}}));
 app.post('/api/auth/logout',sameOrigin,session,async(req,res)=>{try{await logout(cfg,req.rawSession);res.set('Set-Cookie',clearCookie(cfg));res.json({ok:true});}catch(e){console.error('Falha logout:',safeSqlErrors(e));res.status(503).json({erro:'Nao foi possivel encerrar sessao'});}});
-app.get('/api/depositos/permitidos',session,async(req,res)=>{if(!['GESTOR','ADMIN','FINANCEIRO'].includes(req.user.perfil))return res.status(403).json({erro:'Perfil sem acesso a consulta'});try{res.json({depositos:await depositsFor(cfg,req.user)});}catch(e){console.error('Falha depositos:',safeSqlErrors(e));res.status(503).json({erro:'Consulta indisponivel'});}});
+app.get('/api/depositos/permitidos',session,async(req,res)=>{if(!['GESTOR','COORDENADOR','ADMIN','FINANCEIRO'].includes(req.user.perfil))return res.status(403).json({erro:'Perfil sem acesso a consulta'});try{res.json({depositos:await depositsFor(cfg,req.user)});}catch(e){console.error('Falha depositos:',safeSqlErrors(e));res.status(503).json({erro:'Consulta indisponivel'});}});
 app.get('/api/admin/diagnostico',session,(req,res,next)=>{if(req.user.perfil!=='ADMIN')return res.status(403).json({erro:'Apenas ADMIN'});next();},authorizedDiagnostic,async(req,res)=>{try{res.json(await diagnostic(cfg));}catch(e){console.error('Falha SQL:',safeSqlErrors(e));res.status(503).json({erro:'Conexao SQL indisponivel'});}});
 // B2.3: RBAC APIs, all privileged mutations require authenticated root and same-origin header.
 async function b23Root(req,res,next){try{if(!await isRoot(cfg,req.user.id))return res.status(403).json({erro:'Somente Administrador-raiz'});next();}catch(e){console.error('B23 root:',safeSqlErrors(e));res.status(503).json({erro:'Verificacao indisponivel'});}}

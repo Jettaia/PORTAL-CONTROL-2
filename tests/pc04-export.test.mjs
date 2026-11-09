@@ -28,7 +28,19 @@ test('PDF em preparação recusa concorrente e libera recurso após erro',async(
  rejectLoad(new PlanningError('FILTRO_INVALIDO',400));await assert.rejects(()=>first,e=>e.status===400);
  await assert.rejects(()=>contractReportPdf(()=>{throw new PlanningError('PERMISSAO_NEGADA',403);}),e=>e.status===403);
 });
-test('relatório PDF escapa dados e conserva apenas as oito colunas da tabela',()=>{
- const html=contractReportHtml({geradoEm:'09/11/2026',filtrosTexto:'<script>filtro</script>',quantidade:1,total:'100.00',registros:[{Numero:'1',Prestador:'<script>nome</script>',Deposito:'A',CentroCusto:'CC',GestorResponsavel:'Gestora',DataServico:'2026-11-09',Valor:'100.00',Status:'LIBERADA'}]});
- assert.ok(!html.includes('<script>'));assert.ok(html.includes('&lt;script&gt;nome&lt;/script&gt;'));assert.ok(html.includes('&lt;script&gt;filtro&lt;/script&gt;'));assert.equal((html.match(/<th scope=/g)||[]).length,8);assert.ok(!html.includes('Editar'));assert.ok(html.includes('R$ 100,00'));
+test('relatório PDF escapa dados e inclui documento após prestador preservando os demais campos',()=>{
+ const html=contractReportHtml({geradoEm:'09/11/2026',filtrosTexto:'<script>filtro</script>',quantidade:1,total:'100.00',registros:[{Numero:'1',Prestador:'<script>nome</script>',CPF:'01234567890',Deposito:'A',CentroCusto:'CC',GestorResponsavel:'Gestora',DataServico:'2026-11-09',Valor:'100.00',Status:'LIBERADA'}]});
+ assert.ok(!html.includes('<script>'));assert.ok(html.includes('&lt;script&gt;nome&lt;/script&gt;'));assert.ok(html.includes('&lt;script&gt;filtro&lt;/script&gt;'));assert.equal((html.match(/<th scope=/g)||[]).length,9);assert.ok(!html.includes('Editar'));assert.ok(html.includes('R$ 100,00'));assert.match(html,/<th scope="col">Prestador<\/th><th scope="col">CPF\/CNPJ do prestador<\/th>/);assert.match(html,/<td>&lt;script&gt;nome&lt;\/script&gt;<\/td><td>012\.345\.678-90<\/td>/);assert.match(html,/<td class="money">R\$ 100,00/);
+});
+
+test('PDF vazio ocupa todas as nove colunas',()=>{
+ const html=contractReportHtml({quantidade:0,total:'0.00',registros:[]});
+ assert.match(html,/colspan="9"/);
+});
+
+test('PDF formata CPF/CNPJ sem duplicar máscara e tolera documento ausente ou incompleto',()=>{
+ const docs=['12069831833','00123456000199','120.698.318-33',null,'123'];
+ const html=contractReportHtml({quantidade:5,total:'0.00',registros:docs.map(CPF=>({CPF,Valor:'0.00'}))});
+ const cells=[...html.matchAll(/<tr><td>[^<]*<\/td><td>[^<]*<\/td><td>([^<]*)<\/td>/g)].map(m=>m[1]);
+ assert.deepEqual(cells,['120.698.318-33','00.123.456/0001-99','120.698.318-33','—','123']);
 });

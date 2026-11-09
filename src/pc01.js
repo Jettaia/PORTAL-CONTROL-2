@@ -20,7 +20,7 @@ export function normalizeAccount(body,creating){
  const {nome,email,funcoes,depositos,ativo,senha}=body;
  if(typeof nome!=='string'||nome.trim().length<3||nome.trim().length>150)fail('NOME_INVALIDO');
  if(typeof email!=='string'||email.trim().length>256||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))fail('EMAIL_INVALIDO');
- if(!Array.isArray(funcoes)||!funcoes.length||funcoes.length>3||new Set(funcoes).size!==funcoes.length||funcoes.some(r=>!['ADMIN','GESTOR','FINANCEIRO'].includes(r)))fail('FUNCOES_INVALIDAS');
+ if(!Array.isArray(funcoes)||!funcoes.length||funcoes.length>4||new Set(funcoes).size!==funcoes.length||funcoes.some(r=>!['ADMIN','COORDENADOR','GESTOR','FINANCEIRO'].includes(r)))fail('FUNCOES_INVALIDAS');
  if(!Array.isArray(depositos)||depositos.length>100||depositos.some(id=>typeof id!=='number'||!Number.isSafeInteger(id)||id<1)||new Set(depositos).size!==depositos.length)fail('DEPOSITOS_INVALIDOS');
  if(typeof ativo!=='boolean'||creating&&!validNewPassword(senha))fail('CONTA_INVALIDA');
  return {nome:nome.trim(),email:email.trim().toLowerCase(),funcoes:[...funcoes].sort(),depositos:[...depositos].sort((a,b)=>a-b),ativo,...(creating?{senha}:{})};
@@ -68,10 +68,10 @@ async function changePassword(cfg,actor,token,body,id,own){
 }
 export async function catalog(cfg){return withDb(cfg,async db=>({
  usuarios:await db.query(`SELECT u.UsuarioId,u.Nome,u.Email,u.Ativo,u.Perfil,
- (SELECT pa.Codigo FROM Seguranca.UsuarioPerfil up JOIN Seguranca.PerfilAcesso pa ON pa.PerfilId=up.PerfilId WHERE up.UsuarioId=u.UsuarioId AND pa.Ativo=1 AND pa.Codigo IN('PC01_ADMIN','PC01_GESTOR','PC01_FINANCEIRO') FOR JSON PATH) FuncoesJson,
+ (SELECT pa.Codigo FROM Seguranca.UsuarioPerfil up JOIN Seguranca.PerfilAcesso pa ON pa.PerfilId=up.PerfilId WHERE up.UsuarioId=u.UsuarioId AND pa.Ativo=1 AND pa.Codigo IN('PC01_ADMIN','PC01_COORDENADOR','PC01_GESTOR','PC01_FINANCEIRO') FOR JSON PATH) FuncoesJson,
  (SELECT uf.DepositoId FROM Seguranca.UsuarioDeposito uf WHERE uf.UsuarioId=u.UsuarioId AND uf.RevogadoEmUtc IS NULL FOR JSON PATH) DepositosJson
  FROM Seguranca.Usuario u WHERE u.ExcluidoEmUtc IS NULL ORDER BY u.Nome,u.UsuarioId`),
- depositos:await db.query('SELECT DepositoId,Nome,Ativo FROM Cadastro.Deposito ORDER BY Nome,DepositoId')
+ depositos:await db.query('SELECT DepositoId,Nome,CentroCusto,Ativo FROM Cadastro.Deposito ORDER BY Nome,DepositoId')
 }));}
 // Serialize the whole administrative change, including last-ADM protection and audit.
 // Revalidate actor and recent MFA in the same transaction; never trust a posted role.
@@ -96,7 +96,7 @@ export async function save(cfg,actor,token,body,id,requestId){
    const previousRoles=uid?await db.query(`SELECT pa.Codigo FROM Seguranca.UsuarioPerfil up JOIN Seguranca.PerfilAcesso pa ON pa.PerfilId=up.PerfilId WHERE up.UsuarioId=${uid}`):[];
    const previousBranches=uid?await db.query(`SELECT DepositoId FROM Seguranca.UsuarioDeposito WHERE UsuarioId=${uid} AND RevogadoEmUtc IS NULL`):[];
    if(uid&&v.ativo&&(await db.query(`SELECT UsuarioId FROM Seguranca.Credencial WHERE UsuarioId=${uid}`)).length===0)fail('CONTA_SEM_CREDENCIAL',409);
-   const perfil=v.funcoes.includes('ADMIN')?'ADMIN':v.funcoes.includes('GESTOR')?'GESTOR':'FINANCEIRO';
+   const perfil=v.funcoes.includes('ADMIN')?'ADMIN':v.funcoes.includes('COORDENADOR')?'COORDENADOR':v.funcoes.includes('GESTOR')?'GESTOR':'FINANCEIRO';
    const target=uid||(await db.query(`INSERT Seguranca.Usuario(Nome,Email,Perfil,Ativo) OUTPUT inserted.UsuarioId VALUES(${s(v.nome,150)},${s(v.email)},${s(perfil,20)},${v.ativo?1:0})`))[0].UsuarioId;
    const targetId=n(target);
    if(uid)await db.query(`UPDATE Seguranca.Usuario SET Nome=${s(v.nome,150)},Email=${s(v.email)},Perfil=${s(perfil,20)},Ativo=${v.ativo?1:0} WHERE UsuarioId=${targetId}`);

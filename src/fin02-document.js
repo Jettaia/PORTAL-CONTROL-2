@@ -1,3 +1,4 @@
+import {receiptQr} from './receipt-qr.js';
 // FIN02 document layout follows recibos/MODELO DE RECIBO.docx. Values come
 // from the issuance snapshot; legacy depot identification is supplied by the reader.
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -12,7 +13,8 @@ export function renderReceipt(receipt){
  const value=String(s.ValorLiberado).replace(/\B(?=(\d{3})+(?!\d))/g,'.').replace(/\.(\d{2})$/,',$1');
  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Recibo</title><style>
  @page{size:A4;margin:20mm 30mm}*{box-sizing:border-box}html{background:#eee;color:#000}body{margin:0;font-family:Calibri,Arial,sans-serif;font-size:16pt;line-height:1.35}.receipt{max-width:210mm;min-height:297mm;margin:24px auto;padding:25mm 30mm;background:#fff;overflow-wrap:anywhere}.cost{text-align:right;font-size:10pt;margin:0 0 6mm}.contract-number{text-align:right;font-size:10pt;margin:0}h1{text-align:center;font-size:16pt;margin:0 0 9mm}p{margin:0 0 4mm;text-align:justify}.manual{display:inline-block;border-bottom:1px solid #000;vertical-align:baseline;height:1.2em}.place{margin-top:10mm;margin-bottom:12mm;text-align:left}.receiver{font-size:14pt;margin-bottom:9mm}.name{display:block;margin-top:5mm;font-size:16pt;min-height:10mm;border-bottom:1px solid #000}.signature{font-size:14pt;margin-bottom:7mm}.signature .manual{display:block;width:100%;height:10mm;margin-top:1mm}.cpf{font-size:14pt}.cpf .manual{width:75mm;max-width:100%;height:10mm}h1,p,.receiver,.signature,.cpf{break-inside:avoid}@media print{html,body{background:#fff}.receipt{max-width:none;min-height:0;margin:0;padding:0}}@media screen and (max-width:820px){.receipt{margin:0;min-height:100vh;padding:24px;font-size:14pt}}
- </style></head><body><main class="receipt"><header><div class="contract-number">Contratação ${escape(s.Numero)}</div><div class="cost">${header}</div></header><h1>RECIBO</h1>
+ .receipt-qr{float:left;width:25mm;text-align:center}.receipt-qr svg{display:block;width:22mm;height:22mm}.receipt-qr small{display:block;font-size:7pt}header{min-height:25mm}
+ </style></head><body><main class="receipt"><header>${receiptQr(receipt)}<div class="contract-number">Contratação ${escape(s.Numero)}</div><div class="cost">${header}</div></header><h1>RECIBO</h1>
  <p>Recebi da <strong>${escape(s.Pagador)}</strong>, possuidora do CNPJ ${escape(s.CnpjPagador)}, o valor de R$ ${escape(value)}, referente a prestação de serviço de ${escape(s.Tipo)}, realizado na data de ${escape(date(s.DataServico))}.</p>
  <p>O serviço foi contratado de forma esporádica, conforme negociação entre as partes.</p>
  <p>Sendo assim, declaro estar satisfeita e de acordo com o valor, dou total, geral e irrevogável quitação, não restando nada a reclamar em juízo ou fora dele.</p>

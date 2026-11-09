@@ -1,0 +1,22 @@
+{
+  "base": "043999899eaccb341ca66dbc769f8a08dce4a2ae",
+  "workspace": "dirty; alterações anteriores preservadas",
+  "sha256": {
+    "src/fin03-import.js": "ce44f4d7baad658249c93b0c0e797ab8c2e63c1e805851338c5176899a412bea",
+    "src/fin03-routes.js": "995a4e2509551ed29ac68fd408b95e11e2601a3b61250125259c27a16bd3b0de",
+    "src/receipt-pdf.js": "99ff485f51d50dddc2b59b59ea0cd90b41a4e4c6041398b6e6597e9b02a2eb08",
+    "src/receipt-pdf-worker.js": "70708eeca1f2506f9f69084396f798a276570cd8b9d23b4b5fc6ae2f32878605",
+    "src/receipt-qr.js": "050f15fec825686d43d3872a54edefadb895c72ee1793dd029a4c51d6c78fedd",
+    "src/fin02-document.js": "361755d841d5215b51fb99d5fd693b22fdb2bd2f502ba75226ab6578acdacadd",
+    "src/fin02-batch.js": "d9d3c2ce8bf1c8a2a4a514fd01f29e4145785eb85fb9f5be0128be8b926c98a7",
+    "src/server.js": "5eaccddc54aa781c46d6d1bdf38447f281b6434b2eabc2abae901d2b278c2ab0",
+    "public/fin03-import.js": "ef9b17f054a80b6b98bed75b371741b2d71570f188fe923c8144dfbddaa58162",
+    "public/fin03-import.css": "0fb7c20f4741447d122fb54c21af8f82d00d7095397f35ab25d898bb407a64df",
+    "public/index.html": "c9eca112a64d0d55f98dc8039ef4072b5eb292693ff4be4cf6b30978e9a5f7be",
+    "package.json": "f5d365a69a6447307f6a9dbaec1ab5d0c350096824e448f4615f4e1c3aacf70f",
+    "package-lock.json": "9aac1885bb2a47979f40ebe88ebc084ec143ce771e2f490326dba1b92b2bf7f2",
+    "integration/fin03-import.integration.mjs": "557b7e14b79da63edb2525994243fafe9cd3bceaf4d6737a0dcf3d5433ea3363",
+    "integration/fin03-import-ui.test.mjs": "c2f9f685919423efae7cc8aa46c065d6d1697fdad12cff5171a17a70e4bcd9d2",
+    "tests/fin03-import.test.mjs": "3ae70f0869eceed47065a81fb4aede3e37f5bb558247153edb7bafb0e53ae8e6"
+  }
+}

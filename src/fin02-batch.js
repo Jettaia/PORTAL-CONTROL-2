@@ -75,13 +75,13 @@ export async function printMany(cfg,actor,body){
  return transaction(cfg,actor,null,false,async(db,user)=>{
   operator(user);
   // Fetch all snapshots/address fallbacks together, rather than N authorization/ODBC round trips.
-  const rows=await db.query(`SELECT r.ContratacaoId,CONVERT(varchar(10),r.DataEmissao,23) DataEmissao,
+  const rows=await db.query(`SELECT r.ContratacaoId,r.VersaoOrigem,CONVERT(varchar(10),r.DataEmissao,23) DataEmissao,
    d.Nome Deposito,d.Rua,d.Numero NumeroEndereco,d.Bairro,d.CEP,r.SnapshotJson
    FROM Financeiro.ContratacaoRecibo r JOIN Operacao.Contratacao c ON c.ContratacaoId=r.ContratacaoId
    JOIN Cadastro.Deposito d ON d.DepositoId=r.DepositoId WHERE c.ContratacaoId IN(${ids.join(',')}) AND ${receiptScope(actor,user)}`);
   if(rows.length!==ids.length)fail('RECIBO_INDISPONIVEL',404);
   const indexed=new Map(rows.map(row=>[String(row.ContratacaoId),row]));
-  const documents=ids.map(id=>{const row=indexed.get(id),Snapshot=JSON.parse(row.SnapshotJson);for(const key of ['Deposito','Rua','NumeroEndereco','Bairro','CEP'])if(!Object.hasOwn(Snapshot,key))Snapshot[key]=row[key];return renderReceipt({DataEmissao:row.DataEmissao,Snapshot});});
+  const documents=ids.map(id=>{const row=indexed.get(id),Snapshot=JSON.parse(row.SnapshotJson);for(const key of ['Deposito','Rua','NumeroEndereco','Bairro','CEP'])if(!Object.hasOwn(Snapshot,key))Snapshot[key]=row[key];return renderReceipt({ContratacaoId:row.ContratacaoId,VersaoOrigem:row.VersaoOrigem,DataEmissao:row.DataEmissao,Snapshot});});
   // A network stylesheet also works in a print window inheriting the portal's style-src self CSP.
   const csp="default-src 'none'; style-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'";
   const html='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="'+csp+'"><title>Recibos do período</title><link rel="stylesheet" href="/api/financeiro/recibos/estilo.css"></head><body>'+documents.map(doc=>doc.match(/<main class="receipt">[\s\S]*?<\/main>/)[0]).join('\n')+'</body></html>';

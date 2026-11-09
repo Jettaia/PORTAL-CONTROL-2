@@ -6,7 +6,7 @@ import {PlanningError} from './b3.js';
 
 const fail=(message,status=400)=>{throw new PlanningError(message,status);};
 export function receiptId(value){if(!['string','number','bigint'].includes(typeof value)||! /^[1-9]\d*$/.test(String(value)))fail('IDENTIFICADOR_INVALIDO');try{return n(value);}catch{fail('IDENTIFICADOR_INVALIDO');}}
-export const receiptScope=(actor,user)=>user.admin||user.finance?'1=1':`EXISTS(SELECT 1 FROM Seguranca.UsuarioDeposito fd WHERE fd.UsuarioId=${receiptId(actor)} AND fd.DepositoId=c.DepositoId AND fd.RevogadoEmUtc IS NULL)`;
+export const receiptScope=(actor,user)=>user.admin||user.finance&&!user.coordinator?'1=1':`EXISTS(SELECT 1 FROM Seguranca.UsuarioDeposito fd WHERE fd.UsuarioId=${receiptId(actor)} AND fd.DepositoId=c.DepositoId AND fd.RevogadoEmUtc IS NULL)`;
 export const receiptEligible="c.Status='LIBERADA' AND c.ValorLiberado IS NOT NULL AND c.LiberadoEmUtc IS NOT NULL";
 // FIN03 must require this full predicate under the same contract lock before settlement.
 // A stale document remains readable; it never silently becomes a new issue.
@@ -37,7 +37,7 @@ export async function issue(cfg,actor,token,key,body,expected=null){
   await assertMfa(db,actor,token,cfg);
   const lock=(await db.query("DECLARE @r int;EXEC @r=sys.sp_getapplock @Resource='JettaControl.PC04',@LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=5000;SELECT @r R;"))[0];
   if(!lock||Number(lock.R)<0)fail('OPERACAO_OCUPADA',409);
-  const origin=(await db.query(`SELECT c.ContratacaoId,c.Numero,c.Versao,c.DepositoId,c.PrestadorId,c.TipoServicoId,CONVERT(varchar(10),c.DataServico,23) DataServico,CONVERT(varchar(40),c.ValorLiberado) ValorLiberado,CONVERT(varchar(27),c.LiberadoEmUtc,126) LiberadoEmUtc,p.Nome Prestador,t.Nome Tipo,d.Cidade,d.Estado,d.CentroCusto,d.Nome Deposito,d.Rua,d.Numero NumeroEndereco,d.Bairro,d.CEP FROM Operacao.Contratacao c WITH(UPDLOCK,HOLDLOCK) JOIN Cadastro.Prestador p ON p.PrestadorId=c.PrestadorId JOIN Cadastro.TipoServico t ON t.TipoServicoId=c.TipoServicoId JOIN Cadastro.Deposito d ON d.DepositoId=c.DepositoId WHERE c.ContratacaoId=${receiptId(key)} AND ${receiptEligible}`))[0];
+  const origin=(await db.query(`SELECT c.ContratacaoId,c.Numero,c.Versao,c.DepositoId,c.PrestadorId,c.TipoServicoId,CONVERT(varchar(10),c.DataServico,23) DataServico,CONVERT(varchar(40),c.ValorLiberado) ValorLiberado,CONVERT(varchar(27),c.LiberadoEmUtc,126) LiberadoEmUtc,p.Nome Prestador,t.Nome Tipo,d.Cidade,d.Estado,d.CentroCusto,d.Nome Deposito,d.Rua,d.Numero NumeroEndereco,d.Bairro,d.CEP FROM Operacao.Contratacao c WITH(UPDLOCK,HOLDLOCK) JOIN Cadastro.Prestador p ON p.PrestadorId=c.PrestadorId JOIN Cadastro.TipoServico t ON t.TipoServicoId=c.TipoServicoId JOIN Cadastro.Deposito d ON d.DepositoId=c.DepositoId WHERE c.ContratacaoId=${receiptId(key)} AND ${receiptEligible} AND ${receiptScope(actor,user)}`))[0];
   if(!origin)fail('CONTRATACAO_INDISPONIVEL',404);
   if(expected&&[['versao','Versao'],['depositoId','DepositoId'],['prestadorId','PrestadorId'],['tipoServicoId','TipoServicoId'],['dataServico','DataServico'],['valor','ValorLiberado'],['liberadoEmUtc','LiberadoEmUtc']].some(([key,column])=>String(expected[key])!==String(origin[column])))fail('PREVIA_ALTERADA',409);
   const previous=(await db.query(readSql(key)))[0];

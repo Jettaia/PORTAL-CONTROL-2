@@ -10,6 +10,24 @@ body { background: var(--jc-canvas); color: var(--jc-ink); font-family: var(--jc
 #mainNav .subitems button { min-height: 40px; padding-block: 10px !important; }
 #mainNav button.selected { background: #214f80; color: #ffb36e; }
 .side-foot { color: #bed0e2; line-height: 1.5; }
+/* Keep account access separate from the scrollable shared navigation. */
+.sidebar { height: 100dvh; min-height: 0; }
+.sidebar .brand, .sidebar-bottom { flex-shrink: 0; }
+.sidebar #mainNav { min-height: 0; max-height: none; overflow-y: auto; }
+.sidebar-bottom { margin-top: auto; padding-top: 16px; }
+.sidebar-bottom .side-foot { margin-top: 12px; padding: 16px 12px 0; }
+#logout { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 12px; border: 1px solid #416483; border-radius: var(--jc-radius); background: transparent; color: #e6f0fb; font: 600 14px/1.4 var(--jc-font); text-align: left; }
+#logout svg { flex-shrink: 0; }
+#logout:hover { background: #214f80; border-color: #bed0e2; }
+.sidebar.collapsed #logout { justify-content: center; }
+.sidebar.collapsed #logout span { display: none; }
+@media (max-width: 760px) {
+  .sidebar { height: auto; }
+  .sidebar:not(.mobile-open) .sidebar-bottom { display: none; }
+  .sidebar.mobile-open #mainNav { max-height: 45dvh; }
+  .sidebar.collapsed #logout { justify-content: flex-start; }
+  .sidebar.collapsed #logout span { display: inline; }
+}
 .toolbar { padding-inline: 28px; box-shadow: none; border-bottom: 1px solid #dce4ed; }
 .toolbar-search { color: var(--jc-muted); background: var(--jc-subtle); }
 .toolbar-search kbd { color: var(--jc-muted); }
