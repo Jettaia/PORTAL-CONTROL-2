@@ -12,7 +12,9 @@ COPY production/certs/chapa-ca.crt /usr/local/share/ca-certificates/chapa-ca.crt
 RUN update-ca-certificates
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN npm ci --omit=dev && npx playwright install --with-deps chromium && \
+ chmod -R a+rX /ms-playwright && npm cache clean --force && rm -rf /var/lib/apt/lists/*
 COPY src ./src
 COPY public ./public
 COPY pilot-local ./pilot-local
