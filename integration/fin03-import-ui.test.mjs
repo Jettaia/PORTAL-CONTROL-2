@@ -25,7 +25,7 @@ test('FIN03 importação: conferir páginas, vínculo manual, seleção, cancela
   });
   await page.goto(`http://127.0.0.1:${server.address().port}/fixture`);await page.evaluate(()=>window.dispatchEvent(new Event('jetta:fin01')));
   const start=page.getByRole('button',{name:'Importar recibos assinados',exact:true});await start.waitFor({state:'visible'});
-  const upload=async()=>{await start.click();await page.getByLabel('PDF com recibos assinados').setInputFiles({name:'assinados.pdf',mimeType:'application/pdf',buffer:Buffer.concat([Buffer.from('%PDF-1.4 synthetic'),Buffer.alloc(12*1024*1024,32)])});await page.getByRole('button',{name:'Analisar PDF',exact:true}).click();await page.getByRole('heading',{name:'Conferir recibos assinados',exact:true}).waitFor();};
+  const upload=async()=>{await start.click();await page.getByLabel('PDF com recibos assinados').setInputFiles({name:'assinados.pdf',mimeType:'application/pdf',buffer:Buffer.concat([Buffer.from('%PDF-1.4 synthetic'),Buffer.alloc(12*1024*1024,32)])},{timeout:30000});await page.getByRole('button',{name:'Analisar PDF',exact:true}).click();await page.getByRole('heading',{name:'Conferir recibos assinados',exact:true}).waitFor();};
   await upload();assert.equal(await page.locator('.fin03-import-select').count(),1);assert.equal(await page.locator('.fin03-import-select:checked').count(),0);assert.ok(await page.getByRole('button',{name:'Confirmar pagamentos selecionados',exact:true}).isDisabled());
   assert.match(await page.locator('#fin03Import').innerText(),/1, 2/);
   await page.getByRole('button',{name:'Descartar importação',exact:true}).click();assert.equal(calls.filter(c=>c.path.endsWith('/confirmar')).length,0);

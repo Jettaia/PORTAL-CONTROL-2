@@ -34,8 +34,8 @@ export function createPreviewApp(){
  app.get('/api/pc04/catalogo',(_req,res)=>res.json({podeOperar:true,depositos:[],tipos:[],prestadores:[],gestores:[]}));
  app.get('/api/pc05/status',(_req,res)=>res.json({pc05:true}));
  app.get(['/api/pc04/contratacoes','/api/pc05/tablets','/api/financeiro/contratacoes'],(_req,res)=>res.json({registros:[],proximaPagina:null,podeOperar:true}));
- app.get('/api/financeiro/catalogo',(_req,res)=>res.json({depositos:[],prestadores:[]}));
- app.get('/api/financeiro/extrato',(_req,res)=>res.json({prestadores:[],contratacoes:[],totalRegistros:0,proximaPagina:null,totais:{ValorDevido:'0.00',ValorPago:'0.00',Saldo:'0.00'}}));
+ app.get(['/api/financeiro/catalogo','/api/financeiro/extrato/catalogo'],(_req,res)=>res.json({depositos:[],prestadores:[]}));
+ app.get('/api/financeiro/extrato',(_req,res)=>res.json({prestadores:[],contratacoes:[],depositos:[],totalRegistros:0,proximaPagina:null,totais:{ValorDevido:'0.00',ValorPago:'0.00',Saldo:'0.00'}}));
  app.use('/api',(_req,res)=>res.status(503).json({erro:'PREVIA_SEM_BANCO: consulta indisponível'}));
  app.get('/preview-ui.js',(_req,res)=>res.type('js').send(client));
  app.get(['/', '/index.html','/tablet.html'],(req,res)=>{

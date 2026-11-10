@@ -6,15 +6,16 @@ import {createRequire} from 'node:module';
 import path from 'node:path';
 import {PDFDocument,PDFName,PDFNumber} from 'pdf-lib';
 Object.assign(globalThis,{DOMMatrix,Path2D,ImageData});
+const input=parentPort?workerData:await new Promise(resolve=>process.once('message',resolve));
 let ocr,result;
 try{
- if(workerData.pages){
+ if(input.pages){
   const {PDFDocument}=await import('pdf-lib');
-  const original=await PDFDocument.load(workerData.bytes),doc=await PDFDocument.create();
-  for(const page of await doc.copyPages(original,workerData.pages.map(n=>n-1)))doc.addPage(page);
+  const original=await PDFDocument.load(input.bytes),doc=await PDFDocument.create();
+  for(const page of await doc.copyPages(original,input.pages.map(n=>n-1)))doc.addPage(page);
   result={bytes:await doc.save()};
  }else{
- const preflight=await PDFDocument.load(workerData.bytes);
+ const preflight=await PDFDocument.load(input.bytes);
  for(const [,object] of preflight.context.enumerateIndirectObjects()){
   const dict=object.dict;
   if(dict?.get(PDFName.of('Subtype'))?.toString()==='/Image'){
@@ -23,7 +24,7 @@ try{
   }
  }
  const {getDocument}=await import('pdfjs-dist/legacy/build/pdf.mjs');
- const task=getDocument({data:new Uint8Array(workerData.bytes),isEvalSupported:false,stopAtErrors:true,maxImageSize:25000000,useSystemFonts:true,disableFontFace:true});
+ const task=getDocument({data:new Uint8Array(input.bytes),isEvalSupported:false,stopAtErrors:true,maxImageSize:25000000,useSystemFonts:true,disableFontFace:true});
  const doc=await task.promise;
  if(doc.numPages<1||doc.numPages>100)throw Error('PDF_LIMITE_100_PAGINAS');
  const paginas=[];let size=0;
@@ -50,4 +51,4 @@ try{
  await task.destroy();result={paginas};
  }
 }catch(e){result={erro:/Image exceeded maximum/.test(e.message)?'PDF_IMAGEM_LIMITE':/^PDF_/.test(e.message)?e.message:'PDF_INVALIDO'};}
-finally{if(ocr)await ocr.terminate();parentPort.postMessage(result);}
+finally{if(ocr)await ocr.terminate();if(parentPort)parentPort.postMessage(result);else process.send(result,()=>process.disconnect());}

@@ -4,7 +4,7 @@ Destino: https://app.jettatransportes.com.br/chapa/ . Serviço independente em `
 
 ## Dados e credencial
 
-Instalação nova aplica o manifesto completo de 40 migrações. Importa somente o ADMIN raiz ativo e sua credencial scrypt (hash/salt), recria permissões técnicas e não transporta sessões, tokens ou dados operacionais. O banco local permanece intacto. `export-admin.mjs` escreve apenas em arquivo ignorado; não imprime a credencial. `bootstrap-run.mjs --new-empty-chapa` exige banco inexistente e recusa sobrescrita.
+Instalação nova aplica o manifesto completo de 42 migrações. Importa somente o ADMIN raiz ativo e sua credencial scrypt (hash/salt), recria permissões técnicas e não transporta sessões, tokens ou dados operacionais. O banco local permanece intacto. `export-admin.mjs` escreve apenas em arquivo ignorado; não imprime a credencial. `bootstrap-run.mjs --new-empty-chapa` exige banco inexistente e recusa sobrescrita.
 
 A API usa `JettaChapaRuntime`, sem sysadmin, db_owner, DDL, backup ou administração do servidor. Cada conexão confere identidade, privilégios e marcador da instalação. A credencial `sa` permanece somente no volume administrativo criptografado; não é montada na API.
 
@@ -21,6 +21,8 @@ A API usa `JettaChapaRuntime`, sem sysadmin, db_owner, DDL, backup ou administra
 ## Runtime Linux
 
 Microsoft ODBC 18 apresentou travamento/crash com binário Node oficial e OpenSSL estático. A imagem usa o pacote Node >=20 mantido pela segurança Debian 13, ligado ao OpenSSL compartilhado do mesmo sistema. ODBC/TLS, inicialização e operações autenticadas foram provados nessa imagem. Não voltar ao executável Node estático sem repetir essas provas. O SQL Server é Express, não Developer.
+
+A importação de recibos usa PDF.js 6 e exige Node >=22.13. A imagem preserva também o Node 24 oficial em `/usr/local/bin/node-pdf`, selecionado por `RECEIPT_PDF_NODE`: somente a leitura/separação dos PDFs roda nesse processo isolado, com IPC binário, limite de heap e prazo de processamento. A API/ODBC permanece no Node Debian com OpenSSL compartilhado. Não remover essa separação sem provar novamente SQL/TLS, QR, OCR português offline e separação de páginas na imagem Linux.
 
 ## Implantação e verificação
 

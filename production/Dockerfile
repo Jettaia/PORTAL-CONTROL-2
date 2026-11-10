@@ -1,3 +1,4 @@
+FROM node:24.14.1-trixie-slim@sha256:9707cd4542f400df5078df04f9652a272429112f15202d22b5b8bdd148df494f AS pdf-runtime
 FROM node:24.14.1-trixie-slim@sha256:9707cd4542f400df5078df04f9652a272429112f15202d22b5b8bdd148df494f
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl gnupg python3 make g++ unixodbc-dev && \
  curl -fsSL https://packages.microsoft.com/config/debian/13/packages-microsoft-prod.deb -o /tmp/packages-microsoft-prod.deb && \
@@ -19,7 +20,9 @@ COPY src ./src
 COPY public ./public
 COPY pilot-local ./pilot-local
 COPY production ./production
+COPY --from=pdf-runtime /usr/local/bin/node /usr/local/bin/node-pdf
 RUN node production/build-assets.mjs /app/chapa-public
+ENV RECEIPT_PDF_NODE=/usr/local/bin/node-pdf
 ENV NODE_ENV=production CHAPA_CONFIG=/run/secrets/chapa-runtime.json
 USER node
 EXPOSE 3211
