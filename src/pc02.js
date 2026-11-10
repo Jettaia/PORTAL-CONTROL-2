@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import {withDb,intLiteral as n,nvarcharLiteral as s} from './auth-db.js';
-import {assertAdminDb} from './pc01.js';
+import {assertAdminDb,assertCoordinatorDb} from './pc01.js';
+import {roleSql} from './access-policy.js';
 import {assertMfa} from './b4.js';
 import {PlanningError} from './b3.js';
 const fail=(message,status=400)=>{throw new PlanningError(message,status);};
@@ -30,10 +31,10 @@ export function normalizeCatalog(kind,body,editing=false){
 export async function read(cfg,actor,kind){
  const d=definitions[kind];if(!d)fail('CADASTRO_INVALIDO',404);
  return withDb(cfg,async db=>{
-  const uid=n(actor),user=(await db.query(`SELECT u.Perfil,CASE WHEN EXISTS(SELECT 1 FROM Seguranca.UsuarioRaiz r WHERE r.UsuarioId=u.UsuarioId) AND u.Perfil='ADMIN' THEN 1 ELSE 0 END Adm FROM Seguranca.Usuario u WHERE u.UsuarioId=${uid} AND u.Ativo=1`))[0];
+  const uid=n(actor),user=(await db.query(`SELECT u.Perfil,CASE WHEN EXISTS(SELECT 1 FROM Seguranca.UsuarioRaiz r WHERE r.UsuarioId=u.UsuarioId) AND u.Perfil='ADMIN' THEN 1 ELSE 0 END Adm,CASE WHEN ${roleSql(uid,'COORDENADOR')} THEN 1 ELSE 0 END Coordenador FROM Seguranca.Usuario u WHERE u.UsuarioId=${uid} AND u.Ativo=1`))[0];
   if(!user)fail('SESSAO_INVALIDA',401);
   const admin=active(user.Adm),scope=kind==='depositos'&&!admin?` WHERE EXISTS(SELECT 1 FROM Seguranca.UsuarioDeposito ud WHERE ud.UsuarioId=${uid} AND ud.DepositoId=Cadastro.Deposito.DepositoId AND ud.RevogadoEmUtc IS NULL)`:'';
-  return {pc02:true,podeEditar:admin,registros:await db.query(`SELECT ${d.cols} FROM ${d.table}${scope} ORDER BY Nome,${d.pk}`)};
+  return {pc02:true,podeEditar:admin||active(user.Coordenador),registros:await db.query(`SELECT ${d.cols} FROM ${d.table}${scope} ORDER BY Nome,${d.pk}`)};
  });
 }
 export async function save(cfg,actor,token,kind,body,id){
@@ -43,8 +44,11 @@ export async function save(cfg,actor,token,kind,body,id){
   try{
    const lock=(await db.query(`DECLARE @r int;EXEC @r=sys.sp_getapplock @Resource='JettaControl.PC02.${kind}',@LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=5000;SELECT @r R;`))[0];
    if(!lock||Number(lock.R)<0)fail('OPERACAO_OCUPADA',409);
-   await assertAdminDb(db,actor);await assertMfa(db,actor,token,cfg);
-   const row=target?(await db.query(`SELECT ${d.cols} FROM ${d.table} WITH(UPDLOCK,HOLDLOCK) WHERE ${d.pk}=${target}`))[0]:null;
+   let admin=true;
+   try{await assertAdminDb(db,actor);}catch(e){if(e.message!=='SOMENTE_ADM')throw e;admin=false;await assertCoordinatorDb(db,actor);}
+   await assertMfa(db,actor,token,cfg);
+   const scope=depot&&!admin?` AND EXISTS(SELECT 1 FROM Seguranca.UsuarioDeposito ud WHERE ud.UsuarioId=${uid} AND ud.DepositoId=Cadastro.Deposito.DepositoId AND ud.RevogadoEmUtc IS NULL)`:'';
+   const row=target?(await db.query(`SELECT ${d.cols} FROM ${d.table} WITH(UPDLOCK,HOLDLOCK) WHERE ${d.pk}=${target}${scope}`))[0]:null;
    if(target&&!row)fail('REGISTRO_INDISPONIVEL',404);
    const previous=row?{nome:row.Nome,ativo:active(row.Ativo),...(depot?Object.fromEntries(Object.entries(address).map(([key,[column]])=>[key,row[column]||''])):{descricao:row.Descricao||''})}:null;
    if(previous&&Object.keys(previous).some(k=>previous[k]!==v.original[k]))fail('REGISTRO_ALTERADO_ATUALIZE',409);
@@ -56,8 +60,8 @@ export async function save(cfg,actor,token,kind,body,id){
    if(target)result=(await db.query(`UPDATE ${d.table} SET ${Object.entries(entries).map(([k,value])=>`${k}=${value}`).join(',')} OUTPUT ${d.cols.split(',').map(k=>'inserted.'+k).join(',')} WHERE ${d.pk}=${target}`))[0];
    else result=(await db.query(`INSERT ${d.table}(${Object.keys(entries).join(',')}) OUTPUT ${d.cols.split(',').map(k=>'inserted.'+k).join(',')} VALUES(${Object.values(entries).join(',')})`))[0];
    // Legacy operational procedures require both grant tables even for root ADM.
-   // Only current administrators inherit a newly created depot; all other
-   // accounts keep their explicitly assigned scopes.
+   // Administrators inherit all new depots. A coordinator creator receives
+   // only the new depot; every other account keeps its assigned scope.
    if(depot&&!target)await db.query(`INSERT Seguranca.UsuarioDeposito(UsuarioId,DepositoId,ConcedidoPor)
     SELECT u.UsuarioId,${n(result.DepositoId)},${uid} FROM Seguranca.Usuario u JOIN Seguranca.UsuarioRaiz r ON r.UsuarioId=u.UsuarioId
     WHERE u.Ativo=1 AND u.Perfil='ADMIN' AND Seguranca.fn_PC01_TemFuncao(u.UsuarioId,'ADMIN')=1
@@ -66,6 +70,10 @@ export async function save(cfg,actor,token,kind,body,id){
     SELECT u.UsuarioId,${n(result.DepositoId)},${uid} FROM Seguranca.Usuario u JOIN Seguranca.UsuarioRaiz r ON r.UsuarioId=u.UsuarioId
     WHERE u.Ativo=1 AND u.Perfil='ADMIN' AND Seguranca.fn_PC01_TemFuncao(u.UsuarioId,'ADMIN')=1
     AND NOT EXISTS(SELECT 1 FROM Seguranca.GestorDeposito gd WHERE gd.GestorUsuarioId=u.UsuarioId AND gd.DepositoId=${n(result.DepositoId)});`);
+   if(depot&&!target&&!admin){
+    await db.query(`INSERT Seguranca.UsuarioDeposito(UsuarioId,DepositoId,ConcedidoPor) VALUES(${uid},${n(result.DepositoId)},${uid});
+     IF Seguranca.fn_PC01_TemFuncao(${uid},'GESTOR')=1 INSERT Seguranca.GestorDeposito(GestorUsuarioId,DepositoId,ConcedidoPorUsuarioId) VALUES(${uid},${n(result.DepositoId)},${uid});`);
+   }
    const {original,...after}=v;
    await db.query(`INSERT Seguranca.Auditoria(Entidade,EntidadeId,Acao,AtorUsuarioId,DetalhesJson) VALUES(N'${d.entity}',${n(result[d.pk])},N'PC02_${editing?'ATUALIZAR':'CRIAR'}',${uid},${s(JSON.stringify({antes:previous,depois:after}),'max')})`);
    await db.commit();return result;

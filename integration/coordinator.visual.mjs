@@ -7,6 +7,7 @@ const app=express();app.use(express.json());let user=null,accounts=[],writes=[],
 const admin={id:1,nome:'Admin Teste',perfil:'ADMIN',funcoes:['ADMIN'],pc01:true,pc02:true,pc03:true,pc04:true,pc05:true,fin01:true};
 const coordinator={...admin,id:9,nome:'Coordenador Teste',perfil:'COORDENADOR',funcoes:['COORDENADOR'],depositos:['1','2']};
 const deposits=[{DepositoId:1,Nome:'Depósito A',CentroCusto:'1001',Ativo:true},{DepositoId:2,Nome:'Depósito B',CentroCusto:'1002',Ativo:true}];
+const types=[{TipoServicoId:1,Nome:'Diária',Descricao:'',Ativo:true}];
 const row=()=>({ContratacaoId:1,Numero:1,Prestador:'Prestador Teste',Deposito:'Depósito A',CentroCusto:'1001',Tipo:'Diária',GestorResponsavel:'Gestor Teste',GestorResponsavelId:7,DataServico:'2026-11-10',InicioPrevisto:'2026-11-10T08:00',FimPrevisto:'2026-11-10T12:00',Valor:'100.00',Status:'ABERTA',Versao:1,HorarioPendenteId:pending?1:null,EntradaReal:pending?null:'2026-11-10T08:10',SaidaReal:pending?null:'2026-11-10T12:10'});
 app.all('/api/*',(req,res)=>{
  if(req.path==='/api/auth/login'){user=req.body.email.startsWith('admin')?admin:coordinator;return res.json({usuario:user});}
@@ -15,6 +16,18 @@ app.all('/api/*',(req,res)=>{
  if(req.path==='/api/auth/me')return res.json({usuario:user});
  if(req.path==='/api/mfa/status')return res.json({enrolled:true,verified:true,stepUp:true});
  if(req.path==='/api/pc01/solicitacoes')return res.json({solicitacoes:[]});
+ if(req.path==='/api/pc01/senhas-usuarios')return res.json({usuarios:[{UsuarioId:7,Nome:'Gestor Teste',Email:'gestor@example.test',Perfil:'GESTOR'},{UsuarioId:8,Nome:'Financeiro Teste',Email:'financeiro@example.test',Perfil:'FINANCEIRO'}]});
+ if(/^\/api\/pc01\/usuarios\/[78]\/senha$/.test(req.path)){writes.push(req.body);return res.json({sessoesRevogadas:true});}
+ if(req.path==='/api/b24a/depositos'){
+  if(req.method==='GET')return res.json({podeEditar:true,registros:deposits});
+  writes.push(req.body);const r={DepositoId:deposits.length+1,Nome:req.body.nome,CentroCusto:req.body.centroCusto,Ativo:true};deposits.push(r);return res.status(201).json({resultado:r});
+ }
+ if(req.path==='/api/b24a/servicos'){
+  if(req.method==='GET')return res.json({podeEditar:true,registros:types});
+  writes.push(req.body);const r={TipoServicoId:types.length+1,Nome:req.body.nome,Descricao:req.body.descricao,Ativo:true};types.push(r);return res.status(201).json({resultado:r});
+ }
+ if(req.path.startsWith('/api/b24a/servicos/')){writes.push(req.body);const r=types.find(r=>String(r.TipoServicoId)===req.path.split('/').at(-1));r.Nome=req.body.nome;r.Descricao=req.body.descricao;return res.json({resultado:r});}
+
  if(req.path==='/api/pc01/usuarios'){
   if(req.method==='GET')return res.json({usuarios:accounts,depositos:deposits});
   writes.push(req.body);accounts=[{UsuarioId:9,Nome:req.body.nome,Email:req.body.email,Perfil:'COORDENADOR',Ativo:true,FuncoesJson:JSON.stringify(req.body.funcoes.map(r=>({Codigo:'PC01_'+r}))),DepositosJson:JSON.stringify(req.body.depositos.map(id=>({DepositoId:id})))}];return res.status(201).json({usuarioId:9});
@@ -49,16 +62,29 @@ try{
  await page.locator('#logout').click();await login('coord@example.test');
  assert.equal(await page.locator('[data-page=perfis]').isVisible(),false);assert.equal(await page.locator('[data-page=diagnostico]').isVisible(),false);
  await page.locator('[data-page=usuarios]').click();assert.equal(await page.locator('#pc01Panel').isVisible(),false);assert.equal(await page.locator('#pc01PasswordPanel').isVisible(),true);
+ await page.getByRole('button',{name:'Alterar senha de Gestor Teste',exact:true}).click();
+ await page.getByRole('heading',{name:'Alterar senha de Gestor Teste',exact:true}).waitFor();assert.equal(await page.locator('#pc01CurrentPasswordRow').isVisible(),false);
+ await page.locator('#pc01NewPassword').fill('ChangedOnly!Pass456');await page.locator('#pc01ConfirmPassword').fill('ChangedOnly!Pass456');await page.locator('#pc01PasswordSave').click();
+ await page.getByText('Senha alterada. As sessões anteriores dessa conta foram encerradas.',{exact:true}).waitFor();assert.equal(writes.at(-1).senha,'ChangedOnly!Pass456');assert.equal(await page.locator('#pc01NewPassword').inputValue(),'');
+ await page.getByRole('button',{name:'Alterar senha de Financeiro Teste',exact:true}).click();await page.getByRole('heading',{name:'Alterar senha de Financeiro Teste',exact:true}).waitFor();
+ await page.locator('#pc01PasswordCancel').click();await page.getByRole('heading',{name:'Alterar minha senha',exact:true}).waitFor();
+ fs.mkdirSync('artifacts/coordinator-permissions',{recursive:true});await page.locator('#usersPage').screenshot({path:'artifacts/coordinator-permissions/senhas-desktop.png'});await page.setViewportSize({width:768,height:1024});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.locator('#usersPage').screenshot({path:'artifacts/coordinator-permissions/senhas-tablet.png'});await page.setViewportSize({width:1440,height:1000});
+ await page.locator('[data-page=depositos]').click();await page.locator('#b24cDepForm').waitFor({state:'visible'});
+ for(const [key,value] of [['Nome','Depósito coordenado'],['CentroCusto','CC-COORD'],['Rua','Rua de Teste'],['Numero','3'],['Bairro','Centro'],['Cidade','Campinas'],['Estado','SP'],['Cep','13010000']])await page.locator('#b24c'+key).fill(value);
+ await page.locator('#b24cDepSave').click();await page.getByText('Depósito cadastrado.',{exact:true}).waitFor();assert.equal(writes.at(-1).centroCusto,'CC-COORD');
+ await page.locator('[data-page=servicos]').click();await page.locator('#b24Form').waitFor({state:'visible'});await page.locator('#b24Nome').fill('Atividade coordenada');await page.locator('#b24Descricao').fill('Descrição da atividade');await page.locator('#b24Form button[type=submit]').click();await page.getByText('Cadastro realizado.',{exact:true}).waitFor();
+ await page.locator('#b24Table tr').filter({hasText:'Atividade coordenada'}).getByRole('button',{name:'Editar',exact:true}).click();await page.locator('#b24Nome').fill('Atividade revisada');await page.locator('#b24Form button[type=submit]').click();await page.getByText('Alterações salvas.',{exact:true}).waitFor();assert.equal(writes.at(-1).nome,'Atividade revisada');
+
  await page.locator('#mainNav summary').filter({hasText:'Operação'}).evaluate(el=>el.parentElement.open=true);await page.locator('[data-page=contratacoes]').click();await page.locator('#pc04Message').filter({hasText:'Consulta atualizada.'}).waitFor();
  assert.equal(await page.locator('#pc04_gestorId').isEnabled(),true);await page.locator('#pc04_gestorId').selectOption('7');
  await page.locator('#pc04_depositoId').selectOption('2');assert.equal(await page.locator('#pc04_gestorId option[value="7"]').count(),0);await page.locator('#pc04_depositoId').selectOption('1');
  await page.getByRole('button',{name:'Abrir solicitação 1',exact:true}).click();await page.getByRole('button',{name:'Aprovar horários',exact:true}).waitFor();
  await page.getByRole('button',{name:'Aprovar horários',exact:true}).click();await page.getByText('Horários aprovados.',{exact:true}).waitFor();assert.equal(pending,false);assert.equal(writes.at(-1).aprovar,true);
- // Same authenticated profile, own request: no approval actions; direct edits still request review.
+ // Same authenticated profile may now approve or reject its own request.
  pending=true;requester=9;await page.getByRole('button',{name:'Atualizar consulta',exact:true}).click();await page.locator('#pc04Message').filter({hasText:'Consulta atualizada.'}).waitFor();await page.getByRole('button',{name:'Abrir solicitação 1',exact:true}).click();
- await page.getByText('Aguardando aprovação da supervisão. Os horários válidos só mudam após a aprovação.',{exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Aprovar horários',exact:true}).count(),0);
+ await page.getByRole('button',{name:'Aprovar horários',exact:true}).waitFor();await page.getByRole('button',{name:'Negar horários',exact:true}).click();await page.getByText('Horários negados. Os horários válidos foram preservados.',{exact:true}).waitFor();assert.equal(writes.at(-1).aprovar,false);
  await page.locator('#mainNav summary').filter({hasText:'Financeiro'}).click();await page.locator('[data-page=pagamentos]').click();await page.locator('#fin01Rows').waitFor();assert.equal(await page.getByRole('button',{name:'Gerar recibos do período',exact:true}).isVisible(),false);
  fs.mkdirSync('artifacts/coordinator',{recursive:true});await page.locator('#mainNav summary').filter({hasText:'Operação'}).evaluate(el=>el.parentElement.open=true);await page.locator('[data-page=contratacoes]').click();await page.locator('#pc04Message').filter({hasText:'Consulta atualizada.'}).waitFor();await page.screenshot({path:'artifacts/coordinator/desktop.png',fullPage:true});
  await page.setViewportSize({width:768,height:1024});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.screenshot({path:'artifacts/coordinator/tablet.png',fullPage:true});
- assert.deepEqual(errors,[]);console.log('PASS: ADMIN cadastra coordenador, CC/depósitos, troca de sessão, gestor selecionável, aprovação, autoaprovação oculta e financeiro consulta.');
+ assert.deepEqual(errors,[]);console.log('PASS: ADMIN cadastra coordenador, CC/depósitos, troca de sessão, gestor selecionável, aprovação, cadastros, senhas da equipe, autoaprovação disponível e financeiro consulta.');
 }finally{await browser.close();await new Promise(r=>server.close(r));}

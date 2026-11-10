@@ -8,7 +8,7 @@ export function mountBranchCatalog(app,cfg,{session,sameOrigin},service=catalog)
   app.get('/api/b24a/'+kind,session,async(req,res)=>{try{res.json(await service.read(cfg,req.user.id,kind,req));}catch(e){error(res,e);}});
   const save=editing=>async(req,res)=>{
    try{
-    if(req.user.perfil!=='ADMIN')return res.status(403).json({erro:'SOMENTE_ADM'});
+    if(![req.user.perfil,...(req.user.funcoes||[])].some(role=>['ADMIN','COORDENADOR'].includes(role)))return res.status(403).json({erro:'SOMENTE_ADM'});
     let id;if(editing){try{id=intLiteral(req.params.id);}catch{return res.status(400).json({erro:'IDENTIFICADOR_INVALIDO'});}}
     res.status(editing?200:201).json({ok:true,resultado:await service.save(cfg,req.user.id,req.rawSession,kind,req.body,id,req)});
    }catch(e){error(res,e);}

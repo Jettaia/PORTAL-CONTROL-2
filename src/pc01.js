@@ -5,6 +5,7 @@ import {hashPassword,passwordValid,hashToken} from './security.js';
 import {validNewPassword} from './b25b.js';
 import {assertMfa as assertMfaDb} from './b4.js';
 import {PlanningError} from './b3.js';
+import {roleSql} from './access-policy.js';
 const fail=(message,status=400)=>{throw new PlanningError(message,status);};
 export function normalizePasswordChange(body,own=false){
  const fields=['senha','confirmacao',...(own?['senhaAtual']:[])];
@@ -29,6 +30,29 @@ export async function assertAdminDb(db,actor){
  if(!(await db.query(`SELECT u.UsuarioId FROM Seguranca.Usuario u WITH(HOLDLOCK) JOIN Seguranca.UsuarioRaiz r ON r.UsuarioId=u.UsuarioId WHERE u.UsuarioId=${n(actor)} AND u.Ativo=1 AND u.Perfil='ADMIN'`)).length)fail('SOMENTE_ADM',403);
 }
 export async function assertAdmin(cfg,actor){return withDb(cfg,db=>assertAdminDb(db,actor));}
+export async function assertCoordinatorDb(db,actor){
+ const uid=n(actor);
+ if(!(await db.query(`SELECT u.UsuarioId FROM Seguranca.Usuario u WITH(HOLDLOCK) WHERE u.UsuarioId=${uid} AND u.Ativo=1 AND ${roleSql(uid,'COORDENADOR')}`)).length)fail('SOMENTE_ADM',403);
+}
+// Resetting a password gives control of the target account: every target depot
+// must be within the coordinator's scope, and elevated/custom roles stay protected.
+function passwordTargetScope(actor){
+ const uid=n(actor);
+ return `u.Ativo=1 AND u.ExcluidoEmUtc IS NULL AND u.Perfil IN('GESTOR','FINANCEIRO')
+ AND EXISTS(SELECT 1 FROM Seguranca.Usuario a WHERE a.UsuarioId=${uid} AND a.Ativo=1 AND ${roleSql(uid,'COORDENADOR')})
+ AND NOT EXISTS(SELECT 1 FROM Seguranca.UsuarioRaiz r WHERE r.UsuarioId=u.UsuarioId)
+ AND NOT EXISTS(SELECT 1 FROM Seguranca.UsuarioPerfil up JOIN Seguranca.PerfilAcesso pa ON pa.PerfilId=up.PerfilId AND pa.Ativo=1 WHERE up.UsuarioId=u.UsuarioId AND pa.Codigo NOT IN('PC01_GESTOR','PC01_FINANCEIRO'))
+ AND EXISTS(SELECT 1 FROM Seguranca.UsuarioDeposito ud WHERE ud.UsuarioId=u.UsuarioId AND ud.RevogadoEmUtc IS NULL)
+ AND NOT EXISTS(SELECT 1 FROM Seguranca.UsuarioDeposito ud WHERE ud.UsuarioId=u.UsuarioId AND ud.RevogadoEmUtc IS NULL AND NOT EXISTS(SELECT 1 FROM Seguranca.UsuarioDeposito ad WHERE ad.UsuarioId=${uid} AND ad.DepositoId=ud.DepositoId AND ad.RevogadoEmUtc IS NULL))`;
+}
+export async function passwordTargets(cfg,actor){return withDb(cfg,async db=>{
+ await assertCoordinatorDb(db,actor);
+ return {usuarios:await db.query(`SELECT u.UsuarioId,u.Nome,u.Email,u.Perfil FROM Seguranca.Usuario u WHERE ${passwordTargetScope(actor)} ORDER BY u.Nome,u.UsuarioId`)};
+});}
+async function assertPasswordTargetDb(db,actor,target){
+ try{await assertAdminDb(db,actor);return;}catch(e){if(e.message!=='SOMENTE_ADM')throw e;}
+ if(!(await db.query(`SELECT u.UsuarioId FROM Seguranca.Usuario u WITH(UPDLOCK,HOLDLOCK) WHERE u.UsuarioId=${n(target)} AND ${passwordTargetScope(actor)}`)).length)fail('SENHA_FORA_ESCOPO',403);
+}
 export async function assertMfa(cfg,actor,token){return withDb(cfg,db=>assertMfaDb(db,actor,token,cfg));}
 export async function changeOwnPassword(cfg,actor,token,body){return changePassword(cfg,actor,token,body,actor,true);}
 export async function resetPassword(cfg,actor,token,body,id){return changePassword(cfg,actor,token,body,id,false);}
@@ -44,7 +68,7 @@ async function changePassword(cfg,actor,token,body,id,own){
    const currentActor=(await db.query(`SELECT UsuarioId,Ativo FROM Seguranca.Usuario WITH(UPDLOCK,HOLDLOCK) WHERE UsuarioId=${actorId}`))[0];
    if(!currentActor||![true,1,1n,'1'].includes(currentActor.Ativo))fail('SESSAO_INVALIDA',401);
    if(!(await db.query(`SELECT SessaoId FROM Seguranca.SessaoWeb WITH(UPDLOCK,HOLDLOCK) WHERE UsuarioId=${actorId} AND TokenHash=${tokenHashLiteral(hashToken(token))} AND RevogadoEmUtc IS NULL AND ExpiraEmUtc>SYSUTCDATETIME()`)).length)fail('SESSAO_INVALIDA',401);
-   if(!own){await assertAdminDb(db,actor);await assertMfaDb(db,actor,token,cfg);}
+   if(!own){await assertPasswordTargetDb(db,actor,target);await assertMfaDb(db,actor,token,cfg);}
    if(target!==actorId&&!(await db.query(`SELECT UsuarioId FROM Seguranca.Usuario WITH(UPDLOCK,HOLDLOCK) WHERE UsuarioId=${target} AND ExcluidoEmUtc IS NULL`)).length)fail('USUARIO_INDISPONIVEL',404);
    const credential=(await db.query(`SELECT SaltHex,SenhaHashHex,CASE WHEN BloqueadoAteUtc>SYSUTCDATETIME() THEN 1 ELSE 0 END EmBloqueio FROM Seguranca.Credencial WITH(UPDLOCK,HOLDLOCK) WHERE UsuarioId=${target}`))[0];
    if(!credential)fail('CONTA_SEM_CREDENCIAL',409);

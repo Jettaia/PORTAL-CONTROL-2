@@ -34,9 +34,9 @@ test('COORDENADOR: cadastro, depósitos explícitos, supervisão, financeiro e r
   };
   const login=async name=>(await call('/api/auth/login',null,{email:name+'@example.test',senha:password})).cookie;
   const admin=await login('admin');
-  const make=async(name,funcoes,depositos)=>{
+  const make=async(name,funcoes,depositos,authenticate=true)=>{
    const body={nome:name+' Teste',email:name+'@example.test',funcoes,depositos,ativo:true,senha:password};
-   const {data}=await call('/api/pc01/usuarios',admin,body,201);return {id:Number(data.usuarioId),cookie:await login(name),body};
+   const {data}=await call('/api/pc01/usuarios',admin,body,201);return {id:Number(data.usuarioId),cookie:authenticate?await login(name):null,body};
   };
   const coord=await make('coord',['COORDENADOR'],[1,2]); // RED before implementation: FUNCOES_INVALIDAS.
   const manager=await make('gestor',['GESTOR'],[1,2]),outside=await make('externo',['GESTOR'],[3]),none=await make('vazio',['COORDENADOR'],[]),finance=await make('financeiro',['FINANCEIRO'],[]);
@@ -49,13 +49,8 @@ test('COORDENADOR: cadastro, depósitos explícitos, supervisão, financeiro e r
   const {senha:managerPassword,...managerUpdate}=manager.body;
   await call('/api/pc01/usuarios/'+manager.id,coord.cookie,{...managerUpdate,funcoes:['ADMIN'],depositos:[1,2,3]},403,'PUT');
   await call('/api/pc01/usuarios/'+manager.id,coord.cookie,{},403,'DELETE');
-  await call('/api/pc01/usuarios/'+manager.id+'/senha',coord.cookie,{senha:password,confirmacao:password},403);
   const depotBody={nome:'Depósito Novo',centroCusto:'CC-N',rua:'Rua Nova',numero:'4',bairro:'Centro',cidade:'Campinas',estado:'SP',cep:'13010000',ativo:true};
-  await call('/api/b24a/depositos',coord.cookie,depotBody,403);
-  await call('/api/b24a/depositos/1',coord.cookie,{...depotBody,original:depotBody},403,'PUT');
   const serviceBody={nome:'Tipo sem autorização',descricao:'',ativo:true};
-  await call('/api/b24a/servicos',coord.cookie,serviceBody,403);
-  await call('/api/b24a/servicos/1',coord.cookie,{...serviceBody,original:{nome:'Diária',descricao:'',ativo:true}},403,'PUT');
   assert.deepEqual(await snapshot(db),beforeAdminDenials,'Tentativas administrativas negadas não alteram dados, credenciais, sessões nem permissões');
   await call('/api/b24a/depositos',admin,depotBody,201);
   assert.deepEqual((await call('/api/depositos/permitidos',coord.cookie)).data.depositos.map(d=>Number(d.DepositoId)).sort(),[1,2]);
@@ -79,7 +74,9 @@ test('COORDENADOR: cadastro, depósitos explícitos, supervisão, financeiro e r
   const decide=async(record,request,cookie=coord.cookie,status=200)=>(await call(base(record)+'/horarios/'+request.SolicitacaoId+'/decidir',cookie,{versao:Number(record.Versao),aprovar:true},status)).data.resultado;
   const pending=(await detail(a)).solicitacoesHorarios.find(r=>r.Status==='PENDENTE');a=await decide(a,pending);assert.equal(a.EntradaReal,hours(a).entradaReal);
   b=await change(b,coord.cookie,'horarios',hours(b));assert.equal(b.HorarioSolicitado,true);assert.equal(b.EntradaReal,null);
-  let own=(await detail(b)).solicitacoesHorarios.find(r=>r.Status==='PENDENTE');await decide(b,own,coord.cookie,403);b=await decide(b,own,admin);
+  let own=(await detail(b)).solicitacoesHorarios.find(r=>r.Status==='PENDENTE');
+  b=(await call(base(b)+'/horarios/'+own.SolicitacaoId+'/decidir',coord.cookie,{versao:Number(b.Versao),aprovar:false})).data.resultado;assert.equal(b.EntradaReal,null);
+  b=await change(b,coord.cookie,'horarios',hours(b));own=(await detail(b)).solicitacoesHorarios.find(r=>r.Status==='PENDENTE');b=await decide(b,own);assert.equal(b.EntradaReal,hours(b).entradaReal);
   a=await change(a,coord.cookie,'conferir');b=await change(b,coord.cookie,'conferir');
   own=(await detail(c,admin)).solicitacoesHorarios.find(r=>r.Status==='PENDENTE');c=await decide(c,own,admin);c=await change(c,admin,'conferir');
   await change(a,coord.cookie,'revisar',{valor:'200.00',motivo:'Bloqueada após liberação'},409);
@@ -121,6 +118,41 @@ test('COORDENADOR: cadastro, depósitos explícitos, supervisão, financeiro e r
   await call('/api/pc05/tablet/apontar',activated.cookie,{codigo:entry.codigo},409);
   await call('/api/pc05/tablets/'+tablet.tabletId+'/excluir',coord.cookie,{});
   await call('/api/pc05/tablet/status',activated.cookie,undefined,401);
+  // Coordinator catalog writes are scoped; only the creator inherits a new depot.
+  const createdDepot=(await call('/api/b24a/depositos',coord.cookie,{...depotBody,nome:'Depósito do Coordenador'},201)).data.resultado;
+  const depotId=Number(createdDepot.DepositoId);
+  assert.ok((await call('/api/b24a/depositos',coord.cookie)).data.registros.some(d=>Number(d.DepositoId)===depotId));
+  assert.ok(!(await call('/api/depositos/permitidos',none.cookie)).data.depositos.some(d=>Number(d.DepositoId)===depotId));
+  assert.ok(!(await call('/api/depositos/permitidos',manager.cookie)).data.depositos.some(d=>Number(d.DepositoId)===depotId));
+  const ownDepot={...depotBody,nome:'Depósito do Coordenador'};
+  const updatedDepot={...ownDepot,centroCusto:'CC-COORD',original:ownDepot};
+  assert.equal((await call('/api/b24a/depositos/'+depotId,coord.cookie,updatedDepot,200,'PUT')).data.resultado.CentroCusto,'CC-COORD');
+  await call('/api/b24a/depositos/'+depotId,coord.cookie,updatedDepot,409,'PUT');
+  const foreignBefore=await snapshot(db);
+  await call('/api/b24a/depositos/3',coord.cookie,{...depotBody,original:depotBody},404,'PUT');
+  for(const actor of [manager.cookie,finance.cookie])await call('/api/b24a/servicos',actor,serviceBody,403);
+  assert.deepEqual(await snapshot(db),foreignBefore);
+  const createdType=(await call('/api/b24a/servicos',coord.cookie,serviceBody,201)).data.resultado;
+  assert.equal((await call('/api/b24a/servicos/'+createdType.TipoServicoId,coord.cookie,{...serviceBody,nome:'Atividade coordenada',original:serviceBody},200,'PUT')).data.resultado.Nome,'Atividade coordenada');
+  // Password authority is a strict subset of the coordinator's depot scope.
+  const localFinance=await make('financeirolocal',['FINANCEIRO'],[2],false),mixed=await make('gestormisto',['GESTOR'],[1,3],false),elevated=await make('gestorcoordenador',['GESTOR','COORDENADOR'],[1],false);
+  const eligible=(await call('/api/pc01/senhas-usuarios',coord.cookie)).data.usuarios;
+  assert.ok(eligible.some(u=>Number(u.UsuarioId)===manager.id));assert.ok(eligible.some(u=>Number(u.UsuarioId)===localFinance.id));
+  for(const denied of [1,coord.id,outside.id,mixed.id,elevated.id,finance.id])assert.ok(!eligible.some(u=>Number(u.UsuarioId)===denied));
+  const nextPassword='ChangedOnly!Pass456',resetBody={senha:nextPassword,confirmacao:nextPassword};
+  const protectedBefore=await snapshot(db);
+  for(const denied of [1,coord.id,outside.id,mixed.id,elevated.id,finance.id])await call('/api/pc01/usuarios/'+denied+'/senha',coord.cookie,resetBody,403);
+  await call('/api/pc01/senhas-usuarios',manager.cookie,undefined,403);
+  assert.deepEqual(await snapshot(db),protectedBefore,'Reset negado não altera credenciais, sessões ou acessos');
+  const grantsBefore=await db.query('SELECT UsuarioId,PerfilId FROM Seguranca.UsuarioPerfil ORDER BY UsuarioId,PerfilId');
+  await call('/api/pc01/usuarios/'+manager.id+'/senha',coord.cookie,resetBody);
+  await call('/api/auth/me',manager.cookie,undefined,401);
+  await call('/api/auth/login',null,{email:manager.body.email,senha:password},401);
+  await call('/api/auth/login',null,{email:manager.body.email,senha:nextPassword});
+  await call('/api/pc01/usuarios/'+localFinance.id+'/senha',coord.cookie,resetBody);
+  await call('/api/auth/login',null,{email:localFinance.body.email,senha:nextPassword});
+  assert.deepEqual(await db.query('SELECT UsuarioId,PerfilId FROM Seguranca.UsuarioPerfil ORDER BY UsuarioId,PerfilId'),grantsBefore);
+  assert.equal(Number((await db.query(`SELECT COUNT(*) N FROM Seguranca.Auditoria WHERE AtorUsuarioId=${coord.id} AND Acao='PC01_REDEFINIR_SENHA'`))[0].N),2);
   // The additive SQL upgrade may be reapplied without changing operational data or user grants.
   const before=await db.query('SELECT UsuarioId,Perfil,Ativo FROM Seguranca.Usuario ORDER BY UsuarioId');
   const sql=fs.readFileSync(new URL('../pilot-local/coordinator-access.sql',import.meta.url),'utf8').replace('/*PILOT_GUARD*/',`IF NOT (${targetGuard}) THROW 55900,N'Destino recusado',1;`);

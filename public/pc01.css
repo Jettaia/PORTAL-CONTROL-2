@@ -6,3 +6,5 @@
 #dashboard #pc01PasswordForm{align-items:start}#pc01CurrentPasswordRow{grid-column:1/-1}
 #dashboard #pc01Users button.pc01-delete{background:#b42318;color:#fff}#dashboard #pc01Users button.pc01-delete:disabled{opacity:.5;cursor:not-allowed}#dashboard #pc01Users button.pc01-delete:focus-visible{outline:3px solid #b42318;outline-offset:3px}
 #pc01AccountEditor>.pc01-password-section{margin-top:24px;padding-top:20px;border-top:1px solid #dbe2ea}
+
+#pc01CoordinatorPasswords[hidden]{display:none!important}#pc01CoordinatorPasswords button{min-height:44px}#pc01CoordinatorPasswords .pc01-request button{flex-shrink:0}

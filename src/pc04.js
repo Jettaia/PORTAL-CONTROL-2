@@ -196,7 +196,6 @@ export async function decideHours(cfg,actor,token,id,requestId,body){
   if(previous.Status!=='ABERTA'||previous.PagoEmUtc)fail('CONTRATACAO_FECHADA',409);
   const request=(await db.query(`SELECT SolicitacaoId,SolicitanteId,Motivo,CONVERT(varchar(16),EntradaReal,126) EntradaReal,CONVERT(varchar(16),SaidaReal,126) SaidaReal FROM Operacao.ContratacaoHorarioSolicitacao WITH(UPDLOCK,HOLDLOCK) WHERE SolicitacaoId=${identifier(requestId)} AND ContratacaoId=${identifier(id)} AND Status='PENDENTE'`))[0];
   if(!request)fail('SOLICITACAO_INDISPONIVEL',409);
-  if(!user.admin&&String(request.SolicitanteId)===String(actor))fail('AUTOAPROVACAO_NEGADA',403);
   period(request.EntradaReal,request.SaidaReal,previous.DataServico);
   await db.query(`UPDATE Operacao.ContratacaoHorarioSolicitacao SET Status='${body.aprovar?'APROVADA':'NEGADA'}',DecididoPor=${identifier(actor)},DecididoEmUtc=SYSUTCDATETIME() WHERE SolicitacaoId=${identifier(requestId)} AND ContratacaoId=${identifier(id)} AND Status='PENDENTE'`);
   await db.query(`UPDATE Operacao.Contratacao SET ${body.aprovar?`EntradaReal='${request.EntradaReal}:00',SaidaReal='${request.SaidaReal}:00',EntradaOrigem='MANUAL',SaidaOrigem='MANUAL',`:''}Versao=Versao+1 WHERE ContratacaoId=${identifier(id)} AND Versao=${body.versao}`);

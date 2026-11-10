@@ -56,7 +56,7 @@ test('PC-02 serviço real revalida ADM/MFA, rejeita estado antigo e reverte falh
  // Script only the ODBC transport. Execute production save/assertAdminDb/assertMfa.
  // This protects orchestration and rollback; actual SQL semantics are opt-in E2E.
  const cases=[
-  {name:'ADM revogado',responses:[[],[{R:0}],[]],error:'SOMENTE_ADM'},
+  {name:'ADM revogado sem função de coordenador',responses:[[],[{R:0}],[],[]],error:'SOMENTE_ADM'},
   {name:'MFA expirado',responses:[[],[{R:0}],[{UsuarioId:1}],[]],error:'MFA_RECENTE_OBRIGATORIO'},
   {name:'edição desatualizada',editing:true,responses:[[],[{R:0}],[{UsuarioId:1}],[{V:1}],[{DepositoId:1,Nome:'Nome concorrente',Ativo:1}]],error:'REGISTRO_ALTERADO_ATUALIZE'},
   {name:'nome duplicado',responses:[[],[{R:0}],[{UsuarioId:1}],[{V:1}],[{DepositoId:9}]],error:'NOME_DUPLICADO'},
