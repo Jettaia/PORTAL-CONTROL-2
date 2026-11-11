@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prototype:usuarios": "node scripts/prototype-usuarios.mjs",
+    "prototype:prestadores": "node scripts/prototype-prestadores.mjs",
+    "prototype:depositos": "node scripts/prototype-depositos.mjs",
+    "prototype:atividades": "node scripts/prototype-atividades.mjs",
     "start": "node src/server.js",
     "check": "node scripts/check-all.mjs",
     "test": "node scripts/test-all.mjs",

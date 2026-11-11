@@ -23,7 +23,7 @@ test('prévia: navegação real sem registros e sem gravação',async()=>{
   await page.goto(base+'/?page=contratacoes');
   await page.locator('#pc04Page form').first().waitFor({state:'visible'});
   await page.locator('#previewNotice').waitFor({state:'visible'});
-  const screens=[['usuarios','#pc01Form','#pc01Msg','Nenhuma conta encontrada.'],['depositos','#b24cDepForm','#b24cDepMsg','0 depósitos autorizados para consulta.'],['servicos','#b24Form','#b24Message','0 registros carregados, incluindo inativos.'],['chapas','#pc03Panel form','#pc03Panel p[role="status"]','Nenhum prestador encontrado.'],['contratacoes','#pc04Page form','#pc04Message','Consulta atualizada.'],['pagamentos','#fin01Filters','#fin01Message','Consulta atualizada.'],['extratoprestador','#fin05Filters','#fin05Message','Extrato atualizado.']];
+  const screens=[['usuarios','#pc01New','#pc01Msg','Nenhuma conta encontrada.'],['depositos','#b24cDepNew','#b24cDepTable .depot-empty','Nenhum depósito encontrado.'],['servicos','#activityForm','#activityHeading','Nova atividade'],['chapas','#pc03New','#pc03Message','Nenhum prestador encontrado.'],['contratacoes','#pc04Page form','#pc04Message',''],['pagamentos','#fin01Filters','#fin01Message','Consulta atualizada.'],['extratoprestador','#fin05Filters','#fin05Message','Extrato atualizado.']];
   for(const [name,selector,status,message] of screens){
    const button=page.locator(`#mainNav [data-page="${name}"]`);
    if(!await button.isVisible())await button.locator('xpath=ancestor::details[1]/summary').click();

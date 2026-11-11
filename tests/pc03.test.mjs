@@ -47,6 +47,7 @@ test('PC-03 API e serviço real: CPF único, escopo, edição, vínculo e rollba
   {name:'prestador inativo não recebe vínculo novo',suffix:'/7/depositos/1',method:'PUT',data:{vinculado:true},status:409,sql:[[],[{R:0}],[manager],[{V:1}],[{DepositoId:1}],[{V:1}],[{...person,Ativo:0}]]},
   {name:'falha de auditoria reverte vínculo',suffix:'/7/depositos/1',method:'PUT',data:{vinculado:false},status:503,sql:[[],[{R:0}],[manager],[{V:1}],[{DepositoId:1}],[{V:1}],[person],[],Error('audit fail')]},
   {name:'busca CPF no escopo dos depósitos',suffix:'?cpf=12345678901',status:200,sql:[[manager],[person],[{DepositoId:1,Nome:'Deposito A',Ativo:1}],[]],check:r=>{assert.equal(r.registros[0].PrestadorId,7);assert.deepEqual(r.vinculos,[]);}},
+  {name:'catálogo inclui centro de custo no mesmo escopo autorizado',status:200,sql:[[manager],[person],[{DepositoId:1,Nome:'Depósito A',CentroCusto:'CC-001',Ativo:1}],[]],check:r=>assert.equal(r.depositos[0].CentroCusto,'CC-001'),inspect:statements=>{const query=statements.find(s=>s.startsWith('SELECT f.DepositoId'));assert.match(query,/f\.CentroCusto/);assert.match(query,/Seguranca\.UsuarioDeposito/);}},
  ];
  for(const scenario of scenarios)await t.test(scenario.name,async()=>{
   const queue=[...scenario.sql];let commits=0,rollbacks=0,began=0;const statements=[];

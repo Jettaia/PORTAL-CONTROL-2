@@ -39,13 +39,13 @@ try{
  await resetButton.waitFor({timeout:5000});
  assert.equal(await page.locator('#pc01PasswordPanel').isVisible(),false);
  await resetButton.click();
- assert.equal(await page.locator('#pc01AccountEditor #pc01PasswordForm').count(),1);
- assert.equal(await page.locator('#pc01Title').textContent(),'Editar conta');
+ await page.locator('#pc01PasswordOpen').click();
+ assert.equal(await page.locator('#pc01PasswordDialog #pc01PasswordForm').count(),1);
+ assert.equal(await page.locator('#pc01Title').textContent(),'Editar usuário');
  assert.equal(await page.locator('#pc01Email').inputValue(),'gestora@example.test');
  assert.equal(await page.locator('#pc01PasswordForm form').count(),0);
  assert.equal(await page.locator('#pc01Form #pc01PasswordForm').count(),0);
- const order=await page.evaluate(()=>document.getElementById('pc01Form').getBoundingClientRect().bottom<=document.getElementById('pc01PasswordPanel').getBoundingClientRect().top);
- assert.equal(order,true,'senha fica abaixo dos dados de edição');
+ assert.equal(await page.locator('#pc01PasswordDialog').isVisible(),true,'senha abre em popup separado');
  assert.equal(await page.locator('#pc01CurrentPasswordRow').isVisible(),false);
  assert.match(await page.locator('#pc01PasswordTitle').textContent(),/Gestora Teste/);
  fs.mkdirSync('artifacts/pc01-password',{recursive:true});
@@ -58,7 +58,7 @@ try{
  await page.locator('#pc01PasswordCancel').click();
  assert.equal(await page.locator('#pc01NewPassword').inputValue(),'');
  assert.equal(await page.locator('#pc01CurrentPasswordRow').isVisible(),false);
- await resetButton.click();
+ await page.locator('#pc01PasswordOpen').click();
  await page.locator('#pc01NewPassword').fill('Aa1!b');
  await page.locator('#pc01ConfirmPassword').fill('Aa1!b');
  await page.locator('#pc01PasswordSave').click();
@@ -74,6 +74,7 @@ try{
  await page.locator('#dashboard').waitFor({state:'visible'});
  await page.locator('[data-page=usuarios]').click();
  assert.equal(await page.locator('#pc01Panel').isVisible(),false);
+ await page.locator('#pc01PasswordPanel').waitFor({state:'visible'});
  assert.equal(await page.locator('#pc01PasswordPanel').isVisible(),true);
  assert.equal(await page.locator('#pc01Users button').count(),0);
  await page.locator('#pc01CurrentPassword').fill('SenhaAnterior1!');

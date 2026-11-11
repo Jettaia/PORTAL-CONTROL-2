@@ -72,10 +72,10 @@ test('PC04 exportação: filtros aplicados, todas as páginas e sessão segura',
   mode='hold';const count=exports.length;await excel.evaluate(el=>{el.click();el.click();});await page.waitForFunction(()=>document.querySelector('.pc04-export button').disabled);assert.equal(exports.length,count+1);
   await page.evaluate(()=>document.querySelector('#pc04Page').hidden=true);
   const hiddenResponse=new Promise(r=>responded=r);release();await hiddenResponse;await page.waitForTimeout(200);assert.equal(downloads.length,2);
-  await page.evaluate(()=>{document.querySelector('#pc04Page').hidden=false;window.dispatchEvent(new Event('jetta:pc04'));});await page.getByText('Consulta atualizada.',{exact:true}).waitFor();
+  await page.evaluate(()=>{document.querySelector('#pc04Page').hidden=false;window.dispatchEvent(new Event('jetta:pc04'));});await page.waitForFunction(()=>document.querySelector('#pc04Message').textContent==='');
   await menu.locator('summary').click();await excel.click();await page.waitForFunction(()=>document.querySelector('.pc04-export button').disabled);
   await page.evaluate(()=>window.dispatchEvent(new CustomEvent('jetta:auth',{detail:null})));
-  await page.getByText('Consulta atualizada.',{exact:true}).waitFor();
+  await page.waitForFunction(()=>document.querySelector('#pc04Message').textContent==='');
   await page.evaluate(()=>document.querySelector('#pc04Message').textContent='Nova sessão');
   const sent=new Promise(r=>responded=r);release();await sent;await page.waitForTimeout(200);
   assert.equal(downloads.length,2);assert.equal(await page.locator('#pc04Message').textContent(),'Nova sessão');assert.deepEqual(errors,[]);

@@ -10,9 +10,14 @@
 #fin05Page .fin05-movement input{width:18px;height:18px;min-width:18px;padding:0;accent-color:#123656}
 #fin05Page .fin05-actions{align-items:center}
 #fin05Page .fin05-depot{margin:20px 0 28px;border:1px solid #dbe3ec;border-radius:8px;overflow:hidden;background:#fff}
-#fin05Page .fin05-depot-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 20px;background:#123656;color:#fff;border-bottom:3px solid #ed8b36}
-#fin05Page .fin05-depot-heading h4{margin:0;font-size:1.1rem;color:inherit;overflow-wrap:anywhere}
-#fin05Page .fin05-depot-heading p{margin:0;white-space:nowrap;color:inherit}
+#fin05Page .fin05-depot-title{margin:0;font-size:1.1rem}
+#dashboard #fin05Page .fin05-depot-heading{display:flex;align-items:center;gap:12px;width:100%;min-height:54px;padding:16px 20px;background:#123656;color:#fff;border:0;border-bottom:3px solid #ed8b36;border-radius:0;text-align:left;font:inherit;cursor:pointer;box-sizing:border-box}
+#fin05Page .fin05-depot-name{flex:1;min-width:0;overflow-wrap:anywhere;font-weight:700}
+#fin05Page .fin05-depot-count-label{flex:none;font-size:.9rem;font-weight:400}
+#fin05Page .fin05-depot-heading svg{width:18px;height:18px;flex:none;stroke:#ed8b36;fill:none;stroke-width:2}
+#fin05Page .fin05-depot-heading[aria-expanded=true] svg{transform:rotate(90deg)}
+#dashboard #fin05Page .fin05-depot-heading:hover{background:#194568}
+#dashboard #fin05Page .fin05-depot-heading:focus-visible{outline:3px solid #ed8b36;outline-offset:-5px}
 #fin05Page .fin05-depot-totals{padding:16px 20px;background:#f6f8fb}
 #fin05Page .fin05-depot-totals h3{margin:0 0 12px;font-size:.9rem;color:#475569}
 #fin05Page .fin05-depot-totals dl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:0}
@@ -35,7 +40,7 @@
 #fin05Page .fin05-detail-count,#fin05Page .fin05-depot-count{font-size:.9rem;color:#475569}
 #fin05Page .fin05-depot-count{padding:0 20px}
 #fin05Page .fin05-empty{padding:22px 0;color:#475569}
-@media(max-width:600px){#fin05Page .fin05-depot-heading{padding:14px}#fin05Page .fin05-depot-totals{padding:14px}#fin05Page .fin05-depot-totals dl{grid-template-columns:1fr;gap:12px}#fin05Page .fin05-inline{padding:14px}#fin05Page .fin05-movement{flex:1 1 100%;margin-right:0}#fin05Page .fin05-detail-toolbar{align-items:flex-start}}
+@media(max-width:600px){#dashboard #fin05Page .fin05-depot-heading{padding:14px;flex-wrap:wrap}#fin05Page .fin05-depot-count-label{margin-left:30px}#fin05Page .fin05-depot-totals{padding:14px}#fin05Page .fin05-depot-totals dl{grid-template-columns:1fr;gap:12px}#fin05Page .fin05-inline{padding:14px}#fin05Page .fin05-movement{flex:1 1 100%;margin-right:0}#fin05Page .fin05-detail-toolbar{align-items:flex-start}}
 @media(prefers-reduced-motion:reduce){#fin05Page .fin05-provider-toggle svg{transition:none}}
 /* Keep expanded statements inside the visible depot width, with their own scroll. */
 #fin05Page .fin05-depot{container-type:inline-size}

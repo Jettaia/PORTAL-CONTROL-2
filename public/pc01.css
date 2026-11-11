@@ -8,3 +8,72 @@
 #pc01AccountEditor>.pc01-password-section{margin-top:24px;padding-top:20px;border-top:1px solid #dbe2ea}
 
 #pc01CoordinatorPasswords[hidden]{display:none!important}#pc01CoordinatorPasswords button{min-height:44px}#pc01CoordinatorPasswords .pc01-request button{flex-shrink:0}
+
+/* Usuários: tabela A, criação e edição no popup central B. */
+#dashboard #pc01Panel.pc01-table-layout{padding:0;border:0;background:transparent;box-shadow:none}
+#pc01Panel .pc01-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:24px}
+#pc01Panel .pc01-toolbar>div{display:flex;gap:10px}
+#dashboard #pc01Panel #pc01RequestsOpen{display:flex;align-items:center;gap:10px;border-color:#dbe3ec;background:white;color:#506780;font-size:12px;font-weight:400}
+#pc01Panel #pc01RequestsCount{background:#fff1e4;color:#a45b22;font-size:10px;border-radius:4px;padding:2px 6px}
+#pc01Panel .pc01-surface{border:1px solid #dbe3ec;border-radius:12px;overflow:hidden;background:#fff}
+#pc01Panel .pc01-tools{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px;border-bottom:1px solid #e8edf3}
+#pc01Panel .pc01-status-tabs{display:flex;gap:3px;flex-wrap:wrap}
+#dashboard #pc01Panel .pc01-status-tabs button{background:transparent;border:0;border-radius:6px;color:#62778b;padding:9px 11px;font-size:12px;min-height:36px;font-weight:400}
+#dashboard #pc01Panel .pc01-status-tabs button[aria-pressed=true]{background:#eaf0f7;color:#113d68;font-weight:650}
+#pc01Panel .pc01-filters{display:flex;align-items:center;gap:10px;min-width:0}
+#dashboard #pc01Panel :is(#pc01Search,#pc01RoleFilter){font-size:12px;min-width:0;background:white;color:#506780}
+#dashboard #pc01Panel #pc01Search{width:230px}#dashboard #pc01Panel #pc01RoleFilter{width:180px}
+#dashboard #pc01Panel #pc01Users{border:0;border-radius:0;background:#fff;overflow:auto;scrollbar-gutter:auto}
+#dashboard #pc01Panel #pc01Users table{width:100%;min-width:660px;border-collapse:collapse;font-size:12px}
+#dashboard #pc01Panel #pc01Users th{background:#f8fafc;color:#6c8196;font-size:10px;text-transform:uppercase;letter-spacing:.7px;font-weight:600;padding:15px 20px;border:0}
+#dashboard #pc01Panel #pc01Users td{padding:22px 20px;border:0;border-top:1px solid #edf1f5;font-size:12px;vertical-align:middle;text-align:left}
+#pc01Panel #pc01Users td strong{display:block;font-weight:600;white-space:nowrap}
+#pc01Panel #pc01Users td small{font-size:11px;display:block;color:#7b8ea0;margin-top:7px}
+#pc01Panel .pc01-tags{display:flex;gap:5px;flex-wrap:wrap}
+#pc01Panel :is(.pc01-role,.pc01-depot-tag){font-size:10px;color:#506780;background:#edf2f7;padding:5px 8px;border-radius:5px;white-space:nowrap}
+#pc01Panel .pc01-role{background:#eaf1f9;color:#2d557b}#pc01Panel .pc01-role.admin{background:#fff0e1;color:#96531e}
+#pc01Panel .pc01-state{display:inline-flex;font-size:11px;border-radius:5px;padding:5px 9px;white-space:nowrap}
+#pc01Panel .pc01-state.on{background:#edf6f1;color:#267453}#pc01Panel .pc01-state.off{background:#eff2f5;color:#69798a}
+#dashboard #pc01Panel #pc01Users .pc01-edit{background:transparent;border:0;color:#506780;font-size:12px;font-weight:400;padding:8px;margin:0;white-space:nowrap;min-height:36px}
+#dashboard #pc01Panel #pc01Users .pc01-edit:hover:not(:disabled){color:#113d68;background:#f4f7fb}
+#pc01Panel #pc01Users>p{padding:30px 20px;color:#718294;font-size:13px;text-align:center}
+#pc01Panel #pc01Msg{font-size:13px;color:#506780;min-height:0;margin:0 0 18px;overflow-wrap:anywhere}
+#pc01Panel :is(#pc01Msg,#pc01RequestsMsg,#pc01PasswordMsg):empty{display:none}
+#pc01Panel .pc01-dialog{box-sizing:border-box;border:1px solid #dbe3ec;border-radius:14px;padding:30px;width:min(580px,calc(100vw - 32px));max-height:94dvh;overflow:auto;margin:auto;background:#fff;color:var(--jc-ink,#17324d);box-shadow:0 24px 90px #102c4933}
+.pc01-dialog::backdrop{background:#0b223c66;backdrop-filter:blur(3px)}
+#pc01Panel .pc01-dialog-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:26px}
+#pc01Panel .pc01-dialog-head :is(h2,h3){font-size:23px;letter-spacing:-.5px;font-weight:600;margin:0}
+#dashboard #pc01Panel .pc01-dialog-head button{background:transparent;border:0;color:#62778b;font-size:26px;line-height:1;padding:4px 8px;margin:0;font-weight:400}
+#dashboard #pc01Panel .pc01-dialog #pc01Form{display:grid;grid-template-columns:1fr;gap:18px;max-width:none;margin:0}
+#dashboard #pc01Panel .pc01-dialog #pc01Form>label{font-size:12px;color:#3a536c;gap:8px}
+#dashboard #pc01Panel .pc01-dialog #pc01Form>label.pc01-check{flex-direction:row;align-items:center;justify-content:flex-start}
+#dashboard #pc01Panel .pc01-dialog #pc01Form input:not([type=checkbox]){font-size:13px;padding:12px;border-color:#ced9e3;background:#fff}
+#dashboard #pc01Panel .pc01-dialog #pc01Form input[readonly]{background:#f5f8fb;color:#718294}
+#pc01Panel #pc01PasswordRow small{font-size:10px;font-weight:400;color:#7d8e9f;line-height:1.5}
+#dashboard #pc01Panel .pc01-dialog #pc01Form fieldset{border:0;border-top:1px solid #e5ebf1;border-radius:0;padding:18px 0 0;margin:0;min-width:0}
+#dashboard #pc01Panel .pc01-dialog #pc01Form legend{padding:0 10px 0 0;font-size:12px;font-weight:600;color:#3a536c}
+#pc01Panel #pc01Form>fieldset:first-of-type{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+#pc01Panel #pc01Branches{display:flex;gap:9px;flex-wrap:wrap}
+#dashboard #pc01Panel .pc01-dialog #pc01Form fieldset label.pc01-check{display:flex;align-items:center;flex-direction:row;gap:8px;padding:11px 12px;margin:0;border:1px solid #dce5ef;border-radius:7px;font-size:12px;font-weight:400;color:#506780;background:#fafcfe;cursor:pointer;min-height:44px;overflow-wrap:anywhere}
+#dashboard #pc01Panel .pc01-dialog #pc01Form fieldset label.pc01-check:has(input:checked){background:#edf3f9;border-color:#91abc4;color:#113d68}
+#dashboard #pc01Panel .pc01-dialog #pc01Form fieldset label.pc01-check input{width:15px;height:15px;min-height:15px;flex:none}
+#pc01Panel .pc01-dialog .pc01-actions{justify-content:flex-end;gap:10px;border-top:1px solid #e5ebf1;padding-top:22px}
+#dashboard #pc01Panel :is(#pc01Save,#pc01New){background:var(--jc-accent,#ed8b36);border-color:var(--jc-accent,#ed8b36);color:#102f4e}
+#dashboard #pc01Panel :is(#pc01Save,#pc01New):hover:not(:disabled){background:#f4a259;border-color:#f4a259}
+#dashboard #pc01Panel :is(#pc01Reload,#pc01Cancel){background:#fff;color:#506780;border-color:#dbe3ec}
+#pc01Panel .pc01-security-actions{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#pc01Panel .pc01-security-actions:not(:has(button:not([hidden]))){display:none}
+#pc01Panel #pc01Branches label>span{display:flex;flex-direction:column;gap:4px}
+#pc01Panel #pc01Branches small{font-size:10px;color:#718294;line-height:1.3;font-weight:400}
+#dashboard #pc01Panel #pc01PasswordOpen{background:transparent;color:#506780;border:0;padding:0;font-size:12px;font-weight:400}
+#dashboard #pc01Panel #pc01Delete{background:transparent;color:#aa4b4b;border:0;padding:0;font-size:11px;font-weight:400}
+#pc01Panel #pc01RequestsSection{margin:0;padding:0;border:0}
+#pc01Panel #pc01Requests .pc01-request{border:1px solid #dbe3ec;padding:18px;border-radius:9px;background:#fff;display:block;margin:0 0 12px}
+#pc01Panel #pc01Requests .pc01-request p{font-size:12px;color:#718294;margin:7px 0 20px}
+#pc01Panel #pc01PasswordDialog #pc01PasswordPanel{margin:0;padding:0;border:0}
+#pc01Panel #pc01PasswordDialog #pc01PasswordPanel h3{font-size:17px;margin:0 0 12px}
+#pc01Panel #pc01PasswordDialog #pc01PasswordPanel>p{font-size:12px;color:#718294;line-height:1.6}
+#dashboard #pc01Panel #pc01PasswordForm{grid-template-columns:1fr;gap:18px;max-width:none}
+#dashboard #pc01Panel #pc01PasswordForm label{font-size:12px}
+@media(max-width:1250px){#pc01Panel .pc01-tools{flex-wrap:wrap}}
+@media(max-width:760px){#pc01Panel .pc01-toolbar{flex-wrap:wrap;gap:12px}#pc01Panel .pc01-toolbar>div{margin-left:auto}#dashboard #pc01Panel .pc01-toolbar button{font-size:12px;padding:11px 13px}#pc01Panel .pc01-tools{gap:13px;padding:14px}#pc01Panel .pc01-filters{width:100%;flex-wrap:wrap}#dashboard #pc01Panel :is(#pc01Search,#pc01RoleFilter){width:100%}#pc01Panel .pc01-dialog{padding:22px}#pc01Panel .pc01-dialog-head :is(h2,h3){font-size:21px}#dashboard #pc01Panel .pc01-dialog .pc01-actions button{font-size:12px;flex:none}#pc01Panel #pc01Users table{min-width:660px}}

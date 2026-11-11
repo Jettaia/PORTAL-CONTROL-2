@@ -10,10 +10,12 @@ const totals={ValorDevido:'10200.00',ValorPago:'100.00',Saldo:'10100.00'};
 const provider=(depot,id=1)=>({DepositoId:depot,Deposito:depot===1?'Sumaré':'Floripa',PrestadorId:id,Prestador:id===1?'José da Silva':'Sem movimento',CPF:'01234567890',QuantidadeContratacoes:id===1?102:0,...(id===1?totals:zero)});
 const contracts=Array.from({length:102},(_,i)=>({ContratacaoId:i+1,Numero:101+i,DataServico:'2026-11-09',DataCriacao:'2026-10-30T02:00:00',CentroCusto:'CC-19',Atividade:i===0?'<img src=x onerror=alert(1)> Descarga':'Descarga',ValorDevido:'100.00',DataPagamento:i===0?'2026-10-31T02:00:00':null,ValorPago:i===0?'100.00':'0.00'}));
 
+const evidenceDir='artifacts/fin05-depot-toggle-'+new Date().toISOString().replace(/[:.]/g,'-');
+
 test('FIN05 agrupado: expandir, paginar, imprimir, filtrar, erros e logout por persona',{timeout:120000},async()=>{
  const app=express();app.use(express.static('public'));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));let browser;
  try{
-  browser=await chromium.launch({channel:process.env.PLAYWRIGHT_CHANNEL||'msedge',headless:true});fs.mkdirSync('artifacts/fin05-grouped',{recursive:true});
+  browser=await chromium.launch({channel:process.env.PLAYWRIGHT_CHANNEL||'msedge',headless:true});fs.mkdirSync(evidenceDir,{recursive:true});
   for(const perfil of ['ADMIN','FINANCEIRO','GESTOR','COORDENADOR']){
    const context=await browser.newContext({viewport:{width:1440,height:1050}}),page=await context.newPage(),queries=[],errors=[],writes=[];page.setDefaultTimeout(7000);
    let detailError=false,summaryError=false,slow=false,release,summaryPaged=false,exportMode='ok',releaseExport,exportDone;
@@ -62,7 +64,20 @@ test('FIN05 agrupado: expandir, paginar, imprimir, filtrar, erros e logout por p
     exportMode='error';await page.getByRole('button',{name:'Exportar em PDF',exact:true}).click();await page.getByText('EXPORTACAO_PDF_OCUPADA',{exact:true}).waitFor();assert.equal(downloads.length,2);exportMode='ok';
    }
    const depot=page.locator('[data-fin05-depot="1"]'),button=depot.getByRole('button',{name:'Expandir contratações de José da Silva',exact:true}),detail=depot.locator('[data-fin05-detail="1:1"]');
+   assert.equal(await depot.getByRole('button',{name:'Sumaré 1 prestador',exact:true}).count(),1);
+   const depotToggle=depot.locator('[data-fin05-depot-toggle]');
+   assert.equal(await depotToggle.getAttribute('aria-expanded'),'true');
+   const depotBody=page.locator('#'+await depotToggle.getAttribute('aria-controls')),queriesBeforeToggle=queries.length;
+   await depotToggle.focus();await page.keyboard.press('Enter');
+   assert.equal(await depotToggle.getAttribute('aria-expanded'),'false');assert.equal(await depotBody.isVisible(),false);
+   assert.equal(await button.isVisible(),false);assert.equal(queries.length,queriesBeforeToggle);
+   if(perfil==='ADMIN'){assert.equal(await page.locator('[data-fin05-depot="2"] .fin05-provider-toggle').isVisible(),true);await page.locator('[data-fin05-depot="2"] [data-fin05-depot-toggle]').click();await depotToggle.focus();}
+   await page.keyboard.press('Space');assert.equal(await depotBody.isVisible(),true);
    assert.equal(await depot.getByText('012.345.678-90',{exact:true}).count(),1);await button.focus();await page.keyboard.press('Enter');await detail.getByText('Exibindo 100 de 102 contratações.',{exact:true}).waitFor();
+   if(perfil==='ADMIN'){const otherToggle=page.locator('[data-fin05-depot="2"] [data-fin05-depot-toggle]');assert.equal(await otherToggle.getAttribute('aria-expanded'),'false');await otherToggle.click();}
+   await depotToggle.click();assert.equal(await detail.isVisible(),false);await depotToggle.click();
+   assert.equal(await detail.isVisible(),true);assert.equal(await button.getAttribute('aria-expanded'),'true');
+   assert.equal(await depotToggle.evaluate(node=>node===document.activeElement),true);
    assert.equal(await button.getAttribute('aria-expanded'),'true');assert.equal(queries.at(-1).depositoId,'1');assert.equal(queries.at(-1).prestadorId,'1');
    assert.deepEqual(await detail.locator('tbody tr').first().locator('td').allTextContents(),['101','09/11/2026','29/10/2026','CC-19','<img src=x onerror=alert(1)> Descarga','R$ 100,00','30/10/2026','R$ 100,00','R$ 0,00','Detalhes']);assert.equal(await detail.locator('img').count(),0);
    await detail.getByRole('button',{name:'Carregar mais contratações',exact:true}).click();await detail.getByText('Exibindo 102 de 102 contratações.',{exact:true}).waitFor();
@@ -72,7 +87,10 @@ test('FIN05 agrupado: expandir, paginar, imprimir, filtrar, erros e logout por p
     for(const width of [1440,390]){
      await page.setViewportSize({width,height:width===390?900:1050});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
      const bounds=await depot.boundingBox(),actionBounds=await detail.getByRole('button',{name:'Imprimir / salvar PDF',exact:true}).boundingBox();assert.ok(actionBounds.x>=bounds.x&&actionBounds.x+actionBounds.width<=bounds.x+bounds.width+1,'impressão deve caber na largura visível do depósito');
-     await depot.evaluate(node=>node.scrollIntoView({block:'start'}));await page.screenshot({path:'artifacts/fin05-grouped/'+(width===1440?'desktop':'mobile')+'-expanded.png'});
+     await depot.evaluate(node=>node.scrollIntoView({block:'start'}));await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:evidenceDir+'/'+(width===1440?'desktop':'mobile')+'-expanded.png'});
+     await depotToggle.click();assert.equal(await detail.isVisible(),false);
+     const headerBounds=await depotToggle.boundingBox();assert.ok(headerBounds.height>=44);assert.ok(await depotToggle.evaluate(node=>node.scrollWidth<=node.clientWidth+1));
+     await depotToggle.evaluate(node=>node.scrollIntoView({block:'start'}));await page.screenshot({path:evidenceDir+'/'+(width===1440?'desktop':'mobile')+'-collapsed.png'});await depotToggle.click();
     }
     await page.setViewportSize({width:1440,height:1050});
     const other=page.locator('[data-fin05-depot="2"]');await other.getByRole('button',{name:'Expandir contratações de José da Silva',exact:true}).click();await other.getByText('Exibindo 1 de 1 contratações.',{exact:true}).waitFor();assert.match(await other.locator('tbody').last().innerText(),/501/);
@@ -83,7 +101,7 @@ test('FIN05 agrupado: expandir, paginar, imprimir, filtrar, erros e logout por p
    detailError=true;await button.click();await detail.getByText('DETALHE_INDISPONIVEL',{exact:true}).waitFor();detailError=false;await detail.getByRole('button',{name:'Tentar novamente',exact:true}).click();await detail.getByText('Exibindo 100 de 102 contratações.',{exact:true}).waitFor();
    if(perfil==='ADMIN'){
     summaryPaged=true;await page.locator('#fin05Filters').getByRole('button',{name:'Aplicar filtros',exact:true}).click();await page.getByText('Extrato atualizado.',{exact:true}).waitFor();assert.equal(await page.locator('.fin05-provider-row').count(),1);
-    await page.getByRole('button',{name:'Carregar mais prestadores',exact:true}).click();await page.getByText('Extrato atualizado.',{exact:true}).waitFor();assert.equal(await page.locator('.fin05-provider-row').count(),3);assert.equal(await page.locator('[data-fin05-depot="1"]').count(),1);summaryPaged=false;
+    await depotToggle.click();await page.getByRole('button',{name:'Carregar mais prestadores',exact:true}).click();await page.getByText('Extrato atualizado.',{exact:true}).waitFor();assert.equal(await page.locator('.fin05-provider-row').count(),3);assert.equal(await page.locator('[data-fin05-depot="1"]').count(),1);assert.equal(await depotToggle.getAttribute('aria-expanded'),'false');await depotToggle.click();summaryPaged=false;
     await button.click();await detail.getByText('Exibindo 100 de 102 contratações.',{exact:true}).waitFor();slow=true;
     const printRequest=page.waitForRequest(r=>r.url().includes('/extrato?')&&r.url().includes('prestadorId=1')),popupEvent=page.waitForEvent('popup');await detail.getByRole('button',{name:'Imprimir / salvar PDF',exact:true}).click();const pendingPopup=await popupEvent;await printRequest;
     await page.locator('#fin05Filters').getByRole('button',{name:'Aplicar filtros',exact:true}).click();await page.getByText('Extrato atualizado.',{exact:true}).waitFor();assert.equal(pendingPopup.isClosed(),true);slow=false;release?.();

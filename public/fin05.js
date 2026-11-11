@@ -8,10 +8,11 @@
  const documentText=value=>{const text=String(value??'');return /^\d{11}$/.test(text)?text.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4'):/^\d{14}$/.test(text)?text.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5'):text||'—';};
  const balance=row=>{const cents=BigInt(String(row.ValorDevido).replace('.',''))-BigInt(String(row.ValorPago).replace('.','')),absolute=cents<0n?-cents:cents;return(cents<0n?'-':'')+String(absolute/100n)+'.'+String(absolute%100n).padStart(2,'0');};
  const detailHeaders=['Número da contratação','Data do serviço','Data de criação','Centro de custo','Descrição da atividade','Valor devido','Data do pagamento','Valor pago','Saldo a pagar','Consulta'];
- let rows=[],deposits=[],next=null,totalCount=0,totals=null,applied='',generation=0,summaryRequest=0,controller=new AbortController(),printing=false,printRevision=0,printWindow=null;
+ let rows=[],deposits=[],next=null,totals=null,applied='',generation=0,summaryRequest=0,controller=new AbortController(),printing=false,printRevision=0,printWindow=null;
  let exportVersion=0,exportBusy=false;
+ const collapsedDepots=new Set();
  const details=new Map(),keyOf=row=>String(row.DepositoId)+':'+String(row.PrestadorId);
- root.innerHTML='<header class="fin05-heading"><h2>Extrato</h2><p>Consulte os prestadores de cada depósito e clique no nome para ver suas contratações.</p></header><form id="fin05Filters" class="fin05-grid"><label>Prestador<select name="prestadorId" aria-label="Prestador do extrato"><option value="">Todos autorizados</option></select></label><label>Depósito<select name="depositoId" aria-label="Depósito do extrato"><option value="">Todos autorizados</option></select></label><label>Criação desde<input name="inicio" type="date"></label><label>Criação até<input name="fim" type="date"></label><div class="fin05-actions"><label class="fin05-movement"><input name="somenteMovimentacao" type="checkbox" checked>Somente com movimentação</label><button type="submit">Aplicar filtros</button><button type="button" id="fin05Clear" class="secondary">Limpar filtros</button></div></form><p class="fin05-period">Todo o histórico por padrão. O período opcional considera a criação da contratação. Valores referentes apenas a contratações liberadas.</p><p id="fin05Message" role="status" aria-live="polite"></p><div class="fin05-toolbar"><h3>Prestadores por depósito</h3><div class="fin05-actions"><button type="button" id="fin05Export" disabled>Exportar em Excel</button><button type="button" id="fin05ExportPdf" disabled>Exportar em PDF</button></div></div><div id="fin05Groups"></div><p id="fin05Count"></p><button type="button" id="fin05More" hidden>Carregar mais prestadores</button><div id="fin05Totals" class="fin05-totals" hidden></div>';
+ root.innerHTML='<header class="fin05-heading"><h2>Extrato</h2></header><form id="fin05Filters" class="fin05-grid"><label>Prestador<select name="prestadorId" aria-label="Prestador do extrato"><option value="">Todos autorizados</option></select></label><label>Depósito<select name="depositoId" aria-label="Depósito do extrato"><option value="">Todos autorizados</option></select></label><label>Criação desde<input name="inicio" type="date"></label><label>Criação até<input name="fim" type="date"></label><div class="fin05-actions"><label class="fin05-movement"><input name="somenteMovimentacao" type="checkbox" checked>Somente com movimentação</label><button type="submit">Aplicar filtros</button><button type="button" id="fin05Clear" class="secondary">Limpar filtros</button></div></form><p id="fin05Message" role="status" aria-live="polite"></p><div class="fin05-toolbar"><h3>Prestadores por depósito</h3><div class="fin05-actions"><button type="button" id="fin05Export" disabled>Exportar em Excel</button><button type="button" id="fin05ExportPdf" disabled>Exportar em PDF</button></div></div><div id="fin05Groups"></div><button type="button" id="fin05More" hidden>Carregar mais prestadores</button><div id="fin05Totals" class="fin05-totals" hidden></div>';
  const $=id=>document.getElementById(id),form=$('fin05Filters'),message=text=>$('fin05Message').textContent=text;
  function button(text,action,cls){const node=make('button',text,cls);node.type='button';node.addEventListener('click',action);return node;}
  function cancelPrint(){printRevision++;printing=false;if(printWindow&&!printWindow.closed)printWindow.close();printWindow=null;}
@@ -36,11 +37,14 @@
  }
  function render(){
   exportControls();
-  const focused=document.activeElement?.dataset.fin05Expand,groups=$('fin05Groups');groups.replaceChildren();
+  const focused=document.activeElement?.dataset.fin05Expand,focusedDepot=document.activeElement?.dataset.fin05DepotToggle,groups=$('fin05Groups');groups.replaceChildren();
   for(const depot of deposits){
    const records=rows.filter(row=>String(row.DepositoId)===String(depot.DepositoId)),section=make('section',undefined,'fin05-depot');section.dataset.fin05Depot=String(depot.DepositoId);
-   const header=make('div',undefined,'fin05-depot-heading'),title=make('h4',depot.Deposito),count=make('p',depot.QuantidadePrestadores+' '+(Number(depot.QuantidadePrestadores)===1?'prestador':'prestadores'));header.append(title,count);section.append(header);
-   const depotTotals=make('div',undefined,'fin05-depot-totals');renderTotals(depotTotals,depot,document,'Totais do depósito');section.append(depotTotals);
+   const depotKey=String(depot.DepositoId),depotBody=make('div',undefined,'fin05-depot-body'),header=make('h4',undefined,'fin05-depot-title');depotBody.id='fin05-depot-body-'+depotKey;depotBody.hidden=collapsedDepots.has(depotKey);
+   const toggle=button('',()=>{depotBody.hidden=!depotBody.hidden;if(depotBody.hidden)collapsedDepots.add(depotKey);else collapsedDepots.delete(depotKey);toggle.setAttribute('aria-expanded',String(!depotBody.hidden));},'fin05-depot-heading');toggle.dataset.fin05DepotToggle=depotKey;toggle.setAttribute('aria-expanded',String(!depotBody.hidden));toggle.setAttribute('aria-controls',depotBody.id);
+   const icon=document.createElementNS('http://www.w3.org/2000/svg','svg');icon.setAttribute('viewBox','0 0 24 24');icon.setAttribute('aria-hidden','true');const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d','m9 5 7 7-7 7');icon.append(path);
+   const title=make('span',depot.Deposito,'fin05-depot-name'),count=make('span',depot.QuantidadePrestadores+' '+(Number(depot.QuantidadePrestadores)===1?'prestador':'prestadores'),'fin05-depot-count-label');toggle.append(icon,title,count);header.append(toggle);section.append(header,depotBody);
+   const depotTotals=make('div',undefined,'fin05-depot-totals');renderTotals(depotTotals,depot,document,'Totais do depósito');depotBody.append(depotTotals);
    if(records.length){const scroll=make('div',undefined,'fin05-scroll fin05-provider-scroll');scroll.tabIndex=0;scroll.setAttribute('role','region');scroll.setAttribute('aria-label','Prestadores de '+depot.Deposito);
     const table=make('table',undefined,'fin05-providers'),head=make('thead'),line=make('tr');for(const label of ['Prestador','CPF/CNPJ','Contratações','Valor devido','Valor pago','Saldo a pagar']){const th=make('th',label);th.scope='col';line.append(th);}head.append(line);table.append(head);const body=make('tbody');
     for(const row of records){const key=keyOf(row),state=details.get(key)||{open:false,rows:[],next:null,loaded:false};if(!details.has(key))details.set(key,state);
@@ -48,13 +52,14 @@
      const icon=document.createElementNS('http://www.w3.org/2000/svg','svg');icon.setAttribute('viewBox','0 0 24 24');icon.setAttribute('aria-hidden','true');const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d','m9 5 7 7-7 7');icon.append(path);toggle.append(icon,make('span',row.Prestador));provider.append(toggle);tr.append(provider);
      for(const[index,value]of[documentText(row.CPF),row.QuantidadeContratacoes,money(row.ValorDevido),money(row.ValorPago),money(row.Saldo)].entries())tr.append(make('td',value,index>=2?'fin05-money':''));body.append(tr);
      const detailRow=make('tr',undefined,'fin05-detail-row'),cell=make('td');detailRow.hidden=!state.open;cell.colSpan=6;cell.append(renderDetail(row,state));detailRow.append(cell);body.append(detailRow);
-    }table.append(body);scroll.append(table);section.append(scroll);
+    }table.append(body);scroll.append(table);depotBody.append(scroll);
    }
-   if(records.length<Number(depot.QuantidadePrestadores))section.append(make('p','Exibindo '+records.length+' de '+depot.QuantidadePrestadores+' prestadores neste depósito. Use “Carregar mais prestadores” para continuar.','fin05-depot-count'));groups.append(section);
+   if(records.length<Number(depot.QuantidadePrestadores))depotBody.append(make('p','Exibindo '+records.length+' de '+depot.QuantidadePrestadores+' prestadores neste depósito. Use “Carregar mais prestadores” para continuar.','fin05-depot-count'));groups.append(section);
   }
   if(!deposits.length)groups.append(make('p',totals?'Nenhum prestador encontrado para os filtros informados.':'Consulte os filtros para carregar os prestadores.','fin05-empty'));
-  $('fin05More').hidden=!next;$('fin05Count').textContent=totals?'Exibindo '+rows.length+' de '+totalCount+' vínculos de prestadores por depósito.':'';$('fin05Totals').hidden=!totals;renderTotals($('fin05Totals'),totals);
+  $('fin05More').hidden=!next;$('fin05Totals').hidden=!totals;renderTotals($('fin05Totals'),totals);
   if(focused)for(const node of groups.querySelectorAll('[data-fin05-expand]'))if(node.dataset.fin05Expand===focused){node.focus({preventScroll:true});break;}
+  if(focusedDepot)for(const node of groups.querySelectorAll('[data-fin05-depot-toggle]'))if(node.dataset.fin05DepotToggle===focusedDepot){node.focus({preventScroll:true});break;}
  }
  function filterQuery(){const query=new URLSearchParams();for(const key of ['prestadorId','depositoId','inicio','fim'])if(form.elements[key].value)query.set(key,form.elements[key].value);query.set('somenteMovimentacao',form.elements.somenteMovimentacao.checked?'1':'0');return query;}
  function pairQuery(row){const query=new URLSearchParams(applied);query.delete('agrupamento');query.delete('somenteMovimentacao');query.delete('pagina');query.set('prestadorId',row.PrestadorId);query.set('depositoId',row.DepositoId);return query;}
@@ -66,9 +71,9 @@
  }
  async function load(more=false,selected=null){
   if(!allowed())return;const request=++summaryRequest;
-  if(!more){generation++;resetExport();controller.abort();controller=new AbortController();cancelPrint();applied=(selected||filterQuery()).toString();rows=[];deposits=[];details.clear();next=null;totals=null;totalCount=0;render();}
+  if(!more){generation++;resetExport();controller.abort();controller=new AbortController();cancelPrint();applied=(selected||filterQuery()).toString();rows=[];deposits=[];details.clear();collapsedDepots.clear();next=null;totals=null;render();}
   const stamp=generation,query=new URLSearchParams(applied);query.set('agrupamento','deposito');if(!query.has('somenteMovimentacao'))query.set('somenteMovimentacao','1');if(more&&next)query.set('pagina',next);$('fin05More').disabled=true;message('Consultando extrato…');
-  try{const data=await api('/extrato?'+query);if(stamp!==generation||request!==summaryRequest)return;rows=more?[...new Map([...rows,...data.prestadores].map(row=>[keyOf(row),row])).values()]:data.prestadores;deposits=data.depositos;next=data.proximaPagina;totals=data.totais;totalCount=data.totalRegistros;render();message('Extrato atualizado.');}
+  try{const data=await api('/extrato?'+query);if(stamp!==generation||request!==summaryRequest)return;rows=more?[...new Map([...rows,...data.prestadores].map(row=>[keyOf(row),row])).values()]:data.prestadores;deposits=data.depositos;next=data.proximaPagina;totals=data.totais;render();message('Extrato atualizado.');}
   catch(error){if(stamp!==generation||request!==summaryRequest||error.name==='AbortError')return;message(error.message);}
   finally{if(stamp===generation&&request===summaryRequest)$('fin05More').disabled=false;}
  }
@@ -114,6 +119,6 @@
  new MutationObserver(()=>{if(root.hidden)resetExport();}).observe(root,{attributes:true,attributeFilter:['hidden']});
  form.addEventListener('submit',event=>{event.preventDefault();load();});$('fin05More').addEventListener('click',()=>load(true));$('fin05Clear').addEventListener('click',()=>{form.reset();load();});
  window.addEventListener('jetta:fin05',enter);
- window.addEventListener('jetta:auth',()=>{generation++;summaryRequest++;resetExport();controller.abort();controller=new AbortController();cancelPrint();details.clear();rows=[];deposits=[];next=null;totals=null;totalCount=0;applied='';form.reset();options('prestadorId',[],'PrestadorId');options('depositoId',[],'DepositoId');render();message('');});
+ window.addEventListener('jetta:auth',()=>{generation++;summaryRequest++;resetExport();controller.abort();controller=new AbortController();cancelPrint();details.clear();collapsedDepots.clear();rows=[];deposits=[];next=null;totals=null;applied='';form.reset();options('prestadorId',[],'PrestadorId');options('depositoId',[],'DepositoId');render();message('');});
  render();
 })();

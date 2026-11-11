@@ -41,7 +41,7 @@ export async function read(cfg,actor,documento){
   // Exact identity lookup follows the same depot boundary as the list.
   const visible=`EXISTS(SELECT 1 FROM Cadastro.PrestadorDeposito pf JOIN Cadastro.Deposito f ON f.DepositoId=pf.DepositoId WHERE pf.PrestadorId=p.PrestadorId AND pf.RevogadoEmUtc IS NULL AND ${branchScope(actor,admin)})`;
   const registros=await db.query(`SELECT ${cols.split(',').map(c=>'p.'+c).join(',')} FROM Cadastro.Prestador p WHERE ${admin?'1=1':visible}${exact?' AND p.CPF='+s(exact,14):''} ORDER BY p.Nome,p.PrestadorId`);
-  const depositos=await db.query(`SELECT f.DepositoId,f.Nome,f.Ativo FROM Cadastro.Deposito f WHERE ${branchScope(actor,admin)} ORDER BY f.Nome`);
+  const depositos=await db.query(`SELECT f.DepositoId,f.Nome,f.CentroCusto,f.Ativo FROM Cadastro.Deposito f WHERE ${branchScope(actor,admin)} ORDER BY f.Nome`);
   const vinculos=registros.length?await db.query(`SELECT pf.PrestadorId,pf.DepositoId FROM Cadastro.PrestadorDeposito pf JOIN Cadastro.Deposito f ON f.DepositoId=pf.DepositoId WHERE pf.PrestadorId IN(${registros.map(r=>n(r.PrestadorId)).join(',')}) AND pf.RevogadoEmUtc IS NULL AND ${branchScope(actor,admin)}`):[];
   return {pc03:true,podeEditar:true,adm:admin,registros,depositos,vinculos};
  });

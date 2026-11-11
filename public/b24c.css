@@ -7,3 +7,54 @@
 .b24c-actions{display:flex;align-items:end;flex-wrap:wrap;gap:10px}.b24c-panel .notice{margin-top:24px}#b24cDepForm[hidden]{display:none}#b24cDepTable th,#b24cDepTable td{white-space:nowrap}#b24cDepTable td:first-child{min-width:150px}#b24cDepForm input,#b24cDepForm select{box-sizing:border-box;min-width:0;width:100%}
 
 #dashboard #b24cDepTable :is(th,td){text-align:center}
+
+/* Depósitos — opção B aprovada: cards e formulário em modal. */
+#depositsPage .depot-top{display:flex;align-items:center;justify-content:space-between;gap:20px;margin:0 0 26px}
+#depositsPage .depot-top-actions{display:flex;gap:10px;align-items:center}
+#depositsPage .depot-metrics{display:flex;align-items:center;gap:22px;font-size:12px;color:#62778b}
+#depositsPage .depot-metrics b{font-size:30px;letter-spacing:-1px;color:var(--jc-navy,#113d68);margin-right:5px;font-weight:600}
+#depositsPage .depot-metrics i{height:25px;width:1px;background:#dbe3ec}
+#depositsPage .depot-tools{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px}
+#depositsPage .depot-tabs{display:flex;gap:3px;flex-wrap:wrap}
+#dashboard #depositsPage .depot-tabs button{background:transparent;color:#62778b;border:0;padding:9px 11px;font-size:12px;min-height:36px;font-weight:400}
+#depositsPage .depot-tabs span{font-size:10px;margin-left:5px}
+#dashboard #depositsPage .depot-tabs button[aria-pressed=true]{background:#eaf0f7;color:var(--jc-navy,#113d68);font-weight:650}
+#dashboard #depositsPage #b24cDepSearch{width:260px;font-size:13px;min-width:0}
+#dashboard #depositsPage #b24cDepTable{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;border:0;background:transparent;padding:0;overflow:visible;min-width:0}
+#depositsPage .depot-card{padding:22px;background:#fff;border:1px solid #dbe3ec;border-radius:12px;min-width:0;color:var(--jc-ink,#17324d)}
+#depositsPage .depot-card:hover{border-color:var(--jc-accent,#ed8b36)}
+#depositsPage .depot-card.inactive{background:#f9fbfd}
+#depositsPage .depot-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#depositsPage .depot-cc{font-size:11px;letter-spacing:.3px;color:#506780;background:#f0f4f8;padding:5px 8px;border-radius:5px;overflow-wrap:anywhere}
+#depositsPage .depot-badge{font-size:11px;border-radius:5px;padding:5px 9px;font-weight:400;white-space:nowrap}
+#depositsPage .depot-badge.on{background:#edf6f1;color:#267453}
+#depositsPage .depot-badge.off{background:#eff2f5;color:#69798a}
+#depositsPage .depot-card h2{font-size:22px;margin:26px 0 6px;font-weight:600;letter-spacing:-.4px;overflow-wrap:anywhere}
+#depositsPage .depot-city{font-size:12px;color:#62778b;margin:0}
+#depositsPage .depot-address{font-size:12px;color:#62778b;line-height:1.8;margin:22px 0;overflow-wrap:anywhere;min-height:44px}
+#dashboard #depositsPage .depot-card-edit{display:flex;width:100%;justify-content:space-between;align-items:center;padding:16px 0 0;margin:0;border:0;border-top:1px solid #edf1f5;border-radius:0;background:transparent;color:#506780;font-size:12px;font-weight:400}
+#dashboard #depositsPage .depot-card-edit:hover:not(:disabled){color:var(--jc-navy,#113d68);background:transparent;text-decoration:underline}
+#depositsPage .depot-card-edit span{color:var(--jc-accent,#ed8b36);font-size:17px}
+#depositsPage .depot-empty{grid-column:1/-1;padding:35px 20px;text-align:center;color:#62778b;font-size:13px}
+#depositsPage #b24cDepMsg{font-size:13px;color:#506780;margin:0 0 18px;overflow-wrap:anywhere}
+#depositsPage :is(#b24cDepMsg,#b24cDepDialogMsg):empty{display:none}
+#depositsPage #b24cDepDialog{box-sizing:border-box;width:min(580px,calc(100vw - 32px));max-height:94dvh;overflow:auto;margin:auto;padding:28px;border:1px solid #dbe3ec;border-radius:14px;background:white;color:var(--jc-ink,#17324d);box-shadow:0 24px 90px #102c4933}
+#b24cDepDialog::backdrop{background:#0b223c66;backdrop-filter:blur(3px)}
+#depositsPage .depot-editor-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:24px}
+#depositsPage #b24cDepTitle{font-size:23px;letter-spacing:-.5px;font-weight:600;margin:0}
+#dashboard #depositsPage #b24cDepClose{background:transparent;border:0;color:#62778b;font-size:26px;line-height:1;padding:4px 8px;margin:0;font-weight:400}
+#dashboard #depositsPage #b24cDepForm{max-width:none;margin:0}
+#dashboard #depositsPage #b24cDepForm fieldset{border:0;padding:0;margin:0 0 22px;min-width:0}
+#dashboard #depositsPage #b24cDepForm legend{padding:0;margin-bottom:14px;font-size:10px;text-transform:uppercase;letter-spacing:1.2px;font-weight:650;color:#70859a}
+#depositsPage .depot-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px 18px}
+#depositsPage .depot-wide{grid-column:1/-1}
+#dashboard #depositsPage #b24cDepForm label{margin:0;font-size:12px;color:#3a536c;font-weight:600;min-width:0;display:block}
+#dashboard #depositsPage #b24cDepForm :is(input,select){box-sizing:border-box;display:block;width:100%;margin-top:7px;border:1px solid #ced9e3;border-radius:7px;background:#fff;padding:11px 12px;color:#17324d;font-size:13px;font-weight:400;min-height:42px;min-width:0}
+#depositsPage .depot-status{max-width:220px}
+#depositsPage .depot-form-actions{display:flex;gap:10px;justify-content:flex-end;border-top:1px solid #e5ebf1;margin-top:24px;padding-top:22px}
+#dashboard #depositsPage :is(#b24cDepSave,#b24cDepNew){background:var(--jc-accent,#ed8b36);border-color:var(--jc-accent,#ed8b36);color:#102f4e}
+#dashboard #depositsPage :is(#b24cDepSave,#b24cDepNew):hover:not(:disabled){background:#f4a259;border-color:#f4a259}
+#dashboard #depositsPage :is(#b24cDepReload,#b24cDepCancel){background:#fff;color:#506780;border-color:#dbe3ec}
+#depositsPage #b24cDepDialogMsg{font-size:13px;color:#a02828;margin:0 0 16px;overflow-wrap:anywhere}
+@media(max-width:1200px){#dashboard #depositsPage #b24cDepTable{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){#dashboard #depositsPage #b24cDepTable{grid-template-columns:1fr}#depositsPage .depot-top{align-items:flex-start;flex-wrap:wrap;gap:16px}#depositsPage .depot-top-actions{margin-left:auto}#depositsPage .depot-tools{flex-wrap:wrap;gap:13px}#dashboard #depositsPage #b24cDepSearch{width:100%}#depositsPage .depot-metrics{gap:14px}#depositsPage .depot-metrics b{font-size:24px}#dashboard #depositsPage .depot-top-actions button{font-size:12px;padding:10px 12px}#depositsPage #b24cDepDialog{padding:22px}#depositsPage .depot-fields{gap:15px 12px}#depositsPage .depot-form-actions{flex-wrap:wrap}#dashboard #depositsPage .depot-form-actions button{font-size:12px}}
