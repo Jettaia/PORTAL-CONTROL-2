@@ -5,6 +5,7 @@ import {mountPayments} from './pc08-routes.js';
 import {mountAdjustments} from './pc10-routes.js';
 import {mountStatements} from './pc11-routes.js';
 import {mountContracts} from './pc04-routes.js';
+import {mountNotifications} from './notifications-routes.js';
 import {mountTokens} from './pc05-routes.js';
 import {mountProviders} from './pc03-routes.js';
 import {mountBranchCatalog} from './pc02-routes.js';
@@ -94,6 +95,7 @@ mountAccessRequests(app,cfg,{session,sameOrigin});
 mountBranchCatalog(app,cfg,{session,sameOrigin});
 mountProviders(app,cfg,{session,sameOrigin});
 mountContracts(app,cfg,{session,sameOrigin});
+mountNotifications(app,cfg,{session,sameOrigin});
 mountFinanceQueue(app,cfg,{session,sameOrigin});
 if(!cfg.fin01){
 mountPayments(app,cfg,{session,sameOrigin});

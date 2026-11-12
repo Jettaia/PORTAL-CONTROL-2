@@ -158,3 +158,9 @@ O acesso segue o FIN01: ADMIN e FINANCEIRO consultam todos os depósitos; GESTOR
 
 
 O filtro Data do serviço em Contratações agora oferece De e Até, com ambas as datas incluídas. Somente De consulta a partir dessa data; somente Até consulta até essa data; os dois vazios não restringem a data. Intervalos invertidos são recusados sem descartar o rascunho. Excel e PDF usam esse mesmo período aplicado em todas as páginas. A API mantém dataServico individual por compatibilidade e aceita inicio/fim para o intervalo.
+
+## Notificações de horários manuais (12/11/2026)
+
+A migração aditiva 44 (`pilot-local/notifications.sql`) cria `Seguranca.NotificacaoLeitura`, com leitura por usuário, solicitação e tipo de aviso. Os avisos são derivados das solicitações existentes: ADM consulta todos os depósitos; coordenador somente os autorizados; o solicitante recebe o resultado dentro de seu acesso atual. Ler um aviso não decide a solicitação. O sininho abre o detalhe atual na aba Horários e atualiza a consulta a cada 30 segundos enquanto a página está visível.
+
+Para atualizar outra instalação local existente, encerre o piloto e execute `node scripts/upgrade-notifications.mjs`; o script exige instância local, verifica backup e preserva conteúdo e contagem das tabelas existentes. Depois inicie pelo lançador habitual. Instalações novas incluem a migração 44 no manifesto. A atualização foi aplicada apenas no piloto local deste computador, sem publicação remota.

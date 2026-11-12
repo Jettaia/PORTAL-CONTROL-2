@@ -9,7 +9,8 @@ test('prévia: navegação real sem registros e sem gravação',async()=>{
  const base=`http://127.0.0.1:${server.address().port}`;
  let browser;
  try{
-  for(const method of ['POST','PUT','PATCH','DELETE'])assert.equal((await fetch(base+'/api/pc01/usuarios',{method})).status,405);
+  for(const method of ['POST','PUT','PATCH','DELETE'])for(const endpoint of ['/api/pc01/usuarios','/api/notificacoes/1-SOLICITACAO/lida'])assert.equal((await fetch(base+endpoint,{method})).status,405);
+  assert.deepEqual(await (await fetch(base+'/api/notificacoes')).json(),{registros:[],naoLidas:0,proximaPagina:null});
   assert.deepEqual((await (await fetch(base+'/api/pc01/usuarios')).json()).usuarios,[]);
   assert.equal((await fetch(base+'/api/not-available')).status,503);
   assert.deepEqual((await (await fetch(base+'/api/pc04/catalogo')).json()).depositos,[]);

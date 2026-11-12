@@ -1,0 +1,17 @@
+.toolbar .notification-toggle{position:relative;display:flex;align-items:center;justify-content:center;flex-shrink:0;width:42px;height:42px;padding:9px;border:0;border-radius:8px;background:transparent;color:#133d70;cursor:pointer}
+.notification-toggle:hover,.notification-toggle[aria-expanded=true]{background:#eaf2fb}
+.notification-toggle .bell{display:flex;width:23px;height:23px}.notification-toggle svg{width:23px;height:23px}
+.notification-badge{position:absolute;top:0;right:-2px;min-width:18px;padding:2px 4px;border-radius:10px;background:#b53e13;color:#fff;font-size:11px;line-height:14px;font-weight:700;text-align:center}
+.notification-toggle[hidden],.notification-badge[hidden],.notifications-panel[hidden],.notifications-panel button[hidden]{display:none!important}
+.notifications-panel{position:fixed;z-index:90;top:86px;right:32px;width:min(440px,calc(100vw - 24px));max-height:calc(100dvh - 110px);overflow:auto;overscroll-behavior:contain;background:#fff;color:#17345b;border-radius:12px;box-shadow:0 12px 48px #082c5233;scrollbar-width:thin;scrollbar-color:#7894b1 #f3f7fc}
+.notifications-panel header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px;background:#0b355e;color:#fff}
+.notifications-panel h2{margin:0;font-size:19px;font-weight:700}
+.notifications-panel button{font-family:inherit;cursor:pointer}.notifications-panel header button{color:#fff;border:1px solid #97b2cc;background:transparent;border-radius:6px;padding:6px 10px;font-size:12px}
+.notifications-tools{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px 0;font-size:12px;color:#496680}
+.notifications-tools button{background:transparent;border:0;color:#12518d;font-size:12px;padding:6px 0;text-decoration:underline;text-underline-offset:3px}
+#notificationsMessage{font-size:12px;color:#496680;padding:0 20px;margin:10px 0 14px}
+.notifications-panel .notification-item{position:relative;display:flex;flex-direction:column;gap:7px;width:100%;margin:0;padding:18px 20px;border:0;border-top:1px solid #e0e9f3;border-radius:0;background:#fff;color:#17345b;text-align:left;white-space:normal;overflow-wrap:anywhere}
+.notifications-panel .notification-item[data-read=false]{background:#f0f6fd}.notification-item strong{font-size:14px;line-height:1.45;font-weight:650}.notification-context{font-size:13px;line-height:1.5;color:#405e7a}.notification-item small{font-size:11px;line-height:1.5;color:#496680}.notification-item[data-status=PENDENTE] small{color:#884600}.notifications-panel .notification-item:hover{background:#e6f0fc}
+.notification-toggle:focus-visible,.notifications-panel button:focus-visible{outline:3px solid #ef8a2b;outline-offset:-3px}.notifications-panel button:disabled{cursor:wait;opacity:.65}
+#notificationsPanel>button{display:block;width:100%;padding:14px;border:0;border-top:1px solid #dbe6f1;background:#f5f8fc;color:#12518d;font-weight:650}
+@media(max-width:760px){.notifications-panel{top:76px;right:12px;max-height:calc(100dvh - 88px)}.toolbar .notification-toggle .bell{display:flex}.toolbar .notification-toggle{margin-left:auto}}

@@ -1,5 +1,5 @@
 {
-  "version": "1.22.0-tablets-multidepot",
+  "version": "1.23.0-notifications",
   "purpose": "PILOTO_LOCAL_FINANCEIRO_CONTRATACOES",
   "files": [
     {
@@ -236,6 +236,11 @@
       "file": "43-tablets-multidepot.sql",
       "source": "pilot-local/tablets-multidepot.sql",
       "sha256": "4958ec9c259be87ee22b987a5ed71a594fca595bbf40facabd043da191c8e7da"
+    },
+    {
+      "file": "44-notifications.sql",
+      "source": "pilot-local/notifications.sql",
+      "sha256": "af2ec88130ccd4dd321135395bd5fd2347208d047c5b9f1965269324197f1674"
     }
   ]
 }

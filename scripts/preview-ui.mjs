@@ -27,6 +27,7 @@ export function createPreviewApp(){
  app.use((_req,res,next)=>{res.set('Cache-Control','no-store');next();});
  app.use('/api',(req,res,next)=>['GET','HEAD'].includes(req.method)?next():res.status(405).json({erro:'PREVIA_SOMENTE_LEITURA'}));
  app.get('/api/auth/me',(_req,res)=>res.json({preview:true,usuario:context}));
+ app.get('/api/notificacoes',(_req,res)=>res.json({registros:[],naoLidas:0,proximaPagina:null}));
  app.get('/api/pc01/usuarios',(_req,res)=>res.json({usuarios:[],depositos:[]}));
  app.get('/api/pc01/solicitacoes',(_req,res)=>res.json({solicitacoes:[]}));
  app.get(['/api/b24c/usuarios','/api/b25/usuarios-pendentes'],(_req,res)=>res.json({registros:[]}));
