@@ -84,7 +84,7 @@ export async function printMany(cfg,actor,body){
   const documents=ids.map(id=>{const row=indexed.get(id),Snapshot=JSON.parse(row.SnapshotJson);for(const key of ['Deposito','Rua','NumeroEndereco','Bairro','CEP'])if(!Object.hasOwn(Snapshot,key))Snapshot[key]=row[key];return renderReceipt({ContratacaoId:row.ContratacaoId,VersaoOrigem:row.VersaoOrigem,DataEmissao:row.DataEmissao,Snapshot});});
   // A network stylesheet also works in a print window inheriting the portal's style-src self CSP.
   const csp="default-src 'none'; style-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'";
-  const html='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="'+csp+'"><title>Recibos do período</title><link rel="stylesheet" href="/api/financeiro/recibos/estilo.css"></head><body>'+documents.map(doc=>doc.match(/<main class="receipt">[\s\S]*?<\/main>/)[0]).join('\n')+'</body></html>';
+  const html='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="'+csp+'"><title>Recibos do período</title><link rel="stylesheet" href="'+(cfg.basePath||'')+'/api/financeiro/recibos/estilo.css"></head><body>'+documents.map(doc=>doc.match(/<main class="receipt">[\s\S]*?<\/main>/)[0]).join('\n')+'</body></html>';
   return {html,csp};
  });
 }

@@ -99,7 +99,8 @@ export async function list(cfg,actor,antes,filters={}){
  const filtered=listFilters(filters);
  const before=antes===undefined?'':` AND c.ContratacaoId<${identifier(antes)}`;
  return transaction(cfg,actor,null,false,async(db,user)=>{
-  const rows=await db.query(`SELECT TOP(201) ${columns} FROM Operacao.Contratacao c${joins} WHERE ${visibility(actor,user)}${filtered}${before} ORDER BY c.ContratacaoId DESC`),registros=rows.slice(0,200);
+  const tokenState=cfg.pc05?",CASE WHEN EXISTS(SELECT 1 FROM Operacao.ContratacaoToken ct WHERE ct.ContratacaoId=c.ContratacaoId AND ct.Tipo='ENTRADA' AND ct.ConsumidoEmUtc IS NOT NULL) THEN 1 ELSE 0 END EntradaTokenUsada":'';
+  const rows=await db.query(`SELECT TOP(201) ${columns}${tokenState} FROM Operacao.Contratacao c${joins} WHERE ${visibility(actor,user)}${filtered}${before} ORDER BY c.ContratacaoId DESC`),registros=rows.slice(0,200);
   return {pc04:true,podeOperar:user.operational,registros,proximaPagina:rows.length>200?String(registros.at(-1).ContratacaoId):null};
  });
 }

@@ -13,6 +13,7 @@ import {hashToken} from '../src/security.js';
 import {encryptedSecret} from '../src/mfa-b2b.js';
 import {hotp} from '../src/totp.js';
 import {nvarcharLiteral as s} from '../src/auth-db.js';
+import {chromium} from 'playwright';
 
 test('PC-05: tokens, tablets por depósito, persistência, consumo concorrente, manual e revogação SQL real',{
  skip:process.env.PC05_SQL_TESTS!=='YES'?'Requer PC05_SQL_TESTS=YES e PC05_SQL_SERVER local explícito; SKIP não homologa SQL.':false,
@@ -80,6 +81,9 @@ test('PC-05: tokens, tablets por depósito, persistência, consumo concorrente, 
   const denied=await consume(premature,409);assert.equal(denied.erro,'ENTRADA_OBRIGATORIA');
   const race=await Promise.all([1,2].map(()=>call('/api/pc05/tablet/apontar',{cookie:tablet,body:{codigo:replacement.codigo}})));
   assert.deepEqual(race.map(r=>r.status).sort(),[200,409]);
+  const daily=await expect(await call('/api/pc04/contratacoes?'+new URLSearchParams({dataServico:today,depositoId:'1'}),{cookie:a.cookie}),200);
+  assert.equal(Number(daily.registros.find(r=>String(r.ContratacaoId)===String(ca.ContratacaoId)).EntradaTokenUsada),1);
+  assert.ok(daily.registros.every(r=>Number(r.DepositoId)===1));
   const persisted=(await db.query(`SELECT EntradaReal,EntradaOrigem,Valor FROM Operacao.Contratacao WHERE ContratacaoId=${ca.ContratacaoId}`))[0];assert.ok(persisted.EntradaReal);assert.equal(persisted.EntradaOrigem,'TOKEN');assert.equal(Number(persisted.Valor),125.50);
   assert.equal(Number((await db.query(`SELECT COUNT(*) Q FROM Operacao.ContratacaoToken WHERE ContratacaoId=${ca.ContratacaoId} AND Tipo='ENTRADA' AND ConsumidoEmUtc IS NOT NULL`))[0].Q),1);
   assert.equal(Number((await db.query(`SELECT COUNT(*) Q FROM Operacao.ContratacaoEvento WHERE ContratacaoId=${ca.ContratacaoId} AND Acao='TOKEN_USAR'`))[0].Q),1);
@@ -137,6 +141,22 @@ test('PC-05: tokens, tablets por depósito, persistência, consumo concorrente, 
   await expect(await call('/api/pc05/tablets/'+pair.tabletId+'/revogar',{cookie:admin.cookie,body:{}}),200);
   await expect(await call('/api/pc05/tablet/status',{cookie:tablet}),401);
   await consume(replacement.codigo,401);
+  // Real Diárias browser → authenticated HTTP → SQL. All data belongs to this disposable database.
+  const uiProvider=await provider(admin,'Pessoa Diarias UI','12345678904',1),uiContract=await create(admin,1,uiProvider);
+  const browser=await chromium.launch({channel:process.env.PLAYWRIGHT_CHANNEL||(process.platform==='win32'?'msedge':undefined),headless:true});
+  try{
+   const context=await browser.newContext({viewport:{width:1531,height:900}}),[cookieName,...cookieValue]=admin.cookie.split('=');
+   await context.addCookies([{name:cookieName,value:cookieValue.join('='),url:base}]);const page=await context.newPage();page.setDefaultTimeout(12000);
+   await page.goto(base+'/#diarias');await page.locator('#diariasDate').waitFor();await page.locator('#diariasDate').fill(today);
+   await page.locator('#diariasDepot').selectOption('1');await page.locator('#diariasSearch').fill('Pessoa Diarias UI');
+   await page.getByLabel('Selecionar Pessoa Diarias UI',{exact:true}).check();await page.getByRole('button',{name:'Gerar tokens em lote',exact:true}).click();
+   const dialog=page.locator('#diariasDialog');await dialog.getByRole('button',{name:'Gerar 1 token',exact:true}).click();await dialog.getByText('1 token gerado',{exact:true}).waitFor();
+   assert.match(await dialog.getByLabel('Token de Pessoa Diarias UI',{exact:true}).inputValue(),/^\d{4}$/);
+   fs.mkdirSync('artifacts/diarias',{recursive:true});await page.screenshot({path:'artifacts/diarias/sql-real-lote.png'});
+   const issued=await db.query(`SELECT Tipo FROM Operacao.ContratacaoToken WHERE ContratacaoId=${uiContract.ContratacaoId}`);assert.deepEqual(issued.map(r=>r.Tipo),['ENTRADA']);
+   assert.equal((await detail(admin,uiContract)).EntradaReal,null,'Emitir lote não registra ponto antecipadamente');
+   await dialog.getByRole('button',{name:'Concluir',exact:true}).click();assert.equal(await dialog.locator('input[readonly]').count(),0);
+  }finally{await browser.close();}
  }finally{
   if(server)await new Promise(r=>server.close(r));if(db)await db.close();
   if(created){assert.match(database,/^JETTA_CONTROL_B3_TEST_[a-f0-9]{12}$/);const master=await connectPilot('master',sqlServer);try{await master.query(`ALTER DATABASE [${database}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;DROP DATABASE [${database}]`);}finally{await master.close();}}
