@@ -13,7 +13,7 @@ test('saída no rodapé compartilhado: navegação, scroll, menu recolhido, celu
   const page=await browser.newPage({viewport:{width:1440,height:900}}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   await page.goto(`http://127.0.0.1:${server.address().port}/?page=contratacoes`);
-  await page.locator('#pc04Page form').first().waitFor({state:'visible'});
+  await page.locator('#pc04Page .pc04-filters').first().waitFor({state:'visible'});
   assert.equal(await page.locator('#sidebar #logout').count(),1,'saída deve pertencer à barra lateral');
   const checkPosition=async()=>{
    const side=await page.locator('#sidebar').boundingBox(),button=await page.locator('#logout').boundingBox();

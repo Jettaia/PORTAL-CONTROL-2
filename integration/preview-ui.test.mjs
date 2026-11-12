@@ -21,9 +21,9 @@ test('prévia: navegação real sem registros e sem gravação',async()=>{
   page.on('response',r=>{if(new URL(r.url()).pathname.startsWith('/api/')&&r.status()>=400)apiFailures.push(`${r.status()} ${new URL(r.url()).pathname}`);});
   page.on('request',r=>{if(new URL(r.url()).pathname.startsWith('/api/')&&!['GET','HEAD'].includes(r.method()))writes.push(r.method()+' '+new URL(r.url()).pathname);});
   await page.goto(base+'/?page=contratacoes');
-  await page.locator('#pc04Page form').first().waitFor({state:'visible'});
+  await page.locator('#pc04Page .pc04-filters').first().waitFor({state:'visible'});
   await page.locator('#previewNotice').waitFor({state:'visible'});
-  const screens=[['usuarios','#pc01New','#pc01Msg','Nenhuma conta encontrada.'],['depositos','#b24cDepNew','#b24cDepTable .depot-empty','Nenhum depósito encontrado.'],['servicos','#activityForm','#activityHeading','Nova atividade'],['chapas','#pc03New','#pc03Message','Nenhum prestador encontrado.'],['contratacoes','#pc04Page form','#pc04Message',''],['pagamentos','#fin01Filters','#fin01Message','Consulta atualizada.'],['extratoprestador','#fin05Filters','#fin05Message','Extrato atualizado.']];
+  const screens=[['usuarios','#pc01New','#pc01Msg','Nenhuma conta encontrada.'],['depositos','#b24cDepNew','#b24cDepTable .depot-empty','Nenhum depósito encontrado.'],['servicos','#activityForm','#activityHeading','Nova atividade'],['chapas','#pc03New','#pc03Message','Nenhum prestador encontrado.'],['contratacoes','#pc04Page .pc04-filters','#pc04Message',''],['pagamentos','#fin01Filters','#fin01Message','Consulta atualizada.'],['extratoprestador','#fin05Filters','#fin05Message','Extrato atualizado.']];
   for(const [name,selector,status,message] of screens){
    const button=page.locator(`#mainNav [data-page="${name}"]`);
    if(!await button.isVisible())await button.locator('xpath=ancestor::details[1]/summary').click();
