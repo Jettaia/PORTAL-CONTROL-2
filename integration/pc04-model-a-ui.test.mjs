@@ -46,7 +46,7 @@ test('PC04 modelo A: popup, abas, operações reais, locks e encerramento seguro
   await page.evaluate(()=>window.jettaEnsureRecentMfa=async()=>{window.__mfaCalls=(window.__mfaCalls||0)+1;});
   await page.getByRole('button',{name:'Nova contratação',exact:true}).click();const modal=page.locator('#pc04Dialog');await modal.waitFor({state:'visible'});
   await capture('desktop-create');
-  await page.locator('#pc04_prestadorId').selectOption('1');await page.locator('#pc04_tipoServicoId').selectOption('1');await page.locator('#pc04_gestorId').selectOption('1');
+  await page.getByRole('combobox',{name:'Prestador',exact:true}).fill('');await page.locator('#pc04ProviderOptions').getByRole('option').first().click();await page.locator('#pc04_tipoServicoId').selectOption('1');await page.locator('#pc04_gestorId').selectOption('1');
   await page.locator('#pc04_inicioPrevisto').fill('2026-11-12T08:00');await page.locator('#pc04_fimPrevisto').fill('2026-11-12T17:00');await page.locator('#pc04_valor').fill('180,00');await modal.getByRole('button',{name:'Criar contratação',exact:true}).click();
   const tab=name=>modal.getByRole('tab',{name,exact:true});await tab('Resumo').waitFor();
   for(const viewport of [{width:1531,height:764},{width:390,height:844}]){

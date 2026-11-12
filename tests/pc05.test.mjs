@@ -75,7 +75,7 @@ test('PC05 HTTP com serviço real: tokens, autorização e horários',async t=>{
  await t.test('emissor revoga imediatamente',()=>run({path:'tablets/5/revogar',body:{},queue:[...prefix(),[tablet],[],[]]}));
  await t.test('autorização permanente não vence depois de oito horas',()=>run({path:'tablet/status',body:null,queue:[...pointPrefix({...tablet,ExpiraEmUtc:null,AtivadoEmUtc:'2026-01-01T00:00:00.000'})],check:(o,r)=>{assert.equal(o.ok,true);assert.match(r.headers.get('set-cookie'),/Max-Age=34560000/);}}));
  await t.test('tablet sem depósito não consulta token',()=>run({path:'tablet/apontar',body:{codigo:'12345678'},queue:[...pointPrefix({...tablet,DepositoId:null})],status:401}));
- await t.test('depósito diferente não consome token',()=>run({path:'tablet/apontar',body:{codigo:'12345678'},queue:[...pointPrefix(),[token],[{...row,DepositoId:2}],[]],status:409,inspect:sql=>assert.ok(!sql.some(q=>q.startsWith('UPDATE Operacao.ContratacaoToken')))}));
+ await t.test('depósito diferente não consome token',()=>run({path:'tablet/apontar',body:{codigo:'12345678'},queue:[...pointPrefix(),[token],[],[]],status:409,inspect:sql=>{assert.match(sql.find(q=>q.startsWith('SELECT c.ContratacaoId')),/TabletPC05Deposito/);assert.ok(!sql.some(q=>q.startsWith('UPDATE Operacao.ContratacaoToken')));}}));
  await t.test('cadastro exige depósito válido antes do SQL',()=>run({path:'tablets',body:{nome:'Tablet'},queue:[],status:400}));
  await t.test('status não divulga dados',()=>run({path:'tablet/status',body:null,queue:[...pointPrefix()],check:o=>assert.deepEqual(o,{ok:true})}));
  await t.test('tablet não pode revogar a própria autorização pela rota antiga',async()=>{

@@ -128,3 +128,12 @@
 #pc04Page #pc04Panel #pc04Dialog[data-mode=detail] :is(.pc04-dialog-header,.pc04-tabs,.pc04-dialog-footer){flex:0 0 auto}
 #pc04Page #pc04Panel #pc04Dialog[data-mode=detail] .pc04-tabs{position:relative;top:auto}
 #pc04Page #pc04Panel #pc04Dialog[data-mode=detail] .pc04-dialog-body{flex:1 1 auto;min-height:0;min-width:0;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;scrollbar-width:thin;scrollbar-color:#91aac3 transparent}
+#pc04Page #pc04Panel .pc04-provider{position:relative;min-width:0}
+#pc04Page #pc04Panel .pc04-provider>svg{position:absolute;left:12px;top:14px;width:17px;height:17px;color:#506780;pointer-events:none}
+#pc04Page #pc04Panel #pc04Dialog .pc04-provider>input{padding-left:38px}
+#pc04Page #pc04Panel .pc04-provider-options{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:3;max-height:224px;overflow-y:auto;border:1px solid #ced9e3;border-radius:7px;background:#fff;box-shadow:0 8px 24px #102c491a}
+#pc04Page #pc04Panel .pc04-provider-options[hidden]{display:none}
+#pc04Page #pc04Panel .pc04-provider-options button{display:flex;flex-direction:column;gap:4px;width:100%;margin:0;padding:11px 12px;border:0;border-radius:0;background:white;color:#17324d;text-align:left;white-space:normal;overflow-wrap:anywhere;font-size:13px}
+#pc04Page #pc04Panel .pc04-provider-options button:is(:hover,[aria-selected=true]){background:#edf3f9}
+#pc04Page #pc04Panel .pc04-provider-options small{font-size:11px;color:#506780}
+#pc04Page #pc04Panel .pc04-provider-options p{padding:12px;margin:0;font-size:12px;color:#506780}

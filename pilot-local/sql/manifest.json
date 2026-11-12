@@ -1,5 +1,5 @@
 {
-  "version": "1.21.0-pc05-four-digit-tokens",
+  "version": "1.22.0-tablets-multidepot",
   "purpose": "PILOTO_LOCAL_FINANCEIRO_CONTRATACOES",
   "files": [
     {
@@ -231,6 +231,11 @@
       "file": "42-pc05-four-digit-tokens.sql",
       "source": "pilot-local/pc05-four-digit-tokens.sql",
       "sha256": "a578e598f897da3ed082284c816b97d5be1332a18f9d5e1c2a9550c0fe1f74a2"
+    },
+    {
+      "file": "43-tablets-multidepot.sql",
+      "source": "pilot-local/tablets-multidepot.sql",
+      "sha256": "4958ec9c259be87ee22b987a5ed71a594fca595bbf40facabd043da191c8e7da"
     }
   ]
 }

@@ -15,7 +15,7 @@ test('Chapa: banco novo mantém apenas ADMIN/credencial e recusa sobrescrita',{t
   await assert.rejects(()=>seedNewChapa(db,{pilotInstance:crypto.randomBytes(32).toString('hex'),admin:{...admin,passwordHashHex:'invalid'},test:true}),/Credencial/);
   assert.equal(Number((await db.query('SELECT COUNT(*) N FROM sys.tables WHERE is_ms_shipped=0'))[0].N),0);
   const result=await seedNewChapa(db,{pilotInstance:crypto.randomBytes(32).toString('hex'),admin,test:true});
-  assert.deepEqual(result,{migrations:42,adminCount:1,operationalRows:0,credentialPreserved:true});
+  assert.deepEqual(result,{migrations:43,adminCount:1,operationalRows:0,credentialPreserved:true});
   const row=(await db.query('SELECT c.SaltHex,c.SenhaHashHex,u.Email FROM Seguranca.Credencial c JOIN Seguranca.Usuario u ON u.UsuarioId=c.UsuarioId'))[0];
   assert.equal(row.Email,admin.email);assert.equal(passwordValid(password,row.SaltHex,row.SenhaHashHex),true);assert.equal(passwordValid('wrong',row.SaltHex,row.SenhaHashHex),false);
   await assert.rejects(()=>seedNewChapa(db,{pilotInstance:crypto.randomBytes(32).toString('hex'),admin,test:true}),/banco vazio/);

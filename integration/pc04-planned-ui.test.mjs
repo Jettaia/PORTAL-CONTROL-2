@@ -30,7 +30,8 @@ try{
  await page.locator('#mainNav summary').filter({hasText:'Operação'}).click();await page.locator('[data-page=contratacoes]').click();
  await page.getByRole('button',{name:'Nova contratação',exact:true}).click();
  await page.getByRole('button',{name:'Criar contratação',exact:true}).waitFor();
- for(const [name,value]of [['prestadorId','1'],['tipoServicoId','1'],['gestorId','1']])await page.locator('#pc04_'+name).selectOption(value);
+ await page.getByRole('combobox',{name:'Prestador',exact:true}).fill('Prestador');await page.locator('#pc04ProviderOptions').getByRole('option').first().click();
+ for(const [name,value]of [['tipoServicoId','1'],['gestorId','1']])await page.locator('#pc04_'+name).selectOption(value);
  for(const [name,value]of [['inicioPrevisto','2026-11-05T08:00'],['fimPrevisto','2026-11-05T18:00'],['valor','100,00']])await page.locator('#pc04_'+name).fill(value);
  await page.getByRole('button',{name:'Criar contratação',exact:true}).click();
  await page.getByText('Contratação criada.',{exact:true}).waitFor();
