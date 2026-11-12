@@ -28,6 +28,7 @@ try{
  });
  await page.goto(process.env.PC04_FEEDBACK_URL||`http://127.0.0.1:${server.address().port}`);await page.locator('#dashboard').waitFor({state:'visible'});
  await page.locator('#mainNav summary').filter({hasText:'Operação'}).click();await page.locator('[data-page=contratacoes]').click();
+ await page.getByRole('button',{name:'Nova contratação',exact:true}).click();
  await page.getByRole('button',{name:'Criar contratação',exact:true}).waitFor();
  for(const [name,value]of [['prestadorId','1'],['tipoServicoId','1'],['gestorId','1']])await page.locator('#pc04_'+name).selectOption(value);
  for(const [name,value]of [['inicioPrevisto','2026-11-05T08:00'],['fimPrevisto','2026-11-05T18:00'],['valor','100,00']])await page.locator('#pc04_'+name).fill(value);
@@ -38,13 +39,14 @@ try{
  assert.equal(await summary.locator('dt').filter({hasText:/^Depósito$/}).count(),1);
  assert.equal(await summary.locator('dt').filter({hasText:/^Atividade$/}).count(),1);
  assert.equal(await summary.locator('dt').filter({hasText:'Depósito / atividade'}).count(),0);
+ await page.getByRole('tab',{name:'Horários',exact:true}).click();
  const edit=page.locator('#pc04Detail section').filter({has:page.getByRole('heading',{name:'Horários previstos',exact:true})});
  await edit.getByLabel('Entrada prevista',{exact:true}).fill('2026-11-06T22:00');
  await edit.getByLabel('Saída prevista',{exact:true}).fill('2026-11-07T06:00');
  await edit.getByRole('button',{name:'Salvar horários previstos',exact:true}).click();
  await page.getByText('Horários previstos atualizados.',{exact:true}).waitFor();
  assert.equal(row.DataServico,'2026-11-06');
- assert.ok((await summary.innerText()).includes('2026-11-06 22:00'));
+ assert.ok((await summary.textContent()).includes('2026-11-06 22:00'));
  assert.deepEqual(errors,[]);
  fs.mkdirSync('artifacts/pc04-planned',{recursive:true});
  await page.locator('#pc04Detail').screenshot({path:'artifacts/pc04-planned/desktop.png'});

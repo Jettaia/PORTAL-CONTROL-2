@@ -1,12 +1,107 @@
-#fin01Page{min-width:0}#fin01Page .fin01-heading{border-left:4px solid #f58429;padding-left:16px;margin-bottom:22px}#fin01Page h2{margin:0 0 8px}#fin01Page .fin01-heading p,#fin01Page .fin01-period{color:#475569}#fin01Page .fin01-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:14px;align-items:end}#fin01Page label{display:flex;flex-direction:column;gap:7px;font-weight:600;min-width:0}#fin01Page input,#fin01Page select{box-sizing:border-box;width:100%;min-width:0;padding:10px;border:1px solid #94a3b8;border-radius:6px;background:#fff;color:#142e49}#fin01Page button{padding:10px 14px;background:#123656;color:#fff;border:1px solid #123656;border-radius:6px;cursor:pointer}#fin01Page button.secondary{background:#fff;color:#123656}#fin01Page button:disabled{opacity:.6;cursor:wait}#fin01Page .fin01-actions{display:flex;flex-wrap:wrap;gap:8px}#fin01Page .fin01-scroll{overflow:auto;margin:16px 0;border:1px solid #dbe3ec;border-radius:8px}#fin01Page table{width:100%;min-width:1120px;border-collapse:collapse}#fin01Page th{background:#123656;color:#fff;text-align:left;padding:13px;white-space:nowrap}#fin01Page td{padding:13px;border-bottom:1px solid #e2e8f0;vertical-align:middle}#fin01Page tbody tr:hover{background:#f6f8fb}#fin01Page .fin01-badge{display:inline-block;border:1px solid #b8c7d7;background:#e7edf4;color:#17324d;border-radius:6px;padding:6px 10px;font-size:.85rem;font-weight:700;line-height:1.3;white-space:nowrap}#fin01Message{min-height:24px;overflow-wrap:anywhere}#fin01Detail:not(:empty){margin-top:24px;padding:20px;background:#f6f8fb;border:1px solid #dbe3ec;border-left:4px solid #f58429;border-radius:6px}#fin01Detail dl{display:grid;grid-template-columns:minmax(150px,1fr) minmax(0,2fr);gap:10px 20px}#fin01Detail dt{font-weight:600}#fin01Detail dd{margin:0;overflow-wrap:anywhere}#fin01Page :is(input,select,button,.fin01-scroll):focus-visible{outline:3px solid #ed8b36;outline-offset:2px}@media(max-width:600px){#fin01Detail dl{grid-template-columns:1fr;gap:6px}#fin01Detail dd{margin-bottom:10px}#fin01Detail:not(:empty){padding:14px}#fin01Page th,#fin01Page td{padding:10px}}
+/* Financeiro: approved model A. Existing FIN02/FIN03 contracts remain authoritative. */
+#fin01Page{min-width:0}#fin01Page h2{margin:0 0 8px}#fin01Page .fin01-period{color:#506780}#fin01Page label{display:flex;flex-direction:column;gap:7px;font-weight:600;min-width:0}#fin01Page input,#fin01Page select{box-sizing:border-box;width:100%;min-width:0;padding:10px;border:1px solid #bccbda;border-radius:7px;background:#fff;color:#17324d}#fin01Page button{padding:10px 14px;background:#113d68;color:#fff;border:1px solid #113d68;border-radius:7px;cursor:pointer}#fin01Page button.secondary{background:#fff;color:#113d68}#fin01Page button:disabled{opacity:.6;cursor:not-allowed}#fin01Page .fin01-actions{display:flex;flex-wrap:wrap;gap:8px}#fin01Page .fin01-scroll{overflow:auto;margin:16px 0;border:1px solid #dbe3ec;border-radius:8px}#fin01Page table{width:100%;min-width:1120px;border-collapse:collapse}#fin01Page th{background:#113d68;color:#fff;text-align:left;padding:13px;white-space:nowrap}#fin01Page td{padding:13px;border-bottom:1px solid #e2e8f0;vertical-align:middle}#fin01Page tbody tr:hover{background:#edf4fa}#fin01Page .fin01-badge{display:inline-block;border:1px solid #b8c7d7;background:#e7edf4;color:#17324d;border-radius:5px;padding:5px 8px;font-size:11px;font-weight:600;line-height:1.3;white-space:nowrap}#fin01Message{overflow-wrap:anywhere}#fin01Detail dl{display:grid;grid-template-columns:minmax(150px,1fr) minmax(0,2fr);gap:10px 20px}#fin01Detail dt{font-weight:600}#fin01Detail dd{margin:0;overflow-wrap:anywhere}#fin01Page :is(input,select,button,.fin01-scroll):focus-visible{outline:3px solid #ed8b36;outline-offset:2px}
 #fin01Filters + .fin01-actions{margin-top:16px}
-#fin01Page .fin02-print{display:inline-block;padding:10px 14px;background:#123656;color:#fff;border:1px solid #123656;border-radius:6px;text-decoration:none}#fin01Page .fin02-print:focus-visible{outline:3px solid #ed8b36;outline-offset:2px}
-#fin01Page .fin03-payment{border-top:1px solid #dbe3ec;margin-top:20px;padding-top:12px;overflow-wrap:anywhere}#fin01Page .fin03-form{display:grid;gap:12px;margin:16px 0;padding:16px;border:1px solid #dbe3ec;border-radius:6px;background:#fff}#fin01Page .fin03-form p{margin:0}#fin01Page .fin03-form button{justify-self:start}#fin01Page .fin03-payment li{margin:10px 0}#fin01Page .fin03-payment a{color:#123656}#fin01Page .fin03-payment a:focus-visible{outline:3px solid #ed8b36;outline-offset:2px}
+:is(#fin01Page,#fin01DetailDialog) .fin02-print{display:inline-block;padding:10px 14px;background:#123656;color:#fff;border:1px solid #123656;border-radius:6px;text-decoration:none}:is(#fin01Page,#fin01DetailDialog) .fin02-print:focus-visible{outline:3px solid #ed8b36;outline-offset:2px}
+:is(#fin01Page,#fin01DetailDialog) .fin03-payment{border-top:1px solid #dbe3ec;margin-top:20px;padding-top:12px;overflow-wrap:anywhere}:is(#fin01Page,#fin01DetailDialog) .fin03-form{display:grid;gap:12px;margin:16px 0;padding:16px;border:1px solid #dbe3ec;border-radius:6px;background:#fff}:is(#fin01Page,#fin01DetailDialog) .fin03-form p{margin:0}:is(#fin01Page,#fin01DetailDialog) .fin03-form button{justify-self:start}:is(#fin01Page,#fin01DetailDialog) .fin03-payment li{margin:10px 0}:is(#fin01Page,#fin01DetailDialog) .fin03-payment a{color:#123656}:is(#fin01Page,#fin01DetailDialog) .fin03-payment a:focus-visible{outline:3px solid #ed8b36;outline-offset:2px}
 
 #fin01Page .fin01-badge--pendente{background:#fff3cd;color:#754c00;border-color:#ebd48c}#fin01Page .fin01-badge--recibo{background:#e7edf4;color:#17324d;border-color:#b8c7d7}#fin01Page .fin01-badge--pago{background:#dcfce7;color:#166534;border-color:#86d3a2}
 
-#dashboard #fin01Page .fin01-scroll :is(th,td){text-align:center}
+#dashboard #fin01Page .fin01-scroll :is(th,td){text-align:left}
 
-#fin02Batch:not(:empty){margin:18px 0;padding:16px;background:#f6f8fb;border:1px solid #dbe3ec;border-left:4px solid #f58429;border-radius:6px;min-width:0;overflow-wrap:anywhere}#fin02Batch h3{margin-top:0}#fin02Batch table{min-width:650px}#fin02Batch .fin01-scroll{max-height:360px}#fin02Batch:empty{display:none}
+#fin02Batch:not(:empty){margin:18px 0;padding:16px;background:#f6f8fb;border:1px solid #dbe3ec;border-radius:6px;min-width:0;overflow-wrap:anywhere}#fin02Batch h3{margin-top:0}#fin02Batch table{min-width:650px}#fin02Batch .fin01-scroll{max-height:360px}#fin02Batch:empty{display:none}
 
 #fin01Page .fin01-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-top:20px}#fin01Page .fin01-toolbar h3{margin:0}#fin01Page .fin01-export{min-width:210px;max-width:100%;border-radius:6px}#fin01Page .fin01-export summary{padding:11px 15px;background:#e97808;color:#fff;border-radius:6px;cursor:pointer;font-weight:700}#fin01Page .fin01-export summary:focus-visible{outline:3px solid #123656;outline-offset:3px}#fin01Page .fin01-export button{display:block;width:100%;margin-top:6px;text-align:left}#fin01Page .fin01-export[open]{padding-bottom:2px}@media(max-width:600px){#fin01Page .fin01-toolbar{align-items:stretch}#fin01Page .fin01-export{width:100%}}
+
+/* Scope beats shared pilot rules, including their mobile form and table defaults. */
+#fin01Page.fin01-model-a{padding:0;background:white;border:1px solid #dce5ef;border-radius:12px;box-shadow:none;font-size:14px;font-variant-numeric:tabular-nums;overflow:clip}
+#fin01Page.fin01-model-a #fin01Filters{max-width:none;display:grid;grid-template-columns:135px minmax(180px,1.3fr) minmax(180px,1fr) 150px 150px;gap:16px;align-items:end;padding:22px 22px 18px;background:#f9fbfd;border-bottom:1px solid #dce5ef}
+#fin01Page.fin01-model-a #fin01Filters label{margin:0;gap:7px;font-size:12px;line-height:1.4;color:#17324d}
+#fin01Page.fin01-model-a #fin01Filters :is(input,select){height:40px;min-height:40px;font-size:13px;border-radius:7px;padding:9px 11px}
+#fin01Page.fin01-model-a #fin01Filters label:last-of-type{grid-column:1/3;max-width:330px}
+#fin01Page.fin01-model-a #fin01Filters .fin01-filter-actions{grid-column:3/-1;justify-content:flex-end;margin:0}
+#fin01Page.fin01-model-a button{min-height:40px;font-size:13px;font-weight:600;border-radius:7px;padding:9px 13px}
+#fin01Page.fin01-model-a #fin01Clear{background:white;color:#113d68;border-color:#dce5ef}
+#fin01Page.fin01-model-a #fin01Message{padding:0 22px;margin:0;min-height:0;font-size:12px;line-height:1.5}
+#fin01Page.fin01-model-a #fin01Message:not(:empty){padding-top:10px}
+#fin01Page.fin01-model-a .fin01-toolbar{padding:16px 22px;gap:14px;margin:0;align-items:center}
+#fin01Page.fin01-model-a .fin01-list-caption{color:#506780;font-size:12px;line-height:1.5}
+#fin01Page.fin01-model-a .fin01-main-actions{grid-column:auto;display:flex;align-items:center;gap:8px;margin-left:auto;width:auto}
+#fin01Page.fin01-model-a .fin01-main-actions button{flex:none;white-space:nowrap}
+#fin01Page.fin01-model-a .fin01-export{min-width:0;width:auto;position:relative;padding:0}
+#fin01Page.fin01-model-a .fin01-export summary{padding:10px 13px;border:1px solid #dce5ef;background:white;color:#113d68;border-radius:7px;min-height:40px;font:600 13px/1.4 'Segoe UI',Arial,sans-serif;list-style:none}
+#fin01Page.fin01-model-a .fin01-export summary::-webkit-details-marker{display:none}
+#fin01Page.fin01-model-a .fin01-export[open]{z-index:4}
+#fin01Page.fin01-model-a .fin01-export-menu{position:absolute;top:calc(100% + 6px);right:0;display:grid;gap:4px;width:190px;max-width:calc(100vw - 48px);box-sizing:border-box;padding:6px;background:white;border:1px solid #dce5ef;border-radius:8px;box-shadow:0 10px 24px #17324d20}
+#fin01Page.fin01-model-a .fin01-export-menu button{position:static;box-sizing:border-box;display:block;width:100%;min-width:0;margin:0;background:white;color:#113d68;border:0;text-align:left;font-size:12px;white-space:nowrap}
+
+#fin01Page.fin01-model-a #fin03ImportStart{order:1;background:#fff;color:#113d68;border-color:#bccbda}
+#fin01Page.fin01-model-a #fin02BatchStart{order:2}
+#fin01Page.fin01-model-a .fin01-queue{margin:0;border:0;border-radius:0;scrollbar-width:thin;scrollbar-color:#91aac3 #eff4f9}
+#fin01Page.fin01-model-a .fin01-queue table{min-width:1080px;font-size:13px}
+#fin01Page.fin01-model-a .fin01-queue :is(th,td){text-align:left;padding:16px 14px}
+#fin01Page.fin01-model-a .fin01-queue th{position:relative;font-size:12px;font-weight:600;background:#113d68;color:white;padding-block:14px}
+#fin01Page.fin01-model-a .fin01-queue td{border-bottom:1px solid #e6edf4;vertical-align:middle}
+#fin01Page.fin01-model-a .fin01-queue tr:nth-child(even){background:#f6f8fb}
+#fin01Page.fin01-model-a .fin01-queue tr:hover{background:#edf4fa}
+#fin01Page.fin01-model-a .fin01-queue strong{display:block;font-weight:600;max-width:29ch;line-height:1.45;overflow-wrap:anywhere}
+#fin01Page.fin01-model-a .fin01-queue small{display:block;max-width:31ch;margin-top:4px;line-height:1.5;font-size:12px;color:#506780;overflow-wrap:anywhere}
+#fin01Page.fin01-model-a .fin01-queue .fin01-number{font-size:12px;font-weight:600;color:#113d68;white-space:nowrap}
+#fin01Page.fin01-model-a .fin01-queue .fin01-release{font-size:12px;max-width:135px;line-height:1.6}
+#fin01Page.fin01-model-a .fin01-queue .fin01-money{text-align:right;font-weight:600;white-space:nowrap}
+#fin01Page.fin01-model-a .fin01-queue .fin02-print{background:transparent;color:#113d68;border:0;min-height:34px;padding:5px 0;font-size:12px;white-space:nowrap}
+#fin01Page.fin01-model-a .fin01-queue button:not(.fin01-detail-button){min-height:34px;font-size:12px;white-space:nowrap;background:white;color:#113d68;border-color:#becfe0}
+#fin01Page.fin01-model-a .fin01-queue .fin01-detail-button{background:transparent;border:0;color:#113d68;display:inline-flex;align-items:center;justify-content:center;padding:8px;min-width:36px}
+#fin01Page.fin01-model-a .fin01-totals{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:18px 22px;margin:0;background:#f9fbfd;font-size:12px;border-top:1px solid #dce5ef;color:#506780}
+#fin01Page.fin01-model-a .fin01-totals b{font-size:15px;color:#113d68;margin-left:10px}
+#fin01Page.fin01-model-a #fin01More{margin:16px 22px}
+#fin01DetailDialog{width:650px;max-width:calc(100vw - 32px);max-height:90dvh;border:0;border-radius:12px;padding:28px;color:#17324d;background:white;box-shadow:0 24px 70px #102d5440;scrollbar-width:thin;scrollbar-color:#91aac3 #eff4f9}
+#fin01DetailDialog::backdrop{background:#06234188}
+#fin01DetailDialog #fin01Detail{margin:0;padding:0;border:0;border-radius:0;background:white}
+#fin01DetailDialog .fin01-detail-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px}
+#fin01DetailDialog .fin01-detail-heading h3{margin:0;font-size:23px}
+#fin01DetailDialog #fin01Detail dl{display:grid;grid-template-columns:155px minmax(0,1fr);gap:0;margin:0 0 22px}
+#fin01DetailDialog #fin01Detail :is(dt,dd){padding:12px 0;border-bottom:1px solid #dce5ef;font-size:13px;margin:0;line-height:1.6}
+#fin01DetailDialog #fin01Detail dt{font-size:12px;color:#506780;font-weight:500;padding-right:12px}
+#fin01DetailDialog #fin01Detail p{font-size:13px;line-height:1.6}
+#fin01DetailDialog #fin01Detail input[type=file]{max-width:100%;font-size:12px}
+#fin01DetailDialog #fin01Detail .fin03-form{padding:16px;background:#f9fbfd;border-radius:8px;border:1px solid #dce5ef}
+#fin01Page.fin01-model-a #fin02Batch:not(:empty),#fin01Page.fin01-model-a #fin03Import:not(:empty){margin:0 22px 20px;padding:20px;border:1px solid #dce5ef;border-radius:8px;background:#f9fbfd}
+#fin01Page.fin01-model-a #fin02Batch table{min-width:650px}
+#fin01Page.fin01-model-a .fin01-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+@media(max-width:1400px){#fin01Page.fin01-model-a #fin01Filters{grid-template-columns:130px minmax(180px,1fr) minmax(180px,1fr)}#fin01Page.fin01-model-a #fin01Filters label:last-of-type{grid-column:auto;max-width:none}#fin01Page.fin01-model-a #fin01Filters .fin01-filter-actions{grid-column:1/-1}#fin01Page.fin01-model-a .fin01-order{display:none}}
+@media(max-width:760px){#fin01Page.fin01-model-a #fin01Filters{grid-template-columns:1fr 1fr;gap:14px 10px;padding:18px 14px}#fin01Page.fin01-model-a #fin01Filters label:nth-child(-n+3),#fin01Page.fin01-model-a #fin01Filters label:last-of-type{grid-column:1/-1}#fin01Page.fin01-model-a #fin01Filters .fin01-filter-actions{justify-content:flex-start;width:auto}#fin01Page.fin01-model-a #fin01Filters .fin01-filter-actions button{flex:none}#fin01Page.fin01-model-a .fin01-toolbar{padding:16px 14px;align-items:flex-start}#fin01Page.fin01-model-a .fin01-main-actions{width:100%;margin:0;flex-wrap:wrap}#fin01Page.fin01-model-a .fin01-main-actions button{white-space:normal;flex:1 1 150px}#fin01Page.fin01-model-a .fin01-export-menu{right:auto;left:0}#fin01Page.fin01-model-a .fin01-totals{padding:16px 14px}#fin01Page.fin01-model-a #fin02Batch:not(:empty),#fin01Page.fin01-model-a #fin03Import:not(:empty){margin:0 14px 16px;padding:14px}#fin01DetailDialog{padding:22px 18px}#fin01DetailDialog #fin01Detail dl{grid-template-columns:120px minmax(0,1fr)}#fin01DetailDialog .fin01-detail-heading h3{font-size:20px}}
+/* Shared pilot selectors also contain IDs: keep the approved flat table and dialog. */
+#dashboard #fin01Page.fin01-model-a .fin01-queue{border:0;border-radius:0;background:white}
+#dashboard #fin01Page.fin01-model-a .fin01-queue :is(th,td){text-align:left}
+#dashboard #fin01Page.fin01-model-a .fin01-queue .fin01-money{text-align:right}
+#dashboard #fin01Page.fin01-model-a .fin01-queue th{border-bottom:0;border-radius:0}
+#dashboard #fin01DetailDialog #fin01Detail{border:0;padding:0;background:white;border-radius:0}
+#fin01Page.fin01-model-a .fin01-badge{border:0;font-size:11px;font-weight:600;padding:5px 8px;border-radius:5px}
+#fin01Page.fin01-model-a .fin01-badge--pendente{background:#fff0df;color:#81420b}
+#fin01Page.fin01-model-a .fin01-badge--recibo{background:#e7f0fa;color:#184b7e}
+#fin01Page.fin01-model-a .fin01-badge--pago{background:#e5f3eb;color:#21613e}
+#fin01DetailDialog .fin01-hours{margin:18px 0}
+#fin01DetailDialog .fin01-hours summary{cursor:pointer;color:#113d68;font-size:13px;font-weight:600;padding:10px 0}
+
+/* Financial detail is shared by the queue and the statement, with no hidden page ancestor. */
+#fin01DetailDialog{font-family:var(--jc-font,'Segoe UI',Arial,sans-serif);font-size:14px;font-variant-numeric:tabular-nums}
+#fin01DetailDialog :is(button,input,select){font:inherit;font-size:13px;box-sizing:border-box;max-width:100%}
+#fin01DetailDialog button{padding:10px 14px;min-height:40px;border:1px solid #113d68;border-radius:7px;background:#113d68;color:white;cursor:pointer}
+#fin01DetailDialog button.secondary{background:white;color:#113d68;border-color:#bccbda}
+#fin01DetailDialog button:disabled{opacity:.55;cursor:not-allowed}
+#fin01DetailDialog label{display:flex;flex-direction:column;gap:7px;font-size:13px}
+#fin01DetailDialog input{width:100%;min-width:0;padding:10px;border:1px solid #bccbda;border-radius:7px;background:white;color:#17324d}
+#fin01DetailDialog .fin01-actions{display:flex;gap:8px;flex-wrap:wrap}
+#fin01DetailDialog .fin01-badge{display:inline-block;border:0;border-radius:5px;padding:5px 8px;font-size:11px;font-weight:600;background:#e7f0fa;color:#184b7e}
+#fin01DetailDialog .fin01-badge--pendente{background:#fff0df;color:#81420b}
+#fin01DetailDialog .fin01-badge--pago{background:#e5f3eb;color:#21613e}
+#fin01DetailDialog :is(input,button,a,summary):focus-visible{outline:3px solid #ed8b36;outline-offset:3px}
+
+/* Stable shared financial detail: the title/close remain outside the scroll region. */
+#fin01DetailDialog{box-sizing:border-box;height:94dvh;max-height:94dvh;padding:30px;border:1px solid #dbe3ec;border-radius:14px;box-shadow:0 24px 90px #102c4933;overflow:hidden}
+#fin01DetailDialog[open]{display:flex;flex-direction:column}
+#fin01DetailDialog::backdrop{background:#0b223c66;backdrop-filter:blur(3px)}
+#fin01DetailDialog #fin01Detail{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;min-width:0;overflow:hidden}
+#fin01DetailDialog .fin01-detail-heading{flex:0 0 auto}
+#fin01DetailDialog .fin01-detail-body{flex:1 1 auto;min-height:0;min-width:0;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;scrollbar-width:thin;scrollbar-color:#91aac3 transparent}
+@media(max-width:760px){#fin01DetailDialog{padding:22px}}

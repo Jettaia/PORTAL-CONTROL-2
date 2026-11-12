@@ -31,12 +31,16 @@ try{
  });
  await page.goto(process.env.PC04_FEEDBACK_URL||`http://127.0.0.1:${server.address().port}`);await page.locator('#dashboard').waitFor({state:'visible'});
  await page.locator('#mainNav summary').filter({hasText:'Operação'}).click();await page.locator('[data-page=contratacoes]').click();
- await page.getByRole('button',{name:'Criar contratação',exact:true}).waitFor();
+ await page.getByRole('button',{name:'Nova contratação',exact:true}).waitFor();
+ if(await page.locator('#pc04Dialog').isVisible())await page.getByRole('button',{name:'Fechar contratação',exact:true}).click();
  await page.getByRole('button',{name:'Editar',exact:true}).click();
+ await page.getByRole('tab',{name:'Tokens',exact:true}).click();
  await page.getByRole('button',{name:'Gerar / substituir entrada',exact:true}).waitFor();
  // Existing entry enables saída; use saída first, then model a new available entry for replacement.
  row.EntradaReal=null;
+ if(await page.locator('#pc04Dialog').isVisible())await page.getByRole('button',{name:'Fechar contratação',exact:true}).click();
  await page.getByRole('button',{name:'Editar',exact:true}).click();
+ await page.getByRole('tab',{name:'Tokens',exact:true}).click();
  if(mobile)await page.setViewportSize({width:390,height:844});
  await page.clock.install();
  await page.getByRole('button',{name:'Gerar / substituir entrada',exact:true}).click();
@@ -68,7 +72,9 @@ try{
  await page.waitForFunction(()=>document.querySelector('[aria-label="Token gerado"]')?.value==='8765');
  row.EntradaReal='2026-11-05T08:00';
  // A fresh detail refresh permits saída; generation must replace the displayed code.
+ if(await page.locator('#pc04Dialog').isVisible())await page.getByRole('button',{name:'Fechar contratação',exact:true}).click();
  await page.getByRole('button',{name:'Editar',exact:true}).click();
+ await page.getByRole('tab',{name:'Tokens',exact:true}).click();
  await page.getByRole('button',{name:'Gerar / substituir saída',exact:true}).click();
  await code.waitFor();assert.equal(await code.inputValue(),'8765');
  await page.getByRole('button',{name:'Copiar token',exact:true}).click();
@@ -86,7 +92,9 @@ try{
  assert.deepEqual(errors,[]);
  fs.mkdirSync('artifacts/pc05-copy',{recursive:true});
  await page.locator('#pc05Secret').screenshot({path:'artifacts/pc05-copy/'+(mobile?'mobile':'desktop')+'.png'});
+ if(await page.locator('#pc04Dialog').isVisible())await page.getByRole('button',{name:'Fechar contratação',exact:true}).click();
  await page.getByRole('button',{name:'Editar',exact:true}).click();
+ await page.getByRole('tab',{name:'Tokens',exact:true}).click();
  assert.equal(await page.getByRole('button',{name:'Copiar token',exact:true}).count(),0);
  await page.getByRole('button',{name:'Gerar / substituir saída',exact:true}).click();
  await code.waitFor();

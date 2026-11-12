@@ -45,6 +45,7 @@ test('anotações: textos, status vazio e rolagem de 15 contratações',async()=
   }
   count=3;await page.getByRole('button',{name:'Atualizar consulta',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('.pc04-table tbody tr').length===3&&document.getElementById('pc04Message').textContent==='');
   assert.equal(await wrap.evaluate(w=>w.scrollHeight>w.clientHeight),false);
+  await page.locator('.pc04-filter-advanced summary').click();
   await page.locator('[data-pc04-filter=inicio]').fill('2026-11-12');await page.locator('[data-pc04-filter=fim]').fill('2026-11-01');await page.getByRole('button',{name:'Aplicar filtros',exact:true}).click();
   await page.getByText('A data final do filtro deve ser igual ou posterior à data inicial.',{exact:true}).waitFor();assert.ok(await page.locator('#pc04Message').evaluate(e=>e.getBoundingClientRect().height)>0);
   assert.deepEqual(errors,[]);

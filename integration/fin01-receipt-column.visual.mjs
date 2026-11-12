@@ -30,18 +30,18 @@ try{
    await route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
   });
   await page.goto(origin+'/fin02-test');await page.addScriptTag({url:origin+'/fin01.js'});await page.evaluate(()=>window.dispatchEvent(new Event('jetta:fin01')));
-  await page.locator('#fin01Rows tr[data-contract]').waitFor();assert.deepEqual((await page.locator('#fin01Page th').allTextContents()).slice(-2),['Consulta','Recibo']);
+  await page.locator('#fin01Rows tr[data-contract]').waitFor();assert.deepEqual((await page.locator('#fin01Page th').allTextContents()).slice(-2),['Recibo','Detalhes']);
   const table=page.locator('#fin01Rows');
   if(perfil!=='GESTOR'){
    const emit=table.getByRole('button',{name:'Gerar recibo da contratação 101',exact:true});await emit.click();await page.getByText('FINANCEIRO_INDISPONIVEL',{exact:true}).waitFor();assert.equal(await emit.isEnabled(),true);
-   fail=false;await emit.dblclick();await table.getByRole('link',{name:'Abrir recibo da contratação 101',exact:true}).waitFor();assert.equal(writes,2);await page.locator('#fin01Detail .fin02-print').waitFor();
+   fail=false;await emit.dblclick();await table.getByRole('link',{name:'Abrir recibo da contratação 101',exact:true}).waitFor();assert.equal(writes,2);await page.locator('#fin01Detail .fin02-print').waitFor();await page.getByRole('button',{name:'Fechar detalhes',exact:true}).click();
   }else{
    assert.equal(await table.getByRole('button',{name:/Gerar recibo/}).count(),0);assert.equal(writes,0);
    emitted=true;await page.evaluate(()=>window.dispatchEvent(new Event('jetta:fin01')));await table.getByRole('link',{name:'Abrir recibo da contratação 101',exact:true}).waitFor();
   }
   const print=table.getByRole('link',{name:'Abrir recibo da contratação 101',exact:true});const popupPromise=page.waitForEvent('popup');await print.click();const popup=await popupPromise;await popup.waitForLoadState();assert.match(popup.url(),/contratacoes\/1\/recibo\/impressao$/);assert.equal(writes,perfil==='GESTOR'?0:2);await popup.close();
   for(const width of [1440,390]){await page.setViewportSize({width,height:1000});await print.scrollIntoViewIfNeeded();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.screenshot({path:`artifacts/fin01-receipt-column/${perfil}-${width}.png`,fullPage:true});}
-  empty=true;await page.evaluate(()=>window.dispatchEvent(new Event('jetta:fin01')));await page.getByText('Nenhuma contratação encontrada para os filtros informados.',{exact:true}).waitFor();assert.equal(await table.locator('td').getAttribute('colspan'),'10');
+  empty=true;await page.evaluate(()=>window.dispatchEvent(new Event('jetta:fin01')));await page.getByText('Nenhuma contratação encontrada para os filtros informados.',{exact:true}).waitFor();assert.equal(await table.locator('td').getAttribute('colspan'),'8');
   assert.deepEqual(errors,[]);await page.close();
  }
  console.log('PASS coluna Recibo: ADM/Financeiro geram pela linha, erro/repetição, atualização/impressão, gestor leitura, vazio e desktop/mobile.');

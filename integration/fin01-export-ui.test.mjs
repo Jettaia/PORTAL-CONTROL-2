@@ -37,7 +37,8 @@ test('FIN01 exportação: filtros aplicados, todas as páginas e sessão segura'
   mode='error';await click(pdf);await page.getByText('Já existe uma exportação PDF em andamento. Tente novamente em instantes.',{exact:true}).waitFor();
   mode='limit';await click(excel);await page.getByText('Há muitos registros para exportar. Use filtros mais específicos e tente novamente.',{exact:true}).waitFor();
   mode='invalid';await click(excel);await page.getByText('O servidor não retornou um arquivo Excel válido.',{exact:true}).waitFor();assert.equal(downloads.length,2);
-  await page.locator('[name=numero]').fill('24');await click(excel);await page.getByText('Aplique os filtros alterados antes de exportar.',{exact:true}).waitFor();assert.equal(exports.length,5);
+  // A programmatic draft bypasses the auto-filter events; export must still reject stale filters.
+  await page.locator('[name=numero]').evaluate(input=>input.value='24');await click(excel);await page.getByText('Aplique os filtros alterados antes de exportar.',{exact:true}).waitFor();assert.equal(exports.length,5);
   await page.getByRole('button',{name:'Aplicar filtros',exact:true}).click();await page.getByText('Consulta atualizada.',{exact:true}).waitFor();
   if(await menu.getAttribute('open')===null)await menu.locator('summary').click();fs.mkdirSync('artifacts/fin01-export',{recursive:true});await page.locator('#fin01Page').screenshot({path:'artifacts/fin01-export/desktop.png'});await page.setViewportSize({width:390,height:844});await page.locator('#fin01Page').screenshot({path:'artifacts/fin01-export/mobile.png'});const box=await menu.boundingBox();assert.ok(box.x>=0&&box.x+box.width<=390);assert.equal(await excel.isVisible(),true);
   mode='hold';const count=exports.length;await excel.evaluate(e=>{e.click();e.click();});await page.waitForFunction(()=>document.querySelector('.fin01-export button').disabled);assert.equal(exports.length,count+1);

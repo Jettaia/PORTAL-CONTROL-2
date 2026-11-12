@@ -36,8 +36,8 @@ test('PC04 exportação: filtros aplicados, todas as páginas e sessão segura',
   await page.goto(`http://127.0.0.1:${server.address().port}`);await page.locator('#dashboard').waitFor({state:'visible'});
   await page.locator('#mainNav summary').filter({hasText:'Operação'}).click();await page.locator('[data-page=contratacoes]').click();
   const menu=page.locator('.pc04-export'),excel=page.getByRole('button',{name:'Exportar em Excel',exact:true}),pdf=page.getByRole('button',{name:'Exportar em PDF',exact:true});
-  await menu.waitFor();
-  assert.equal(await page.locator('.pc04-date-range label').first().evaluate(el=>getComputedStyle(el).color),'rgb(255, 255, 255)');
+  await menu.waitFor();await page.locator('.pc04-filter-advanced summary').click();
+  assert.equal(await page.locator('.pc04-date-range label').first().evaluate(el=>getComputedStyle(el).color),'rgb(80, 103, 128)');
   const expected={numero:'23',prestador:'Ana',depositoId:'1',centroCusto:'CC1',gestor:'Maria',inicio:'2026-11-01',fim:'2026-11-09',valor:'100,00',situacao:'ABERTA'};
   // Set one draft transaction, then apply through the real toolbar.
   await page.evaluate(values=>{for(const [key,value]of Object.entries(values)){const input=document.querySelector('[data-pc04-filter="'+key+'"]');input.value=value;input.dispatchEvent(new Event('input',{bubbles:true}));}},expected);
@@ -50,11 +50,11 @@ test('PC04 exportação: filtros aplicados, todas as páginas e sessão segura',
   await page.evaluate(values=>{for(const [key,value]of Object.entries(values)){const input=document.querySelector('[data-pc04-filter="'+key+'"]');input.value=value;input.dispatchEvent(new Event('input',{bubbles:true}));}},expected);await page.getByRole('button',{name:'Aplicar filtros',exact:true}).click();await page.getByText('Página atualizada.',{exact:true}).waitFor();
   await page.getByRole('button',{name:'Próxima página',exact:true}).click();await page.getByRole('button',{name:'Primeira página',exact:true}).waitFor();
   assert.equal(lists.at(-1).searchParams.get('antes'),'50');
-  await page.getByRole('button',{name:'Editar',exact:true}).click();await page.getByRole('button',{name:'Gerar / substituir entrada',exact:true}).click();await page.getByLabel('Token gerado',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'Editar',exact:true}).click();await page.getByRole('tab',{name:'Tokens',exact:true}).click();await page.getByRole('button',{name:'Gerar / substituir entrada',exact:true}).click();await page.getByLabel('Token gerado',{exact:true}).waitFor();await page.getByRole('button',{name:'Fechar contratação',exact:true}).click();
   await menu.locator('summary').click();const download=page.waitForEvent('download');await excel.click();assert.equal((await download).suggestedFilename(),'contratacoes-teste.xlsx');
   assert.deepEqual(Object.fromEntries(exports.at(-1).url.searchParams),expected);assert.equal(exports.at(-1).url.searchParams.has('antes'),false);
   await page.getByText('Arquivo Excel exportado.',{exact:true}).waitFor();
-  assert.equal(await page.getByLabel('Token gerado',{exact:true}).inputValue(),'01234567');
+  assert.equal(await page.getByLabel('Token gerado',{exact:true}).count(),0,'Closing the popup clears the token');
   if(!await menu.getAttribute('open'))await menu.locator('summary').click();const pdfDownload=page.waitForEvent('download');await pdf.click();assert.equal((await pdfDownload).suggestedFilename(),'contratacoes-teste.pdf');
   await page.getByText('Arquivo PDF exportado.',{exact:true}).waitFor();
   mode='error';await menu.locator('summary').click();await pdf.click();await page.getByText('Já existe uma exportação PDF em andamento. Tente novamente em instantes.',{exact:true}).waitFor();

@@ -114,7 +114,7 @@ test('FIN05 agrupado: expandir, paginar, imprimir, filtrar, erros e logout por p
    summaryError=true;await page.locator('#fin05Filters').getByRole('button',{name:'Aplicar filtros',exact:true}).click();await page.getByText('EXTRATO_INDISPONIVEL',{exact:true}).waitFor();assert.equal(await page.locator('#fin05Totals').isVisible(),false);
    if(perfil==='ADMIN'){
     summaryError=false;await page.getByRole('button',{name:'Limpar filtros',exact:true}).click();await page.getByText('Extrato atualizado.',{exact:true}).waitFor();await button.click();await detail.getByText('Exibindo 100 de 102 contratações.',{exact:true}).waitFor();
-    await detail.getByRole('button',{name:'Detalhes da contratação 101',exact:true}).click();await page.locator('#fin01Detail').getByRole('heading',{name:'Contratação 101',exact:true}).waitFor();assert.equal(await page.locator('#fin01Page').isVisible(),true);
+    await detail.getByRole('button',{name:'Detalhes da contratação 101',exact:true}).click();await page.locator('#fin01Detail').getByRole('heading',{name:'Contratação #101',exact:true}).waitFor();assert.equal(await page.locator('#fin01Page').isVisible(),false);assert.equal(await page.locator('#fin05Page').isVisible(),true);await page.getByRole('button',{name:'Fechar detalhes',exact:true}).click();assert.equal(await detail.isVisible(),true);
    }
    await page.evaluate(()=>{window.jettaAccount=null;window.dispatchEvent(new CustomEvent('jetta:auth',{detail:null}));});assert.equal(await page.locator('[data-fin05-depot]').count(),0);assert.deepEqual(errors,[]);assert.deepEqual(writes,[]);await context.close();
   }

@@ -1,16 +1,31 @@
 (()=>{
- const root=document.getElementById('fin01Page');if(!root)return;
+ const root=document.getElementById('fin01Page');if(!root)return;root.classList.add('fin01-model-a');
  const batchErrors={PREVIA_ALTERADA:'Dados alterados; confira uma nova prévia.',PREVIA_EXPIRADA:'A prévia expirou. Gere uma nova prévia do período.',PREVIA_INVALIDA:'A prévia está indisponível. Gere uma nova prévia do período.',PREVIA_DE_OUTRO_USUARIO:'Gere uma nova prévia com o usuário conectado.',PERIODO_MUITO_EXTENSO:'O período é muito extenso. Divida em períodos menores.',RECIBO_INDISPONIVEL:'Não foi possível emitir este recibo. Tente novamente.',PERMISSAO_NEGADA:'Seu perfil não permite esta operação.',MFA_RECENTE_OBRIGATORIO:'Valide a autenticação para continuar.',DATA_INVALIDA:'Informe as datas de início e fim válidas.',PERIODO_INVALIDO:'O fim do período deve ser igual ou posterior ao início.'};
  const labels={AGUARDANDO_PAGAMENTO:'Aguardando pagamento',RECIBO_GERADO:'Recibo gerado',PAGO:'Pago'};
- let pendingStatementDetail=null;
+ let filterTimer=null,detailSource=root;
  let canOperate=false,catalogOperate=false;
  let batchVersion=0,batchBusy=false,batchPreview=null,batchResults=[];
  let exportBusy=false,exportVersion=0,listBusy=false,exportReady=false;
  let rows=[],next=null,applied='',generation=0,detailGeneration=0,controller=new AbortController();
  const el=(tag,text,cls)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;if(cls)node.className=cls;return node;};
  const statusBadge=state=>el('span',labels[state]||'Situação indisponível','fin01-badge fin01-badge--'+({AGUARDANDO_PAGAMENTO:'pendente',RECIBO_GERADO:'recibo',PAGO:'pago'}[state]||'neutra'));
- root.innerHTML='<form id="fin01Filters" class="fin01-grid"><label>Número da contratação<input name="numero" inputmode="numeric" pattern="[1-9][0-9]*" placeholder="Número exato"></label><label>Depósito<select name="depositoId" aria-label="Depósito"><option value="">Todos autorizados</option></select></label><label>Prestador<select name="prestadorId" aria-label="Prestador"><option value="">Todos autorizados</option></select></label><label>Serviço desde<input name="inicio" type="date"></label><label>Serviço até<input name="fim" type="date"></label><label>Situação<select name="situacao" aria-label="Situação"><option value="">Todas</option><option value="AGUARDANDO_PAGAMENTO" selected>Aguardando pagamento</option><option value="RECIBO_GERADO">Recibo gerado</option><option value="PAGO">Pago</option></select></label><div class="fin01-actions"><button>Aplicar filtros</button><button type="button" id="fin01Clear" class="secondary">Limpar filtros</button></div></form><div class="fin01-actions"><button type="button" id="fin02BatchStart" hidden>Gerar recibos do período</button></div><section id="fin02Batch" aria-label="Lote de recibos" aria-live="polite"></section><div class="fin01-toolbar"><h3>Contratações</h3><details class="fin01-export"><summary aria-label="Exportar financeiro">Exportar</summary><button type="button" data-fin01-export="xlsx">Exportar em Excel</button><button type="button" data-fin01-export="pdf">Exportar em PDF</button></details></div><p id="fin01Message" role="status" aria-live="polite"></p><div class="fin01-scroll" tabindex="0" role="region" aria-label="Contratações liberadas"><table><thead><tr><th>Número</th><th>Prestador</th><th>Depósito</th><th>Atividade</th><th>Data do serviço</th><th>Valor liberado</th><th>Liberação</th><th>Situação</th><th>Consulta</th><th>Recibo</th></tr></thead><tbody id="fin01Rows"></tbody></table></div><button type="button" id="fin01More" hidden>Carregar mais</button><section id="fin01Detail" aria-label="Detalhe financeiro" aria-live="polite"></section>';
+ root.innerHTML=`<form id="fin01Filters" class="fin01-grid">
+ <label>Contratação<input name="numero" aria-label="Número da contratação" inputmode="numeric" pattern="[1-9][0-9]*" placeholder="Número exato"></label>
+ <label>Prestador<select name="prestadorId" aria-label="Prestador"><option value="">Todos autorizados</option></select></label>
+ <label>Depósito<select name="depositoId" aria-label="Depósito"><option value="">Todos autorizados</option></select></label>
+ <label>Serviço desde<input name="inicio" type="date"></label><label>Serviço até<input name="fim" type="date"></label>
+ <label>Situação<select name="situacao" aria-label="Situação"><option value="">Todas</option><option value="AGUARDANDO_PAGAMENTO" selected>Aguardando pagamento</option><option value="RECIBO_GERADO">Recibo gerado</option><option value="PAGO">Pago</option></select></label>
+ <div class="fin01-actions fin01-filter-actions"><button type="submit">Aplicar filtros</button><button type="button" id="fin01Clear" class="secondary">Limpar filtros</button></div></form>
+ <p id="fin01Message" role="status" aria-live="polite"></p>
+ <div class="fin01-toolbar"><div class="fin01-list-caption"><span id="fin01Count">Contratações</span><span class="fin01-order"> · Liberação mais antiga</span></div><div class="fin01-actions fin01-main-actions">
+ <details class="fin01-export"><summary aria-label="Exportar financeiro">Exportar</summary><div class="fin01-export-menu"><button type="button" data-fin01-export="xlsx">Exportar em Excel</button><button type="button" data-fin01-export="pdf">Exportar em PDF</button></div></details><button type="button" id="fin02BatchStart" hidden>Gerar recibos do período</button></div></div>
+ <section id="fin02Batch" aria-label="Lote de recibos" aria-live="polite"></section>
+ <div class="fin01-scroll fin01-queue" tabindex="0" role="region" aria-label="Contratações liberadas"><table><thead><tr><th>Contratação</th><th>Prestador / depósito</th><th>Serviço / atividade</th><th>Liberação</th><th class="fin01-money">Valor liberado</th><th>Situação</th><th>Recibo</th><th><span class="fin01-sr">Detalhes</span></th></tr></thead><tbody id="fin01Rows"></tbody></table></div>
+ <footer class="fin01-totals" id="fin01Totals"></footer><button type="button" id="fin01More" hidden>Carregar mais</button>
+ <dialog id="fin01DetailDialog" aria-label="Detalhe financeiro"><section id="fin01Detail" aria-label="Detalhe financeiro" aria-live="polite"></section></dialog>`;
  const $=id=>document.getElementById(id),form=$('fin01Filters'),message=text=>$('fin01Message').textContent=text;
+ // Shared detail must remain renderable while the finance list is hidden by the statement.
+ $('fin01DetailDialog').classList.add('view-section');root.parentElement.append($('fin01DetailDialog'));
  function exportControls(){root.querySelectorAll('[data-fin01-export]').forEach(button=>button.disabled=exportBusy||listBusy||!exportReady);}
  function resetExport(){exportVersion++;exportBusy=false;exportControls();}
  function currentFilters(){return new URLSearchParams([...new FormData(form)].filter(([,value])=>value)).toString();}
@@ -32,25 +47,35 @@
   finally{if(stamp===exportVersion){exportBusy=false;exportControls();}}
  }
  root.querySelectorAll('[data-fin01-export]').forEach(button=>button.addEventListener('click',()=>exportFinance(button.dataset.fin01Export)));
- new MutationObserver(()=>{if(root.hidden)resetExport();}).observe(root,{attributes:true,attributeFilter:['hidden']});
- document.addEventListener('visibilitychange',()=>{if(document.hidden)resetExport();});
+ function cancelFilterTimer(){clearTimeout(filterTimer);filterTimer=null;}
+ function closeDetail(){detailGeneration++;$('fin01DetailDialog').close();$('fin01Detail').replaceChildren();}
+ new MutationObserver(()=>{if(root.hidden){cancelFilterTimer();generation++;listBusy=false;exportReady=false;resetExport();if(detailSource===root)closeDetail();}}).observe(root,{attributes:true,attributeFilter:['hidden']});
+ const statement=document.getElementById('fin05Page');if(statement)new MutationObserver(()=>{if(statement.hidden&&detailSource===statement)closeDetail();}).observe(statement,{attributes:true,attributeFilter:['hidden']});
+ document.addEventListener('visibilitychange',()=>{if(document.hidden){cancelFilterTimer();resetExport();}});
+ $('fin01DetailDialog').addEventListener('close',()=>{if(!$('fin01DetailDialog').open){detailGeneration++;$('fin01Detail').replaceChildren();}});
  exportControls();
  const serviceDate=value=>value?value.split('-').reverse().join('/'):'—';
  const timestamp=value=>value?new Date(value.slice(0,23)+'Z').toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}):'—';
- const amount=value=>'R$ '+String(value??'0.00').replace('.',',');
+ const amount=value=>Number(value??0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+ const cents=value=>BigInt(String(value??'0.00').replace('.',''));
+ function sumAmount(records){const sum=records.reduce((sum,r)=>sum+cents(r.ValorLiberado),0n);return amount(String(sum/100n)+'.'+String(sum%100n).padStart(2,'0'));}
  async function api(path,method='GET',body={}){const response=await fetch('/api/financeiro'+path,{signal:controller.signal,credentials:'same-origin',cache:'no-store',method,...(method==='POST'?{headers:{'Content-Type':'application/json','x-jetta-request':'web'},body:JSON.stringify(body)}:{})});const data=await response.json();if(!response.ok){const error=Error(batchErrors[data.erro]||data.erro||'Não foi possível consultar o financeiro.');error.codigo=data.codigo||data.erro;throw error;}return data;}
  function render(){const target=$('fin01Rows');target.replaceChildren();
-  if(!rows.length){const tr=el('tr'),td=el('td','Nenhuma contratação encontrada para os filtros informados.');td.colSpan=10;tr.append(td);target.append(tr);}
+  if(!rows.length){const tr=el('tr'),td=el('td','Nenhuma contratação encontrada para os filtros informados.');td.colSpan=8;tr.append(td);target.append(tr);}
   for(const row of rows){const tr=el('tr');tr.dataset.contract=row.ContratacaoId;
-   for(const text of [row.Numero,row.Prestador,row.Deposito,row.Tipo,serviceDate(row.DataServico),amount(row.ValorLiberado),timestamp(row.LiberadoEmUtc)])tr.append(el('td',text));
+   tr.append(el('td','#'+row.Numero,'fin01-number'));
+   const provider=el('td');provider.append(el('strong',row.Prestador),el('small',row.Deposito));tr.append(provider);
+   const service=el('td');service.append(el('span',serviceDate(row.DataServico)),el('small',row.Tipo));tr.append(service);
+   const release=el('td',timestamp(row.LiberadoEmUtc),'fin01-release');tr.append(release,el('td',amount(row.ValorLiberado),'fin01-money'));
    const status=el('td'),badge=statusBadge(row.Situacao);status.append(badge);tr.append(status);
-   const td=el('td'),button=el('button','Detalhes');button.type='button';button.setAttribute('aria-label','Detalhes da contratação '+row.Numero);button.addEventListener('click',()=>detail(row.ContratacaoId));td.append(button);tr.append(td);
+   const td=el('td'),button=el('button',undefined,'fin01-detail-button');button.innerHTML='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg>';button.type='button';button.setAttribute('aria-label','Detalhes da contratação '+row.Numero);button.addEventListener('click',()=>detail(row.ContratacaoId,root));td.append(button);
    const receiptCell=el('td');
    if(row.ReciboId){const link=el('a','Abrir recibo','fin02-print');link.href='/api/financeiro/contratacoes/'+encodeURIComponent(row.ContratacaoId)+'/recibo/impressao';link.target='_blank';link.rel='noopener';link.setAttribute('aria-label','Abrir recibo da contratação '+row.Numero);receiptCell.append(link);}
    else if(canOperate){const emit=el('button','Gerar recibo');emit.type='button';emit.setAttribute('aria-label','Gerar recibo da contratação '+row.Numero);emit.addEventListener('click',()=>generateReceipt(row.ContratacaoId,emit,$('fin01Message')));receiptCell.append(emit);}
    else receiptCell.textContent='Ainda não emitido';
-   tr.append(receiptCell);target.append(tr);
-  }$('fin01More').hidden=!next;
+   tr.append(receiptCell,td);target.append(tr);
+  }$('fin01More').hidden=!next;$('fin01Count').textContent=rows.length+' contratações'+(next?' carregadas':'');
+  const totals=$('fin01Totals');totals.replaceChildren();for(const [label,value]of [['Valor exibido',sumAmount(rows)],['Pendente exibido',sumAmount(rows.filter(r=>r.Situacao!=='PAGO'))]]){const span=el('span',label+' ');span.append(el('b',value));totals.append(span);}
  }
  function batchReset(){batchVersion++;batchPreview=null;batchResults=[];$('fin02Batch').replaceChildren();}
  function batchControls(){ $('fin02BatchStart').hidden=!catalogOperate;$('fin02BatchStart').disabled=batchBusy; }
@@ -65,11 +90,12 @@
   if(batchResults.some(r=>r.erro==='PREVIA_ALTERADA')){target.append(el('p','A prévia foi alterada. Gere uma nova prévia do período antes de confirmar.'));actions.append(batchButton('Gerar nova prévia',previewBatch));}
   if(batchResults.some(r=>['GERADO','JA_EMITIDO'].includes(r.estado)))actions.append(batchButton('Imprimir recibos gerados',printBatch));target.append(actions);
  }
- async function previewBatch(){if(batchBusy||!catalogOperate)return;batchReset();const target=$('fin02Batch'),inicio=form.elements.inicio.value,fim=form.elements.fim.value;
+ async function previewBatch(){if(batchBusy||!catalogOperate)return;cancelFilterTimer();message('');batchReset();const target=$('fin02Batch'),inicio=form.elements.inicio.value,fim=form.elements.fim.value;
   if(!inicio||!fim){target.append(el('p','Informe o início e o fim do período.'));return;}
   if(fim<inicio){target.append(el('p','O fim do período deve ser igual ou posterior ao início.'));return;}
   const query=new URLSearchParams({inicio,fim});for(const name of ['depositoId','prestadorId','numero'])if(form.elements[name].value)query.set(name,form.elements[name].value);
   if(form.elements.numero.value&&!/^[1-9]\d*$/.test(form.elements.numero.value)){target.append(el('p','Informe um número de contratação válido.'));return;}
+  if(currentFilters()!==applied)load();
   const stamp=batchVersion,requestSignal=controller.signal;batchBusy=true;batchControls();target.append(el('p','Consultando todas as contratações do período…'));
   try{const data=await api('/recibos/previa?'+query);if(stamp!==batchVersion)return;target.replaceChildren(el('h3','Prévia do lote'),el('p','Inclui somente contratações liberadas sem recibo no período, independentemente do filtro Situação. O período inclui as duas datas.'));
    if(!data.quantidade){target.append(el('p','Nenhuma contratação liberada sem recibo neste período.'));return;}
@@ -90,19 +116,34 @@
   finally{if(!requestSignal.aborted){batchBusy=false;batchControls();$('fin02Batch').querySelectorAll('button').forEach(b=>b.disabled=false);}}
  }
  $('fin02BatchStart').addEventListener('click',previewBatch);
- for(const event of ['input','change'])form.addEventListener(event,()=>{batchReset();batchControls();});
+ function validFilters(report=false){
+  if(!form.checkValidity()){if(report)form.reportValidity();message('Informe um número de contratação válido e datas válidas.');return false;}
+  if(form.elements.inicio.value&&form.elements.fim.value&&form.elements.inicio.value>form.elements.fim.value){message(batchErrors.PERIODO_INVALIDO);return false;}return true;
+ }
+ function filtersChanged(event){
+  cancelFilterTimer();if(event.type==='change'&&currentFilters()===applied)return;
+  batchReset();batchControls();generation++;closeDetail();exportReady=false;listBusy=false;resetExport();$('fin01More').hidden=true;
+  if(!validFilters())return;message('Atualizando filtros…');
+  const delay=event.type==='change'?0:350;
+  filterTimer=setTimeout(()=>{filterTimer=null;if(!root.hidden&&!document.hidden)load();},delay);
+ }
+ for(const event of ['input','change'])form.addEventListener(event,filtersChanged);
  async function generateReceipt(key,button,feedback){
-  if(button.disabled)return;const stamp=detailGeneration,listStamp=generation;
+  if(button.disabled)return;const stamp=detailGeneration,listStamp=generation,source=button.closest('#fin01DetailDialog')?detailSource:root;
   button.disabled=true;feedback.textContent='Gerando recibo…';
-  try{await api('/contratacoes/'+encodeURIComponent(key)+'/recibo','POST');if(stamp!==detailGeneration||listStamp!==generation){if(button.isConnected&&listStamp===generation)feedback.textContent='Recibo gerado. Atualize a consulta para visualizá-lo.';return;}await load();await detail(key);}
+   try{await api('/contratacoes/'+encodeURIComponent(key)+'/recibo','POST');if(stamp!==detailGeneration||listStamp!==generation){if(button.isConnected&&listStamp===generation)feedback.textContent='Recibo gerado. Atualize a consulta para visualizá-lo.';return;}await load();await detail(key,source);}
   catch(error){if(stamp===detailGeneration&&listStamp===generation&&error.name!=='AbortError'){feedback.textContent=error.message;button.disabled=false;}}
   finally{if(button.isConnected)button.disabled=false;}
  }
- async function detail(key){const stamp=++detailGeneration,target=$('fin01Detail');target.replaceChildren(el('p','Consultando detalhes…'));
+ function detailHeading(key,title){const heading=el('div',undefined,'fin01-detail-heading'),close=el('button','Fechar detalhes','secondary');close.type='button';close.addEventListener('click',()=>closeDetail());heading.append(el('h3',title),close);return heading;}
+ function detailContent(key,title,...nodes){const body=el('div',undefined,'fin01-detail-body');body.append(...nodes);$('fin01Detail').replaceChildren(detailHeading(key,title),body);return body;}
+ async function detail(key,source=root){detailSource=source;const stamp=++detailGeneration;let target=detailContent(key,'Contratação',el('p','Consultando detalhes…'));if(!$('fin01DetailDialog').open)$('fin01DetailDialog').showModal();$('fin01DetailDialog').scrollTop=0;
   try{const {registro:r,podeOperar}=await api('/contratacoes/'+encodeURIComponent(key));if(stamp!==detailGeneration)return;
-   target.replaceChildren(el('h3','Contratação '+r.Numero));const close=el('button','Fechar detalhes');close.type='button';close.addEventListener('click',()=>{detailGeneration++;target.replaceChildren();root.querySelector(`[data-contract="${key}"] button`)?.focus();});target.append(close);
+   target=detailContent(key,'Contratação #'+r.Numero);
    const dl=el('dl');
-   for(const [label,value] of [['Prestador',r.Prestador],['Depósito',r.Deposito],['Centro de custo',r.CentroCusto],['Cidade / UF',r.Cidade+' / '+r.Estado],['Atividade',r.Tipo],['Data do serviço',serviceDate(r.DataServico)],['Valor liberado',amount(r.ValorLiberado)],['Situação',labels[r.Situacao]],['Responsável pela liberação',r.LiberadoPor||'Não identificado'],['Liberado em (Brasília)',timestamp(r.LiberadoEmUtc)],['Gestor responsável',r.GestorResponsavel],['Início previsto',r.InicioPrevisto?.replace('T',' ')],['Fim previsto',r.FimPrevisto?.replace('T',' ')],['Entrada real',r.EntradaReal?.replace('T',' ')],['Saída real',r.SaidaReal?.replace('T',' ')]]){const dd=el('dd');if(label==='Situação')dd.append(statusBadge(r.Situacao));else dd.textContent=value||'—';dl.append(el('dt',label),dd);}target.append(dl);
+   for(const [label,value] of [['Prestador',r.Prestador],['Depósito',r.Deposito],['Centro de custo',r.CentroCusto],['Cidade / UF',r.Cidade+' / '+r.Estado],['Atividade',r.Tipo],['Data do serviço',serviceDate(r.DataServico)],['Valor liberado',amount(r.ValorLiberado)],['Situação',labels[r.Situacao]],['Responsável pela liberação',r.LiberadoPor||'Não identificado'],['Liberado em (Brasília)',timestamp(r.LiberadoEmUtc)],['Gestor responsável',r.GestorResponsavel]]){const dd=el('dd');if(label==='Situação')dd.append(statusBadge(r.Situacao));else dd.textContent=value||'—';dl.append(el('dt',label),dd);}target.append(dl);
+   const hours=el('details',undefined,'fin01-hours'),times=el('dl');hours.append(el('summary','Horários da contratação'));
+   for(const [label,value]of [['Início previsto',r.InicioPrevisto],['Fim previsto',r.FimPrevisto],['Entrada real',r.EntradaReal],['Saída real',r.SaidaReal]])times.append(el('dt',label),el('dd',value?.replace('T',' ')||'—'));hours.append(times);target.append(hours);
    const receiptActions=el('div',undefined,'fin01-actions'),receiptMessage=el('p');receiptMessage.setAttribute('role','status');receiptMessage.setAttribute('aria-live','polite');
    if(r.ReciboId){
     target.append(el('p','Recibo emitido em '+serviceDate(r.DataEmissao)+'.'+(r.Situacao==='PAGO'?'':' O valor continua pendente até a confirmação do pagamento com recibo assinado.')));
@@ -112,8 +153,8 @@
     const emit=el('button','Gerar recibo');emit.type='button';receiptActions.append(emit);
     emit.addEventListener('click',()=>generateReceipt(key,emit,receiptMessage));
    }
-   target.append(receiptActions,receiptMessage);await paymentDetail(key,r,podeOperar,target,stamp);if(stamp===detailGeneration)target.scrollIntoView({block:'nearest'});
-  }catch(error){if(stamp===detailGeneration&&error.name!=='AbortError')target.replaceChildren(el('p',error.message));}
+   target.append(receiptActions,receiptMessage);await paymentDetail(key,r,podeOperar,target,stamp);
+  }catch(error){if(stamp===detailGeneration&&error.name!=='AbortError')detailContent(key,'Contratação',el('p',error.message));}
  }
  async function paymentDetail(key,r,podeOperar,target,stamp){
   const box=el('section',undefined,'fin03-payment');box.setAttribute('aria-label','Pagamento e evidências');target.append(box);
@@ -128,7 +169,7 @@
    let busy=false;
    const mutate=async(suffix,body,button)=>{
     if(busy||stamp!==detailGeneration)return;busy=true;const controls=[...box.querySelectorAll('input,button')],disabled=controls.map(c=>c.disabled);controls.forEach(c=>c.disabled=true);feedback.textContent='Registrando…';
-    try{await api('/contratacoes/'+encodeURIComponent(key)+'/pagamento'+suffix,'POST',body);if(stamp!==detailGeneration)return;await load();await detail(key);}
+    try{await api('/contratacoes/'+encodeURIComponent(key)+'/pagamento'+suffix,'POST',body);if(stamp!==detailGeneration)return;const source=detailSource;await load();await detail(key,source);}
     catch(error){if(stamp===detailGeneration&&error.name!=='AbortError'){feedback.textContent=error.message;controls.forEach((c,i)=>c.disabled=disabled[i]);button.disabled=false;}}
     finally{busy=false;}
    };
@@ -161,7 +202,7 @@
    box.append(history.childElementCount?history:el('p','Nenhuma ação financeira registrada.'));
   }catch(error){if(stamp===detailGeneration&&error.name!=='AbortError')box.replaceChildren(el('p','Não foi possível consultar pagamento e evidências: '+error.message));}
  }
- async function load(more=false){resetExport();listBusy=true;exportReady=false;exportControls();const stamp=++generation;detailGeneration++;$('fin01Detail').replaceChildren();
+ async function load(more=false){cancelFilterTimer();resetExport();listBusy=true;exportReady=false;exportControls();const stamp=++generation;closeDetail();
   if(!more){applied=new URLSearchParams([...new FormData(form)].filter(([,value])=>value)).toString();rows=[];next=null;render();}
   const query=new URLSearchParams(applied);if(more&&next)query.set('cursor',next);
   $('fin01More').disabled=true;message('Consultando…');
@@ -171,11 +212,11 @@
   }finally{if(stamp===generation){listBusy=false;exportControls();$('fin01More').disabled=false;}}
  }
  function options(name,values,key){const select=form.elements[name],selected=select.value;select.replaceChildren(new Option('Todos autorizados',''),...values.map(row=>new Option(row.Nome,row[key])));if([...select.options].some(o=>o.value===selected))select.value=selected;}
- form.addEventListener('submit',event=>{event.preventDefault();load();});$('fin01More').addEventListener('click',()=>load(true));
- $('fin01Clear').addEventListener('click',()=>{form.reset();batchReset();batchControls();load();});
+ form.addEventListener('submit',event=>{event.preventDefault();cancelFilterTimer();if(validFilters(true))load();});$('fin01More').addEventListener('click',()=>load(true));
+ $('fin01Clear').addEventListener('click',()=>{cancelFilterTimer();form.reset();batchReset();batchControls();load();});
  window.addEventListener('jetta:fin01',async()=>{const signal=controller.signal;
-  try{const data=await api('/catalogo');if(signal.aborted)return;catalogOperate=data.podeOperar===true;batchControls();options('depositoId',data.depositos,'DepositoId');options('prestadorId',data.prestadores,'PrestadorId');await load();if(!signal.aborted&&pendingStatementDetail){const key=pendingStatementDetail;pendingStatementDetail=null;await detail(key);}}catch(error){if(!signal.aborted)message(error.message);}
+   try{const data=await api('/catalogo');if(signal.aborted)return;catalogOperate=data.podeOperar===true;batchControls();options('depositoId',data.depositos,'DepositoId');options('prestadorId',data.prestadores,'PrestadorId');await load();}catch(error){if(!signal.aborted)message(error.message);}
  });
- window.addEventListener('jetta:fin01-open',event=>{const key=String(event.detail??'');if(!/^[1-9]\d*$/.test(key)||!window.jettaAccount?.fin01)return;pendingStatementDetail=key;window.dispatchEvent(new CustomEvent('jetta:go',{detail:'pagamentos'}));});
- window.addEventListener('jetta:auth',()=>{exportReady=false;listBusy=false;resetExport();pendingStatementDetail=null;canOperate=false;catalogOperate=false;batchReset();batchBusy=false;batchControls();generation++;detailGeneration++;controller.abort();controller=new AbortController();rows=[];next=null;applied='';form.reset();options('depositoId',[],'DepositoId');options('prestadorId',[],'PrestadorId');$('fin01Detail').replaceChildren();render();message('');});
+ window.addEventListener('jetta:fin01-open',event=>{const key=String(event.detail??'');if(!/^[1-9]\d*$/.test(key)||!window.jettaAccount?.fin01)return;const source=statement&&!statement.hidden?statement:!root.hidden?root:null;if(source)detail(key,source);});
+ window.addEventListener('jetta:auth',()=>{cancelFilterTimer();closeDetail();exportReady=false;listBusy=false;resetExport();canOperate=false;catalogOperate=false;batchReset();batchBusy=false;batchControls();generation++;controller.abort();controller=new AbortController();rows=[];next=null;applied='';form.reset();options('depositoId',[],'DepositoId');options('prestadorId',[],'PrestadorId');render();message('');});
 })();
