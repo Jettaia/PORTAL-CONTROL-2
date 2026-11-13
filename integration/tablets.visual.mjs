@@ -10,6 +10,7 @@ let tabletReads=0;
 const contract={ContratacaoId:7,Numero:7,Prestador:'Prestador teste',Deposito:'Depósito Norte',DepositoId:1,Tipo:'Diária',TipoServicoId:1,DataServico:'2026-10-30',Status:'ABERTA',Valor:'100.00',Versao:1};
 app.get('/contract-fixture',(_req,res)=>res.send('<!doctype html><html><body><section id="pc04Page"><div id="pc04Panel"></div></section><script src="/pc04.js"></script></body></html>'));
 app.get('/api/pc04/catalogo',(_req,res)=>res.json({podeOperar:true,depositos:[],tipos:[],prestadores:[],gestores:[]}));
+app.get('/api/pc04/exclusoes-pendentes',(_req,res)=>res.json({podeExcluir:false,registros:[]}));
 app.get('/api/pc05/status',(_req,res)=>res.json({pc05:true}));
 app.get('/api/pc04/contratacoes',(_req,res)=>res.json({registros:[contract]}));
 app.get('/api/pc04/contratacoes/7',(_req,res)=>res.json({registro:contract,podeOperar:true,pc05:true,entradaTokenUsada:false,eventos:[]}));

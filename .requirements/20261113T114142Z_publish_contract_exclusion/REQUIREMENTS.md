@@ -27,3 +27,9 @@ Bootstrap; contract-exclusion.integration opt-in em SQL descartavel; regressao s
 Corrigir expectativa; executar gates; commit/pacote/imagem; backup, ensaio/rollback, migracao45, candidato, troca da API e live; baixar backup.
 
 Sem nova regra funcional. Serena e Lad ausentes. Mesma estrategia aditiva de producao; nenhuma limpeza ou contracao autorizada por este pedido.
+
+## Validation updates
+- Bootstrap RED: migrations45 != 44. GREEN: instalacao real com 45 migracoes, senha preservada e recusa de sobrescrita, 1/1.
+- Exclusao HTTP+SQL descartavel: PASS, com autorizacao, financeiro e dependencias.
+- Regressao: 510 testes, sintaxe e 7 testes do piloto PASS.
+- tablets.visual RED adicional: fixture antiga nao respondia GET /api/pc04/exclusoes-pendentes, impedindo o carregamento da lista. GREEN apos completar somente a resposta simulada vazia; cadastro/edicao/reemissao/revogacao/status/sessao/navegacao/mobile e token da contratacao preservados. Sem alteracao produtiva adicional.
