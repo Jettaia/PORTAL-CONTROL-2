@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prototype:exclusao-contratacoes": "node scripts/prototype-exclusao-contratacoes.mjs",
     "prototype:usuarios": "node scripts/prototype-usuarios.mjs",
     "prototype:prestadores": "node scripts/prototype-prestadores.mjs",
     "prototype:depositos": "node scripts/prototype-depositos.mjs",

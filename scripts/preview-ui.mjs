@@ -32,6 +32,7 @@ export function createPreviewApp(){
  app.get('/api/pc01/solicitacoes',(_req,res)=>res.json({solicitacoes:[]}));
  app.get(['/api/b24c/usuarios','/api/b25/usuarios-pendentes'],(_req,res)=>res.json({registros:[]}));
  app.get(['/api/b24a/depositos','/api/b24a/servicos','/api/b24a/chapas'],(_req,res)=>res.json({registros:[],depositos:[],vinculos:[],adm:true,pc02:true,pc03:true,podeEditar:true}));
+ app.get('/api/pc04/exclusoes-pendentes',(_req,res)=>res.json({podeExcluir:false,registros:[]}));
  app.get('/api/pc04/catalogo',(_req,res)=>res.json({podeOperar:true,depositos:[],tipos:[],prestadores:[],gestores:[]}));
  app.get('/api/pc05/status',(_req,res)=>res.json({pc05:true}));
  app.get(['/api/pc04/contratacoes','/api/pc05/tablets','/api/financeiro/contratacoes'],(_req,res)=>res.json({registros:[],proximaPagina:null,podeOperar:true}));

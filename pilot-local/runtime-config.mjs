@@ -1,4 +1,9 @@
 import {pilotDatabase} from '../src/pilot-target.js';
+export async function assertContractExclusionReady(cfg,db){
+ if(!cfg.pc04)return;
+ const row=(await db.query("SELECT CASE WHEN OBJECT_ID(N'Operacao.ContratacaoExclusaoSolicitacao',N'U') IS NOT NULL AND OBJECT_ID(N'Operacao.ContratacaoNumeroExcluido',N'U') IS NOT NULL THEN 1 ELSE 0 END Pronto"))[0];
+ if(Number(row?.Pronto)!==1)throw Error('Exclusão de contratações pendente: aplique a migração 45 antes de iniciar o portal.');
+}
 export async function assertFinanceReady(cfg,db){
  if(!cfg.fin01)return;
  const row=(await db.query("SELECT CASE WHEN OBJECT_ID(N'Financeiro.ContratacaoRecibo',N'U') IS NOT NULL THEN 1 ELSE 0 END Recibo,CASE WHEN OBJECT_ID(N'Financeiro.ContratacaoBaixa',N'U') IS NOT NULL THEN 1 ELSE 0 END Baixa,CONVERT(varchar(10),(SELECT value FROM sys.extended_properties WHERE class=0 AND name='JETTA_FIN04_RESET')) Reset"))[0];

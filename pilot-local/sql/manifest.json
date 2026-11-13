@@ -1,5 +1,5 @@
 {
-  "version": "1.23.0-notifications",
+  "version": "1.24.0-contract-exclusion",
   "purpose": "PILOTO_LOCAL_FINANCEIRO_CONTRATACOES",
   "files": [
     {
@@ -241,6 +241,11 @@
       "file": "44-notifications.sql",
       "source": "pilot-local/notifications.sql",
       "sha256": "af2ec88130ccd4dd321135395bd5fd2347208d047c5b9f1965269324197f1674"
+    },
+    {
+      "file": "45-contract-exclusion.sql",
+      "source": "pilot-local/contract-exclusion.sql",
+      "sha256": "306ac287d19518f830b6fdc898ddf4b8ae5069c725bd8b5219645d825cb37f76"
     }
   ]
 }

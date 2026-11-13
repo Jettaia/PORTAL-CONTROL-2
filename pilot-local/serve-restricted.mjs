@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {pilotConfig,assertFinanceReady} from './runtime-config.mjs';
+import {pilotConfig,assertFinanceReady,assertContractExclusionReady} from './runtime-config.mjs';
 import {createPilotApp} from './app.mjs';
 import {withDb} from '../src/auth-db.js';
 import {windowsPrincipal} from '../src/sql-runtime.js';
@@ -17,6 +17,7 @@ process.env.JETTA_MFA_KEY_HEX=privateConfig.mfaKey;
 process.env.JETTA_MFA_ENFORCE_CRITICAL='true';process.env.JETTA_MFA_REQUIRE_PRIVILEGED='true';
 await withDb(cfg,async db=>{
  await assertFinanceReady(cfg,db);
+ await assertContractExclusionReady(cfg,db);
  if(cfg.pc04&&!(await db.query("SELECT 1 V FROM sys.key_constraints WHERE parent_object_id=OBJECT_ID('Operacao.Contratacao') AND name='UQ_PC04_DepositoNumero'")).length)throw Error('Numeração pendente; execute o upgrade administrativo com o piloto encerrado.');
 });
 // Fail closed if runtime ACLs accidentally expose launcher credentials or administrator data.

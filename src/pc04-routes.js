@@ -1,4 +1,5 @@
 import * as contracts from './pc04.js';
+import * as exclusions from './pc04-exclusion.js';
 import {comparison} from './pc07.js';
 import {contractsWorkbook} from './pc04-export-xlsx.js';
 import {contractReportPdf} from './pc04-export-pdf.js';
@@ -9,6 +10,9 @@ export function mountContracts(app,cfg,{session,sameOrigin},service=contracts){
  const error=(res,e)=>res.status(e.status||503).json({erro:e.status?e.message:'CONTRATACOES_INDISPONIVEIS'});
  app.get('/api/pc04/media',session,async(req,res)=>{try{res.set('Cache-Control','no-store').json(await comparison(cfg,req.user.id,req.query));}catch(e){error(res,e);}});
  app.get('/api/pc04/catalogo',session,async(req,res)=>{try{res.json(await service.catalog(cfg,req.user.id));}catch(e){error(res,e);}});
+ app.get('/api/pc04/exclusoes-pendentes',session,async(req,res)=>{try{res.set('Cache-Control','no-store').json(await exclusions.pending(cfg,req.user.id));}catch(e){error(res,e);}});
+ for(const [action,fn] of [['excluir',exclusions.remove],['solicitar-exclusao',exclusions.request]])app.post('/api/pc04/contratacoes/:id/'+action,sameOrigin,session,async(req,res)=>{try{res.json({ok:true,resultado:await fn(cfg,req.user.id,req.rawSession,req.params.id,req.body)});}catch(e){error(res,e);}});
+ app.post('/api/pc04/contratacoes/:id/exclusao/:solicitacao/recusar',sameOrigin,session,async(req,res)=>{try{res.json({ok:true,resultado:await exclusions.reject(cfg,req.user.id,req.rawSession,req.params.id,req.params.solicitacao,req.body)});}catch(e){error(res,e);}});
  app.get('/api/pc04/horarios-pendentes',session,async(req,res)=>{try{res.json(await service.pendingHours(cfg,req.user.id));}catch(e){error(res,e);}});
  app.post('/api/pc04/contratacoes/:id/horarios/:solicitacao/decidir',sameOrigin,session,async(req,res)=>{try{res.json({ok:true,resultado:await service.decideHours(cfg,req.user.id,req.rawSession,req.params.id,req.params.solicitacao,req.body)});}catch(e){error(res,e);}});
  app.get('/api/pc04/contratacoes',session,async(req,res)=>{try{res.json(await service.list(cfg,req.user.id,req.query.antes,req.query));}catch(e){error(res,e);}});
