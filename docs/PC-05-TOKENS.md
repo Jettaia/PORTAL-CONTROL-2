@@ -1,4 +1,17 @@
-# PC-05 — Tokens e página do tablet
+# PC-05 — Identificação fixa por CPF e página do tablet
+
+## Fluxo atual — 16/11/2026
+
+- O código do prestador são os quatro primeiros dígitos do CPF normalizado, preservando zeros. Não há geração, validade ou substituição. A rota autenticada de emissão antiga responde 410 GERACAO_TOKEN_DESATIVADA. Tokens históricos permanecem preservados e não são mais consumidos.
+- O tablet mantém teclado e resposta genérica `Token aceito`, sem nomes ou dados da contratação. Recebe quatro dígitos; primeira leitura elegível registra entrada e a próxima saída. São exigidos tablet autorizado, depósito ativo vinculado e escopo atual de quem habilitou o aparelho. Entrada na data do serviço, saída até o dia seguinte. Pendências de horários, liberação histórica, pagamento, cancelamento e conclusão impedem novo apontamento.
+- Coincidência de prefixo entre duas contratações elegíveis é recusada com validação genérica. Não são criados códigos alternativos nem escolhida uma pessoa arbitrariamente.
+- Envio novo até dez segundos após entrada confirma a mesma entrada, sem gravar saída. O tablet envia requisicaoId UUID e mantém o mesmo ID ao repetir após erro. Recibos em Seguranca.Auditoria, na transação PC04, tornam retries idempotentes inclusive após saída ou além desses dez segundos. Reusar ID com outro código é recusado. Código puro não é gravado na auditoria; o vínculo usa HMAC.
+- Na contratação, a aba Entrada e saída (rota /tokens mantida) mostra codigoRegistro e horários, sem botões de geração. Em Diárias, Consultar códigos consulta os detalhes autorizados, permite copiar o código fixo e não faz POST nem exige MFA para essa leitura.
+- Horários conservam origem TOKEN e evento TOKEN_USAR por compatibilidade do schema, com identificacao CPF_FIXO nos detalhes. O valor e a liberação financeira continuam independentes. Entrada manual existente também permite a próxima saída no tablet.
+- Não exige migração de schema. Backend, contratação, Diárias e tablet precisam ser atualizados juntos. A validação foi realizada somente localmente; nenhuma publicação de produção faz parte desta mudança.
+
+## Histórico do fluxo anterior
+
 
 Registro histórico de 28/10/2026 (a validação atual de quatro dígitos está abaixo). Implementação local pronta e revisão independente sem achados materiais. **Aceite integrado INCONCLUSIVE/BLOCKED** pela indisponibilidade de SQL Server local. Preservadas todas as alterações anteriores PC-01 a PC-04. Sem commit, push, deploy ou alteração do banco/configuração privada instalados.
 

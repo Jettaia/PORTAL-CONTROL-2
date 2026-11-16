@@ -30,19 +30,19 @@ test('tablet: sem autorrevogação, token funciona e revogação remota retorna 
  assert.equal(await page.locator('#message').isVisible(),false);
 
  assert.equal(await page.getByRole('button',{name:'Encerrar uso deste tablet',exact:true}).count(),0);
- assert.equal(await page.title(),'Digite seu token');
+ assert.equal(await page.title(),'Digite seu código');
  assert.equal(await page.locator('header,footer').count(),0);
  assert.doesNotMatch(await page.locator('body').innerText(),/jetta/i);
- await page.getByRole('heading',{name:'Digite seu token',exact:true}).waitFor();
- await page.getByText('Use o código de 4 dígitos recebido. Códigos antigos de 8 dígitos continuam válidos até expirar.',{exact:true}).waitFor();
+ await page.getByRole('heading',{name:'Digite seu código',exact:true}).waitFor();
+ await page.getByText('Digite os quatro primeiros dígitos do seu CPF.',{exact:true}).waitFor();
  for(const text of ['Registro de entrada e saída','Token de entrada ou saída','A entrada deve ser registrada antes da saída.'])assert.equal(await page.getByText(text,{exact:true}).count(),0);
- assert.equal(await page.getByRole('textbox',{name:'Token',exact:true}).count(),1);
+ assert.equal(await page.getByRole('textbox',{name:'Código',exact:true}).count(),1);
  assert.equal(await page.locator('#code').getAttribute('aria-describedby'),'tokenInstructions');
 
- await page.locator('#code').fill('0a12-34');assert.equal(await page.locator('#code').inputValue(),'01234');
+ await page.locator('#code').fill('0a12');assert.equal(await page.locator('#code').inputValue(),'012');await page.locator('#code').fill('0123');
  await page.getByRole('button',{name:'Limpar',exact:true}).click();
  for(const digit of '012345678')await page.getByRole('button',{name:digit,exact:true}).click();
- assert.equal(await page.locator('#code').inputValue(),'01234567');
+ assert.equal(await page.locator('#code').inputValue(),'0123');
  assert.equal(await page.locator('#code').evaluate(e=>e.type),'text','token deve mostrar os dígitos');
  assert.equal(await page.locator('#code').evaluate(e=>getComputedStyle(e).webkitTextSecurity),'none');
  fs.mkdirSync('artifacts/tablet-revocation',{recursive:true});await page.screenshot({path:'artifacts/tablet-revocation/token-visible.png',fullPage:true});
@@ -50,17 +50,17 @@ test('tablet: sem autorrevogação, token funciona e revogação remota retorna 
  for(const viewport of [{width:768,height:1100},{width:390,height:844}]){
   await page.setViewportSize(viewport);await page.locator('#submit').scrollIntoViewIfNeeded();
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-  assert.ok(await page.getByRole('button',{name:'Confirmar token',exact:true}).isVisible());
+  assert.ok(await page.getByRole('button',{name:'Confirmar código',exact:true}).isVisible());
   await page.screenshot({path:evidenceDir+'/'+viewport.width+'.png',fullPage:true});
  }
  console.log('Tablet simplified visual evidence: '+evidenceDir);
 
- await page.getByRole('button',{name:'Confirmar token',exact:true}).click();
+ await page.getByRole('button',{name:'Confirmar código',exact:true}).click();
  await page.getByText('Token aceito',{exact:true}).waitFor();assert.equal(await page.locator('#code').inputValue(),'');
- for(const invalid of ['123','12345','123456','1234567']){await page.locator('#code').fill(invalid);assert.equal(await page.locator('#code').evaluate(e=>e.checkValidity()),false);}
+ for(const invalid of ['123']){await page.locator('#code').fill(invalid);assert.equal(await page.locator('#code').evaluate(e=>e.checkValidity()),false);}
  await page.getByRole('button',{name:'Limpar',exact:true}).click();
  for(const digit of '0123')await page.getByRole('button',{name:digit,exact:true}).click();
- await page.getByRole('button',{name:'Confirmar token',exact:true}).click();
+ await page.getByRole('button',{name:'Confirmar código',exact:true}).click();
  await page.getByText('Token aceito',{exact:true}).waitFor();assert.equal(await page.locator('#code').inputValue(),'');
  fs.mkdirSync('artifacts/tablet-revocation',{recursive:true});await page.screenshot({path:'artifacts/tablet-revocation/tablet.png',fullPage:true});
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));

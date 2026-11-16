@@ -24,12 +24,12 @@ test('PC04 exportação: filtros aplicados, todas as páginas e sessão segura',
     await route.fulfill({status:200,headers:{'content-type':format==='pdf'?'application/pdf':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','content-disposition':`attachment; filename="contratacoes-teste.${format}"`},body:Buffer.from(format==='pdf'?'%PDF-1.4\nfixture':'PK\u0003\u0004fixture')});responded?.();return;
    }
    if(p==='/api/auth/me')body={usuario:{id:1,nome:'ADM sintético',perfil:'ADMIN',funcoes:['ADMIN'],pc01:true,pc04:true,pc05:true},mfa:{necessarioParaAcoesSensiveis:false}};
-   else if(p==='/api/conta')body={pc01:true,pc04:true,pc05:true};
+   else if(p==='/api/conta')body={pc01:true,pc04:true,pc05:true,codigoRegistro:'0123'};
    else if(p==='/api/mfa/status')body={enabled:false,enrolled:false,verified:false,stepUp:false};
    else if(p==='/api/pc04/catalogo')body={depositos:[{DepositoId:1,Nome:'Depósito sintético'}],tipos:[],prestadores:[],gestores:[],podeOperar:true};
-   else if(p==='/api/pc05/status')body={pc05:true};
+   else if(p==='/api/pc05/status')body={pc05:true,codigoRegistro:'0123'};
    else if(p==='/api/pc04/contratacoes'){lists.push(url);body={registros:[row],proximaPagina:url.searchParams.has('antes')?null:'50'};}
-   else if(p==='/api/pc04/contratacoes/23')body={registro:row,eventos:[],podeOperar:true,pc05:true};
+   else if(p==='/api/pc04/contratacoes/23')body={registro:row,eventos:[],podeOperar:true,pc05:true,codigoRegistro:'0123'};
    else if(p==='/api/pc05/contratacoes/23/tokens')body={codigo:'01234567',versao:1,expiraEmUtc:new Date(Date.now()+3600000).toISOString()};
    await route.fulfill({json:body});
   });
@@ -38,23 +38,23 @@ test('PC04 exportação: filtros aplicados, todas as páginas e sessão segura',
   const menu=page.locator('.pc04-export'),excel=page.getByRole('button',{name:'Exportar em Excel',exact:true}),pdf=page.getByRole('button',{name:'Exportar em PDF',exact:true});
   await menu.waitFor();await page.locator('.pc04-filter-advanced summary').click();
   assert.equal(await page.locator('.pc04-date-range label').first().evaluate(el=>getComputedStyle(el).color),'rgb(80, 103, 128)');
-  const expected={numero:'23',prestador:'Ana',depositoId:'1',centroCusto:'CC1',gestor:'Maria',inicio:'2026-11-01',fim:'2026-11-09',valor:'100,00',situacao:'ABERTA'};
+  const expected={numero:'23',prestador:'Ana',depositoIds:'1',centroCusto:'CC1',gestor:'Maria',inicio:'2026-11-01',fim:'2026-11-09',valor:'100,00',situacao:'ABERTA'};
   // Set one draft transaction, then apply through the real toolbar.
-  await page.evaluate(values=>{for(const [key,value]of Object.entries(values)){const input=document.querySelector('[data-pc04-filter="'+key+'"]');input.value=value;input.dispatchEvent(new Event('input',{bubbles:true}));}},expected);
+  await page.evaluate(values=>{for(const [key,value]of Object.entries(values)){if(key==='depositoIds'){const c=document.querySelector('.pc04-depot-picker input[value="'+value+'"]');c.checked=true;c.dispatchEvent(new Event('change',{bubbles:true}));continue;}const input=document.querySelector('[data-pc04-filter="'+key+'"]');input.value=value;input.dispatchEvent(new Event('input',{bubbles:true}));}},expected);
   await page.getByRole('button',{name:'Aplicar filtros',exact:true}).click();await page.getByText('Página atualizada.',{exact:true}).waitFor();
   assert.equal(await page.locator('[data-pc04-filter=dataServico]').count(),0);
   const listCount=lists.length;
   await page.evaluate(()=>{const input=document.querySelector('[data-pc04-filter=inicio]');input.value='2026-11-10';input.dispatchEvent(new Event('input',{bubbles:true}));});
   await page.getByRole('button',{name:'Aplicar filtros',exact:true}).click();await page.getByText('A data final do filtro deve ser igual ou posterior à data inicial.',{exact:true}).waitFor();assert.equal(lists.length,listCount);assert.equal(await page.locator('[data-pc04-filter=inicio]').inputValue(),'2026-11-10');
   await page.getByRole('button',{name:'Limpar filtros',exact:true}).click();await page.getByText('Página atualizada.',{exact:true}).waitFor();assert.equal(await page.locator('[data-pc04-filter=inicio]').inputValue(),'');assert.equal(await page.locator('[data-pc04-filter=fim]').inputValue(),'');assert.equal(lists.at(-1).search,'');
-  await page.evaluate(values=>{for(const [key,value]of Object.entries(values)){const input=document.querySelector('[data-pc04-filter="'+key+'"]');input.value=value;input.dispatchEvent(new Event('input',{bubbles:true}));}},expected);await page.getByRole('button',{name:'Aplicar filtros',exact:true}).click();await page.getByText('Página atualizada.',{exact:true}).waitFor();
+  await page.evaluate(values=>{for(const [key,value]of Object.entries(values)){if(key==='depositoIds'){const c=document.querySelector('.pc04-depot-picker input[value="'+value+'"]');c.checked=true;c.dispatchEvent(new Event('change',{bubbles:true}));continue;}const input=document.querySelector('[data-pc04-filter="'+key+'"]');input.value=value;input.dispatchEvent(new Event('input',{bubbles:true}));}},expected);await page.getByRole('button',{name:'Aplicar filtros',exact:true}).click();await page.getByText('Página atualizada.',{exact:true}).waitFor();
   await page.getByRole('button',{name:'Próxima página',exact:true}).click();await page.getByRole('button',{name:'Primeira página',exact:true}).waitFor();
   assert.equal(lists.at(-1).searchParams.get('antes'),'50');
-  await page.getByRole('button',{name:'Editar',exact:true}).click();await page.getByRole('tab',{name:'Tokens',exact:true}).click();await page.getByRole('button',{name:'Gerar / substituir entrada',exact:true}).click();await page.getByLabel('Token gerado',{exact:true}).waitFor();await page.getByRole('button',{name:'Fechar contratação',exact:true}).click();
+  await page.getByRole('button',{name:'Editar',exact:true}).click();await page.getByRole('tab',{name:'Entrada e saída',exact:true}).click();await page.getByLabel('Código para entrada e saída',{exact:true}).waitFor();await page.getByRole('button',{name:'Fechar contratação',exact:true}).click();
   await menu.locator('summary').click();const download=page.waitForEvent('download');await excel.click();assert.equal((await download).suggestedFilename(),'contratacoes-teste.xlsx');
   assert.deepEqual(Object.fromEntries(exports.at(-1).url.searchParams),expected);assert.equal(exports.at(-1).url.searchParams.has('antes'),false);
   await page.getByText('Arquivo Excel exportado.',{exact:true}).waitFor();
-  assert.equal(await page.getByLabel('Token gerado',{exact:true}).count(),0,'Closing the popup clears the token');
+  assert.equal(await page.getByLabel('Código para entrada e saída',{exact:true}).count(),0,'Closing the popup clears the displayed code');
   if(!await menu.getAttribute('open'))await menu.locator('summary').click();const pdfDownload=page.waitForEvent('download');await pdf.click();assert.equal((await pdfDownload).suggestedFilename(),'contratacoes-teste.pdf');
   await page.getByText('Arquivo PDF exportado.',{exact:true}).waitFor();
   mode='error';await menu.locator('summary').click();await pdf.click();await page.getByText('Já existe uma exportação PDF em andamento. Tente novamente em instantes.',{exact:true}).waitFor();

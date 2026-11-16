@@ -13,6 +13,13 @@ test('PC04 exporta mais de uma página, soma valores e identifica filtros',async
  const result=await exportData({exportNow:()=>new Date('2026-11-09T12:00:00Z')},1,{depositoId:'1',situacao:'LIBERADA'});
  assert.equal(result.quantidade,205);assert.equal(result.registros.length,205);assert.equal(result.total,'256.25');assert.match(result.filtrosTexto,/Floripa/);assert.match(result.filtrosTexto,/LIBERADA/);assert.match(result.geradoEm,/09\/11\/2026/);assert.match(result.geradoEm,/09:00/);assert.equal(queue.length,0);assert.equal(writes,0);assert.equal(commits,1);
 });
+test('exportação usa múltiplos depósitos autorizados e descreve nomes',async t=>{
+ const queue=[[],[{UsuarioId:1,Adm:0,Gestor:1}],[],[{DepositoId:2,Nome:'Depósito A'},{DepositoId:3,Nome:'Depósito B'}]],sql=[];
+ t.mock.method(odbc,'connect',async()=>({query:async q=>{sql.push(q);assert.ok(queue.length);return queue.shift();},beginTransaction:async()=>{},commit:async()=>{},rollback:async()=>{},close:async()=>{}}));
+ const result=await exportData({},1,{depositoIds:'2,3'});
+ assert.match(sql[2],/c.DepositoId IN\(2,3\)/);assert.match(sql[2],/uf.UsuarioId=1/);assert.match(sql[3],/uf.UsuarioId=1/);assert.match(result.filtrosTexto,/Depósito A, Depósito B/);assert.equal(queue.length,0);
+});
+
 test('exportação rejeita cursor e filtros inválidos antes de consultar banco',async()=>{
  for(const filters of [{antes:'100'},{dataServico:'2026-02-30'},{valor:'1.001'},{situacao:'FORJADA'},{depositoId:['1','2']},{invasao:'x'}])await assert.rejects(()=>exportData({},1,filters),e=>e.status===400);
 });

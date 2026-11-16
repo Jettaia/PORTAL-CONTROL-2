@@ -32,6 +32,18 @@
 #pc04Page #pc04Panel .pc04-quick-search{display:flex;align-items:center;flex-direction:row;gap:9px;border:1px solid #c5d2df;border-radius:7px;padding:0 12px;flex:1;min-width:180px;max-width:360px;min-height:42px;color:#506780}
 #pc04Page #pc04Panel .pc04-quick-search input{border:0;padding:11px 0;min-height:42px;background:transparent;font-size:13px;font-weight:400;outline-offset:4px}
 #pc04Page #pc04Panel .pc04-compact-filter{font-size:0;gap:0;flex:none}
+#pc04Page #pc04Panel .pc04-depot-picker{position:relative;min-width:0;width:210px;max-width:100%;color:#506780}
+#pc04Page #pc04Panel .pc04-depot-picker>summary{cursor:pointer;border:1px solid #c5d2df;border-radius:7px;padding:13px 12px;min-height:44px;box-sizing:border-box;font-size:12px;overflow-wrap:anywhere;background:#fff}
+#pc04Page #pc04Panel .pc04-depot-picker[open]>summary{outline:2px solid #f68b28;outline-offset:2px}
+#pc04Page #pc04Panel .pc04-depot-options{position:absolute;z-index:20;top:calc(100% + 8px);left:0;width:320px;max-width:calc(100vw - 64px);box-sizing:border-box;background:#fff;border:1px solid #c5d2df;border-radius:8px;box-shadow:0 8px 24px #12365826;padding:8px}
+#pc04Page #pc04Panel .pc04-depot-choices{max-height:260px;overflow-y:auto}
+#pc04Page #pc04Panel .pc04-depot-choices label{display:flex;flex-direction:row;align-items:center;gap:10px;padding:10px 8px;font-size:13px;cursor:pointer;overflow-wrap:anywhere}
+#pc04Page #pc04Panel .pc04-depot-choices label:hover{background:#edf3f9}
+#pc04Page #pc04Panel .pc04-depot-choices input{width:18px;height:18px;min-height:0;flex:none;margin:0;accent-color:#164c7e}
+#pc04Page #pc04Panel .pc04-depot-actions{display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid #e1e8ef;padding-top:8px}
+#pc04Page #pc04Panel .pc04-depot-actions button{flex:1;padding:10px;font-size:12px;white-space:normal}
+#pc04Page #pc04Panel input.pc05-fixed-code{width:180px;max-width:100%;font-size:28px;font-weight:700;letter-spacing:.15em;text-align:center;color:#123d66;background:#edf3f9;font-variant-numeric:tabular-nums}
+@media(max-width:700px){#pc04Page #pc04Panel .pc04-depot-picker{width:100%}}
 #pc04Page #pc04Panel .pc04-compact-filter select{width:168px;min-height:44px;font-size:12px;font-weight:400;color:#506780}
 #pc04Page #pc04Panel .pc04-filter-advanced{margin:0;min-width:0}
 #pc04Page #pc04Panel .pc04-filter-advanced>summary{display:flex;align-items:center;min-height:44px;padding:10px 0;white-space:nowrap;font-size:12px;color:#506780;cursor:pointer}

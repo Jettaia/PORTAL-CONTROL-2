@@ -73,15 +73,15 @@ test('tablet multidepósito: persistência, escopo completo e consumo em todos o
   const issueFor=async(depot,actor,cpf)=>{
    const provider=(await expect('/api/b24a/chapas',admin,{nome:'Prestador '+cpf,cpf,telefone:'',cnpj:'',depositos:[depot]},201)).resultado;
    const contract=(await expect('/api/pc04/contratacoes',actor.cookie,{depositoId:depot,prestadorId:Number(provider.PrestadorId),tipoServicoId:Number(service.TipoServicoId),gestorId:actor.id,inicioPrevisto:today+'T00:00',fimPrevisto:today+'T23:59',valor:'100.00'},201)).resultado;
-   return {contract,code:await expect('/api/pc05/contratacoes/'+contract.ContratacaoId+'/tokens',actor.cookie,{versao:Number(contract.Versao),tipo:'ENTRADA'})};
+   return {contract,code:{codigo:cpf.slice(0,4)}};
   };
   const ca=await issueFor(aId,actors.gestorA,'11122233344'),cb=await issueFor(bId,actors.gestorB,'22233344455');
   await expect(point,cookie,{codigo:ca.code.codigo});await expect(point,cookie,{codigo:cb.code.codigo});
-  for(const c of [ca,cb])assert.equal(Number((await db.query('SELECT TabletId FROM Operacao.ContratacaoToken WHERE ContratacaoId='+c.contract.ContratacaoId))[0].TabletId),mid);
+  for(const c of [ca,cb])assert.equal(Number((await db.query("SELECT JSON_VALUE(DetalhesJson,'$.tabletId') TabletId FROM Operacao.ContratacaoEvento WHERE Acao='TOKEN_USAR' AND ContratacaoId="+c.contract.ContratacaoId))[0].TabletId),mid);
   const depotC=(await expect('/api/b24a/depositos',admin,{...depotBody,nome:'Depósito C',centroCusto:'CC-C'},201)).resultado,cId=Number(depotC.DepositoId);
   const cc=await issueFor(cId,{id:1,cookie:admin},'33344455566');
   await expect(point,cookie,{codigo:cc.code.codigo},409);
-  assert.equal((await db.query('SELECT ConsumidoEmUtc FROM Operacao.ContratacaoToken WHERE ContratacaoId='+cc.contract.ContratacaoId))[0].ConsumidoEmUtc,null);
+  assert.equal((await db.query('SELECT EntradaReal ConsumidoEmUtc FROM Operacao.Contratacao WHERE ContratacaoId='+cc.contract.ContratacaoId))[0].ConsumidoEmUtc,null);
   const inactive=await issueFor(bId,actors.gestorB,'44455566677');
   await db.query('UPDATE Cadastro.Deposito SET Ativo=0 WHERE DepositoId='+bId);
   await expect(point,cookie,{codigo:inactive.code.codigo},409);
@@ -89,7 +89,7 @@ test('tablet multidepósito: persistência, escopo completo e consumo em todos o
   await db.query('UPDATE Cadastro.Deposito SET Ativo=1 WHERE DepositoId='+bId);
   await db.query('UPDATE Operacao.TabletPC05 SET EmissorId='+actors.gestorA.id+' WHERE TabletId='+mid);
   await expect(point,cookie,{codigo:inactive.code.codigo},409); // issuer has no current B scope
-  assert.equal((await db.query('SELECT ConsumidoEmUtc FROM Operacao.ContratacaoToken WHERE ContratacaoId='+inactive.contract.ContratacaoId))[0].ConsumidoEmUtc,null);
+  assert.equal((await db.query('SELECT EntradaReal ConsumidoEmUtc FROM Operacao.Contratacao WHERE ContratacaoId='+inactive.contract.ContratacaoId))[0].ConsumidoEmUtc,null);
   await db.query('UPDATE Operacao.TabletPC05 SET EmissorId=1 WHERE TabletId='+mid);
   await db.query("CREATE TRIGGER Seguranca.TabletMultiTestFail ON Seguranca.Auditoria AFTER INSERT AS BEGIN IF EXISTS(SELECT 1 FROM inserted WHERE Acao=N'PC05_CADASTRO') THROW 55998,N'Falha sintetica de auditoria',1;END");
   await expect(base+'/'+mid+'/cadastro',admin,{nome:'Falha revertida',depositos:[aId]},503);

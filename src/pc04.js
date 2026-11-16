@@ -77,14 +77,20 @@ export async function catalog(cfg,actor){return transaction(cfg,actor,null,false
  if(!user.operational)return {depositosFiltro,pc04:true,podeOperar:false,podeAprovarHorarios:false,depositos:[],tipos:[],prestadores:[],gestores:[]};
  return {depositosFiltro,pc04:true,podeOperar:true,podeAprovarHorarios:user.admin||user.coordinator,depositos:await db.query(`SELECT f.DepositoId,f.Nome FROM Cadastro.Deposito f WHERE f.Ativo=1 AND ${scope(actor,user,'f')} ORDER BY f.Nome`),tipos:await db.query('SELECT TipoServicoId,Nome FROM Cadastro.TipoServico WHERE Ativo=1 ORDER BY Nome'),prestadores:await db.query(`SELECT p.PrestadorId,p.Nome,p.CPF,pf.DepositoId FROM Cadastro.Prestador p JOIN Cadastro.PrestadorDeposito pf ON pf.PrestadorId=p.PrestadorId AND pf.RevogadoEmUtc IS NULL JOIN Cadastro.Deposito f ON f.DepositoId=pf.DepositoId AND f.Ativo=1 WHERE p.Ativo=1 AND ${scope(actor,user,'f')} ORDER BY p.Nome,pf.DepositoId`),gestores:await db.query(`SELECT u.UsuarioId,u.Nome,f.DepositoId FROM Seguranca.Usuario u CROSS JOIN Cadastro.Deposito f WHERE u.Ativo=1 AND f.Ativo=1 AND ${scope(actor,user,'f')} AND ${responsibleScope('f.DepositoId')} ORDER BY u.Nome,u.UsuarioId,f.DepositoId`)};
 });}
+function depositIds(value){
+ if(typeof value!=='string'||value.length>10000||!value.trim())fail('FILTRO_INVALIDO');
+ return [...new Set(value.trim().split(',').map(v=>identifier(v)))];
+}
 function listFilters(filters){
- keys(filters,['antes','numero','prestador','deposito','depositoId','centroCusto','gestor','dataServico','inicio','fim','valor','situacao']);
+ keys(filters,['antes','numero','prestador','deposito','depositoId','depositoIds','centroCusto','gestor','dataServico','inicio','fim','valor','situacao']);
+ if(filters.depositoIds!==undefined&&filters.depositoId!==undefined)fail('FILTRO_INVALIDO');
  const predicates=[];
  for(const [key,raw] of Object.entries(filters)){
   if(typeof raw!=='string')fail('FILTRO_INVALIDO');
   const value=raw.trim();if(!value||key==='antes')continue;
   if(key==='numero')predicates.push('c.Numero='+identifier(value));
   else if(key==='depositoId')predicates.push('c.DepositoId='+identifier(value));
+  else if(key==='depositoIds')predicates.push('c.DepositoId IN('+depositIds(value).join(',')+')');
   else if(key==='inicio')predicates.push("c.DataServico>='"+date(value)+"'");
   else if(key==='fim')predicates.push("c.DataServico<='"+date(value)+"'");
   else if(key==='dataServico')predicates.push("c.DataServico='"+date(value)+"'");
@@ -99,14 +105,13 @@ export async function list(cfg,actor,antes,filters={}){
  const filtered=listFilters(filters);
  const before=antes===undefined?'':` AND c.ContratacaoId<${identifier(antes)}`;
  return transaction(cfg,actor,null,false,async(db,user)=>{
-  const tokenState=cfg.pc05?",CASE WHEN EXISTS(SELECT 1 FROM Operacao.ContratacaoToken ct WHERE ct.ContratacaoId=c.ContratacaoId AND ct.Tipo='ENTRADA' AND ct.ConsumidoEmUtc IS NOT NULL) THEN 1 ELSE 0 END EntradaTokenUsada":'';
-  const rows=await db.query(`SELECT TOP(201) ${columns}${tokenState} FROM Operacao.Contratacao c${joins} WHERE ${visibility(actor,user)}${filtered}${before} ORDER BY c.ContratacaoId DESC`),registros=rows.slice(0,200);
+  const rows=await db.query(`SELECT TOP(201) ${columns} FROM Operacao.Contratacao c${joins} WHERE ${visibility(actor,user)}${filtered}${before} ORDER BY c.ContratacaoId DESC`),registros=rows.slice(0,200);
   return {pc04:true,podeOperar:user.operational,registros,proximaPagina:rows.length>200?String(registros.at(-1).ContratacaoId):null};
  });
 }
 // Export uses the very same filter/visibility predicates, with one consistent read across all pages.
 export async function exportData(cfg,actor,filters={},maxRows=100000){
- keys(filters,['numero','prestador','deposito','depositoId','centroCusto','gestor','dataServico','inicio','fim','valor','situacao']);
+ keys(filters,['numero','prestador','deposito','depositoId','depositoIds','centroCusto','gestor','dataServico','inicio','fim','valor','situacao']);
  const filtered=listFilters(filters);if(!Number.isSafeInteger(maxRows)||maxRows<1||maxRows>100000)fail('LIMITE_INVALIDO');
  return transaction(cfg,actor,null,false,async(db,user)=>{
   const registros=await db.query(`SELECT TOP(${maxRows+1}) c.ContratacaoId,c.Numero,p.Nome Prestador,p.CPF,f.Nome Deposito,f.CentroCusto,g.Nome GestorResponsavel,
@@ -114,9 +119,10 @@ export async function exportData(cfg,actor,filters={},maxRows=100000){
    FROM Operacao.Contratacao c${joins} WHERE ${visibility(actor,user)}${filtered} ORDER BY c.ContratacaoId DESC`);
   if(registros.length>maxRows)fail('EXPORTACAO_MUITOS_REGISTROS',413);
   let depotName;if(filters.depositoId?.trim())depotName=(await db.query(`SELECT f.Nome FROM Cadastro.Deposito f WHERE f.DepositoId=${identifier(filters.depositoId.trim())} AND ${scope(actor,user,'f')}`))[0]?.Nome;
+  if(filters.depositoIds?.trim())depotName=(await db.query(`SELECT f.DepositoId,f.Nome FROM Cadastro.Deposito f WHERE f.DepositoId IN(${depositIds(filters.depositoIds).join(',')}) AND ${scope(actor,user,'f')} ORDER BY f.Nome,f.DepositoId`)).map(r=>r.Nome).join(', ')||'Nenhum depósito autorizado';
   const used=Object.fromEntries(Object.entries(filters).map(([key,value])=>[key,value.trim()]).filter(([,value])=>value));
-  const labels={numero:'Número',prestador:'Prestador',deposito:'Depósito',depositoId:'Depósito',centroCusto:'Centro de custo',gestor:'Gestor responsável',dataServico:'Data do serviço',inicio:'Serviço desde',fim:'Serviço até',valor:'Valor (R$)',situacao:'Situação'};
-  const filtrosTexto=Object.entries(used).map(([key,value])=>labels[key]+': '+(key==='depositoId'?(depotName||'ID '+value):['dataServico','inicio','fim'].includes(key)?value.split('-').reverse().join('/'):value)).join('; ')||'Todos os registros autorizados, sem filtros adicionais';
+  const labels={numero:'Número',prestador:'Prestador',deposito:'Depósito',depositoId:'Depósito',depositoIds:'Depósitos',centroCusto:'Centro de custo',gestor:'Gestor responsável',dataServico:'Data do serviço',inicio:'Serviço desde',fim:'Serviço até',valor:'Valor (R$)',situacao:'Situação'};
+  const filtrosTexto=Object.entries(used).map(([key,value])=>labels[key]+': '+(['depositoId','depositoIds'].includes(key)?(depotName||'ID '+value):['dataServico','inicio','fim'].includes(key)?value.split('-').reverse().join('/'):value)).join('; ')||'Todos os registros autorizados, sem filtros adicionais';
   const cents=registros.reduce((sum,row)=>sum+BigInt(String(row.Valor).replace('.','')),0n),total=String(cents/100n)+'.'+String(cents%100n).padStart(2,'0');
   const instant=cfg.exportNow?cfg.exportNow():new Date(),geradoEmUtc=instant.toISOString();
   const geradoEm=new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(instant)+' (Brasília)';
@@ -124,7 +130,7 @@ export async function exportData(cfg,actor,filters={},maxRows=100000){
  });
 }
 export async function detail(cfg,actor,id){identifier(id);return transaction(cfg,actor,null,false,async(db,user)=>{
- const row=await record(db,actor,user,id);return {registro:row,pc10:cfg.pc10===true&&!cfg.fin01,podeRegistrarHorariosDireto:user.admin,podeOperar:user.operational&&(user.admin||await branchAllowed(db,actor,row.DepositoId)),podeAprovarHorarios:user.admin||user.coordinator,solicitacoesHorarios:user.operational?await db.query(`SELECT hs.SolicitacaoId,CONVERT(varchar(16),hs.EntradaReal,126) EntradaReal,CONVERT(varchar(16),hs.SaidaReal,126) SaidaReal,hs.Motivo,hs.SolicitanteId,u.Nome Solicitante,hs.Status,hs.DecididoPor,CONVERT(varchar(23),hs.DecididoEmUtc,126) DecididoEmUtc FROM Operacao.ContratacaoHorarioSolicitacao hs JOIN Seguranca.Usuario u ON u.UsuarioId=hs.SolicitanteId WHERE hs.ContratacaoId=${identifier(id)} ORDER BY hs.SolicitacaoId DESC`):[],...(cfg.pc05?{pc05:true,entradaTokenUsada:(await db.query(`SELECT TOP(1) 1 V FROM Operacao.ContratacaoToken WHERE ContratacaoId=${identifier(id)} AND Tipo='ENTRADA' AND ConsumidoEmUtc IS NOT NULL`)).length>0}:{}),eventos:await contractHistory(db,id)};
+ const row=await record(db,actor,user,id);return {registro:row,pc10:cfg.pc10===true&&!cfg.fin01,podeRegistrarHorariosDireto:user.admin,podeOperar:user.operational&&(user.admin||await branchAllowed(db,actor,row.DepositoId)),podeAprovarHorarios:user.admin||user.coordinator,solicitacoesHorarios:user.operational?await db.query(`SELECT hs.SolicitacaoId,CONVERT(varchar(16),hs.EntradaReal,126) EntradaReal,CONVERT(varchar(16),hs.SaidaReal,126) SaidaReal,hs.Motivo,hs.SolicitanteId,u.Nome Solicitante,hs.Status,hs.DecididoPor,CONVERT(varchar(23),hs.DecididoEmUtc,126) DecididoEmUtc FROM Operacao.ContratacaoHorarioSolicitacao hs JOIN Seguranca.Usuario u ON u.UsuarioId=hs.SolicitanteId WHERE hs.ContratacaoId=${identifier(id)} ORDER BY hs.SolicitacaoId DESC`):[],...(cfg.pc05?{pc05:true,codigoRegistro:user.operational?(await db.query(`SELECT LEFT(REPLACE(REPLACE(REPLACE(p.CPF,'.',''),'-',''),' ',''),4) CodigoRegistro FROM Cadastro.Prestador p WHERE p.PrestadorId=${identifier(row.PrestadorId)} AND LEN(REPLACE(REPLACE(REPLACE(p.CPF,'.',''),'-',''),' ',''))=11`))[0]?.CodigoRegistro||null:null}:{}),eventos:await contractHistory(db,id)};
 });}
 async function branchAllowed(db,actor,branch){return (await db.query(`SELECT 1 V FROM Seguranca.UsuarioDeposito WHERE UsuarioId=${identifier(actor)} AND DepositoId=${identifier(branch)} AND RevogadoEmUtc IS NULL`)).length>0;}
 export async function create(cfg,actor,token,body){const v=creationInput(body);return transaction(cfg,actor,token,true,async(db,user)=>{

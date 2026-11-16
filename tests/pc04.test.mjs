@@ -20,6 +20,8 @@ test('PC-04 HTTP e serviço: ciclo individual, publicação e revisão preservam
   const mock=t.mock.method(odbc,'connect',async()=>db);
   try{const response=await call(suffix,body,headers,resource),result=await response.json();assert.equal(response.status,status,JSON.stringify(result));assert.equal(queue.length,0);assert.equal(commits,begins&&status<400?1:0);assert.equal(rollbacks,begins&&status>=400?1:0);check?.(result);inspect?.(sql);}finally{mock.mock.restore();}
  }
+ await t.test('múltiplos depósitos combinam filtro, cursor e escopo',()=>run({suffix:'?depositoIds=2,3,2&situacao=ABERTA&antes=90',queue:[[],[manager],[]],inspect:sql=>{assert.match(sql.at(-1),/c.DepositoId IN\(2,3\)/);assert.match(sql.at(-1),/uf.UsuarioId=1/);assert.match(sql.at(-1),/c.Status='ABERTA'/);assert.match(sql.at(-1),/c.ContratacaoId<90/);}}));
+ for(const query of ['depositoIds=1,,2','depositoIds=0,2','depositoIds=1%20OR%201=1','depositoIds=1&depositoIds=2','depositoIds=1,2&depositoId=1'])await t.test('lista de depósitos inválida: '+query,()=>run({suffix:'?'+query,status:400,queue:[]}));
  assert.equal((await call('',creation,{'x-user':''})).status,401);
  assert.equal((await call('',creation,{origin:'http://evil.test'})).status,403);
  await t.test('gestor não atribui outro responsável mesmo por API direta',()=>run({body:{...creation,gestorId:9},status:403,queue:prefix(),check:r=>assert.equal(r.erro,'GESTOR_RESPONSAVEL_FIXO'),inspect:sql=>assert.ok(!sql.some(q=>/^(INSERT|UPDATE)/.test(q)))}));

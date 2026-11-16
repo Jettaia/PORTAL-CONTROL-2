@@ -3,7 +3,7 @@ import {withDb,intLiteral,nvarcharLiteral as s} from './auth-db.js';
 import {roleSql} from './access-policy.js';
 import {hashToken,newToken} from './security.js';
 import {PlanningError} from './b3.js';
-import {transaction,record,event} from './pc04.js';
+import {transaction,event} from './pc04.js';
 
 const fail=(message,status=400)=>{throw new PlanningError(message,status);};
 const id=value=>{if(!/^[1-9]\d*$/.test(String(value)))fail('IDENTIFICADOR_INVALIDO');try{return intLiteral(value);}catch{fail('IDENTIFICADOR_INVALIDO');}};
@@ -44,31 +44,7 @@ async function authorizedTablet(db,raw,now){
 }
 function open(row){if(row.Status!=='ABERTA'||row.PagoEmUtc||Number(row.LiberacaoBloqueada)===1)fail('CONTRATACAO_FECHADA',409);if(row.HorarioPendenteId)fail('HORARIOS_PENDENTES_APROVACAO',409);}
 
-export async function issue(cfg,actor,session,contractId,body){
- keys(body,['versao','tipo']);id(contractId);if(!Number.isSafeInteger(body.versao)||body.versao<1)fail('VERSAO_INVALIDA');if(!['ENTRADA','SAIDA'].includes(body.tipo))fail('TIPO_INVALIDO');
- return transaction(cfg,actor,session,true,async(db,user)=>{
-  const now=await time(db),r=await record(db,actor,user,contractId,true);open(r);if(Number(r.Versao)!==body.versao)fail('REGISTRO_ALTERADO_ATUALIZE',409);
-  if(r[body.tipo==='ENTRADA'?'EntradaReal':'SaidaReal'])fail('HORARIO_JA_REGISTRADO',409);
-  if(body.tipo==='SAIDA'){
-   if(!r.EntradaReal)fail('ENTRADA_OBRIGATORIA',409);
-   if(!(await db.query(`SELECT TOP(1) 1 V FROM Operacao.ContratacaoToken WHERE ContratacaoId=${id(contractId)} AND Tipo='ENTRADA' AND ConsumidoEmUtc IS NOT NULL`)).length)fail('ENTRADA_OBRIGATORIA',409);
-  }
-  // The PC04 transaction lock serializes issuance and consumption globally.
-  // Consumed/replaced codes stay reserved until their original expiry.
-  const reserved=new Set((await db.query(`SELECT CodigoHash FROM Operacao.ContratacaoToken WITH(UPDLOCK,HOLDLOCK) WHERE ExpiraEmUtc>CONVERT(datetime2(3),${s(now.AgoraUtc,30)},126)`)).map(t=>t.CodigoHash));
-  const candidates=Array.from({length:10000},(_,i)=>i);
-  let code,verifier;
-  // Sample without replacement: find a free code even when almost full.
-  while(candidates.length){const index=crypto.randomInt(candidates.length),candidate=candidates[index];candidates[index]=candidates[candidates.length-1];candidates.pop();const value=String(candidate).padStart(4,'0'),digest=hash(cfg,value);if(!reserved.has(digest)){code=value;verifier=digest;break;}}
-  if(!code)fail('GERACAO_INDISPONIVEL',503);
-  const expires=future(now.AgoraUtc,60);
-  await db.query(`UPDATE Operacao.ContratacaoToken SET InvalidadoEmUtc=SYSUTCDATETIME() WHERE ContratacaoId=${id(contractId)} AND Tipo='${body.tipo}' AND ConsumidoEmUtc IS NULL AND InvalidadoEmUtc IS NULL`);
-  await db.query(`INSERT Operacao.ContratacaoToken(ContratacaoId,Tipo,CodigoHash,EmissorId,ExpiraEmUtc) VALUES(${id(contractId)},'${body.tipo}','${verifier}',${id(actor)},CONVERT(datetime2(3),${s(expires.slice(0,-1),30)},126))`);
-  await db.query(`UPDATE Operacao.Contratacao SET Versao=Versao+1 WHERE ContratacaoId=${id(contractId)} AND Versao=${body.versao}`);
-  await event(db,actor,contractId,'TOKEN_GERAR',{tipo:body.tipo,expiraEmUtc:expires});
-  return {ok:true,codigo:code,expiraEmUtc:expires,versao:body.versao+1};
- });
-}
+export async function issue(){fail('GERACAO_TOKEN_DESATIVADA',410);}
 const depotScope=(actor,user,alias='f')=>user.admin?'1=1':`EXISTS(SELECT 1 FROM Seguranca.UsuarioDeposito ud WHERE ud.UsuarioId=${id(actor)} AND ud.DepositoId=${alias}.DepositoId AND ud.RevogadoEmUtc IS NULL)`;
 const tabletScope=(actor,user)=>user.admin?'1=1':`((t.DepositoId IS NULL AND t.EmissorId=${id(actor)}) OR (t.DepositoId IS NOT NULL AND NOT EXISTS(SELECT 1 FROM ${tabletLinks()} links WHERE NOT EXISTS(SELECT 1 FROM Seguranca.UsuarioDeposito ud WHERE ud.UsuarioId=${id(actor)} AND ud.DepositoId=links.DepositoId AND ud.RevogadoEmUtc IS NULL))))`;
 function tabletName(value){if(typeof value!=='string'||!value.trim()||value.trim().length>80)fail('NOME_INVALIDO');return value.trim();}
@@ -124,21 +100,32 @@ export async function activate(cfg,body){keys(body,['pareamento']);if(!strong(bo
 });}
 export async function status(cfg,raw){return tabletTx(cfg,async(db,now)=>{await authorizedTablet(db,raw,now);return {ok:true};});}
 
-export async function consume(cfg,raw,body){keys(body,['codigo']);return tabletTx(cfg,async(db,now)=>{
- const t=await authorizedTablet(db,raw,now);
- const deny=async()=>{await db.query(`UPDATE Operacao.TabletPC05 SET Falhas=Falhas+1 WHERE TabletId=${id(t.TabletId)}`);return {erro:Number(t.Falhas)>=4?'TABLET_BLOQUEADO':'TOKEN_INVALIDO',status:Number(t.Falhas)>=4?401:409};};
- if(typeof body.codigo!=='string'||!/^(?:\d{4}|\d{8})$/.test(body.codigo))return deny();
- const token=(await db.query(`SELECT TOP(1) TokenId,ContratacaoId,Tipo,EmissorId,CONVERT(varchar(23),ExpiraEmUtc,126) ExpiraEmUtc,ConsumidoEmUtc,InvalidadoEmUtc FROM Operacao.ContratacaoToken WITH(UPDLOCK,HOLDLOCK) WHERE CodigoHash='${hash(cfg,body.codigo)}' AND ExpiraEmUtc>CONVERT(datetime2(3),${s(now.AgoraUtc,30)},126) ORDER BY TokenId DESC`))[0];
- if(!token||token.ConsumidoEmUtc||token.InvalidadoEmUtc||!after(token.ExpiraEmUtc,now.AgoraUtc))return deny();
- const r=(await db.query(`SELECT c.ContratacaoId,c.DepositoId,c.Status,c.PagoEmUtc,c.Versao,c.LiberacaoBloqueada,CONVERT(varchar(10),c.DataServico,23) DataServico,CONVERT(varchar(19),c.EntradaReal,126) EntradaReal,CONVERT(varchar(19),c.SaidaReal,126) SaidaReal FROM Operacao.Contratacao c WITH(UPDLOCK,HOLDLOCK) WHERE c.ContratacaoId=${id(token.ContratacaoId)} AND ${linkedContract(t.TabletId)} AND ${issuerDepotScope(token.EmissorId)} AND ${issuerDepotScope(t.EmissorId)} AND NOT EXISTS(SELECT 1 FROM Operacao.ContratacaoHorarioSolicitacao hs WITH(HOLDLOCK) WHERE hs.ContratacaoId=c.ContratacaoId AND hs.Status='PENDENTE')`))[0];
- if(!r)return deny();open(r);
- const entry=token.Tipo==='ENTRADA',field=entry?'Entrada':'Saida';
- if(r[field+'Real'])fail('HORARIO_JA_REGISTRADO',409);
- if(!entry&&!r.EntradaReal)fail('ENTRADA_OBRIGATORIA',409);
- const next=new Date(r.DataServico+'T00:00:00Z');next.setUTCDate(next.getUTCDate()+1);
- if(entry?now.AgoraLocal.slice(0,10)!==r.DataServico:now.AgoraLocal<=r.EntradaReal||now.AgoraLocal.slice(0,10)>next.toISOString().slice(0,10))fail('HORARIO_FORA_DO_SERVICO',409);
- await db.query(`UPDATE Operacao.ContratacaoToken SET ConsumidoEmUtc=SYSUTCDATETIME(),TabletId=${id(t.TabletId)} WHERE TokenId=${id(token.TokenId)} AND ConsumidoEmUtc IS NULL AND InvalidadoEmUtc IS NULL`);
- await db.query(`UPDATE Operacao.Contratacao SET ${field}Real=CONVERT(datetime2(0),${s(now.AgoraLocal,30)},126),${field}Origem='TOKEN',Versao=Versao+1 WHERE ContratacaoId=${id(r.ContratacaoId)}`);
- await event(db,token.EmissorId,r.ContratacaoId,'TOKEN_USAR',{tipo:token.Tipo,tabletId:String(t.TabletId),habilitadoPor:String(t.EmissorId),instanteUtc:utc(now.AgoraUtc),horarioLocal:now.AgoraLocal});
- return {ok:true,mensagem:'Token aceito'};
-});}
+export async function consume(cfg,raw,body){
+ keys(body,['codigo','requisicaoId']);
+ if(body.requisicaoId!==undefined&&(typeof body.requisicaoId!=='string'||!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(body.requisicaoId)))fail('CAMPOS_INVALIDOS');
+ return tabletTx(cfg,async(db,now)=>{
+  const t=await authorizedTablet(db,raw,now),accepted={ok:true,mensagem:'Token aceito'};
+  const deny=async()=>{await db.query(`UPDATE Operacao.TabletPC05 SET Falhas=Falhas+1 WHERE TabletId=${id(t.TabletId)}`);return {erro:Number(t.Falhas)>=4?'TABLET_BLOQUEADO':'TOKEN_INVALIDO',status:Number(t.Falhas)>=4?401:409};};
+  if(typeof body.codigo!=='string'||!/^\d{4}$/.test(body.codigo))return deny();
+  const codigoHash=hash(cfg,body.codigo);
+  // Replays are scoped to the authorized device and cannot become an exit.
+  if(body.requisicaoId){
+   const previous=(await db.query(`SELECT TOP(1) JSON_VALUE(a.DetalhesJson,'$.codigoHash') CodigoHash FROM Seguranca.Auditoria a WITH(HOLDLOCK) WHERE a.Entidade=N'TabletPC05' AND a.EntidadeId=${id(t.TabletId)} AND a.Acao=N'PC05_APONTAR' AND JSON_VALUE(a.DetalhesJson,'$.requisicaoId')=${s(body.requisicaoId,36)}`))[0];
+   if(previous)return previous.CodigoHash===codigoHash?accepted:deny();
+  }
+  const day=now.AgoraLocal.slice(0,10),local=s(now.AgoraLocal,30);
+  const matches=await db.query(`SELECT TOP(2) c.ContratacaoId,c.DepositoId,c.Status,c.PagoEmUtc,c.Versao,c.LiberacaoBloqueada,CONVERT(varchar(10),c.DataServico,23) DataServico,CONVERT(varchar(19),c.EntradaReal,126) EntradaReal,CONVERT(varchar(19),c.SaidaReal,126) SaidaReal FROM Operacao.Contratacao c WITH(UPDLOCK,HOLDLOCK) JOIN Cadastro.Prestador p ON p.PrestadorId=c.PrestadorId WHERE LEFT(REPLACE(REPLACE(REPLACE(p.CPF,'.',''),'-',''),' ',''),4)=${s(body.codigo,4)} AND LEN(REPLACE(REPLACE(REPLACE(p.CPF,'.',''),'-',''),' ',''))=11 AND c.Status='ABERTA' AND c.PagoEmUtc IS NULL AND c.LiberacaoBloqueada=0 AND c.SaidaReal IS NULL AND ((c.EntradaReal IS NULL AND c.DataServico=${s(day,10)}) OR (c.EntradaReal IS NOT NULL AND c.DataServico BETWEEN DATEADD(day,-1,CONVERT(date,${s(day,10)})) AND CONVERT(date,${s(day,10)}) AND c.EntradaReal<=CONVERT(datetime2(0),${local},126))) AND ${linkedContract(t.TabletId)} AND ${issuerDepotScope(t.EmissorId)} AND NOT EXISTS(SELECT 1 FROM Operacao.ContratacaoHorarioSolicitacao hs WITH(HOLDLOCK) WHERE hs.ContratacaoId=c.ContratacaoId AND hs.Status='PENDENTE') ORDER BY c.ContratacaoId`);
+  // A shared prefix never chooses a person arbitrarily or creates another code.
+  if(matches.length!==1)return deny();const r=matches[0];open(r);
+  if(r.SaidaReal)return deny();
+  const entry=!r.EntradaReal,field=entry?'Entrada':'Saida',tipo=entry?'ENTRADA':'SAIDA';
+  const next=new Date(r.DataServico+'T00:00:00Z');next.setUTCDate(next.getUTCDate()+1);
+  if(entry?day!==r.DataServico:now.AgoraLocal<r.EntradaReal||day>next.toISOString().slice(0,10))fail('HORARIO_FORA_DO_SERVICO',409);
+  // A rapid second submission (including from another tablet) confirms the entry.
+  if(!entry&&Date.parse(utc(now.AgoraLocal))-Date.parse(utc(r.EntradaReal))<10000){if(body.requisicaoId)await audit(db,t.EmissorId,t.TabletId,'APONTAR',{codigoHash,requisicaoId:body.requisicaoId});return accepted;}
+  await db.query(`UPDATE Operacao.Contratacao SET ${field}Real=CONVERT(datetime2(0),${local},126),${field}Origem='TOKEN',Versao=Versao+1 WHERE ContratacaoId=${id(r.ContratacaoId)}`);
+  await event(db,t.EmissorId,r.ContratacaoId,'TOKEN_USAR',{tipo,identificacao:'CPF_FIXO',codigoHash,requisicaoId:body.requisicaoId||null,tabletId:String(t.TabletId),habilitadoPor:String(t.EmissorId),instanteUtc:utc(now.AgoraUtc),horarioLocal:now.AgoraLocal});
+  if(body.requisicaoId)await audit(db,t.EmissorId,t.TabletId,'APONTAR',{codigoHash,requisicaoId:body.requisicaoId});
+  return accepted;
+ });
+}
