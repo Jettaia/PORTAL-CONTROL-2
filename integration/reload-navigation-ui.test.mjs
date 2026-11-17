@@ -25,7 +25,7 @@ test('F5 mantém tela, contratação e aba com dados novos; fechamento/logout li
   });
   const go=async name=>page.evaluate(name=>window.dispatchEvent(new CustomEvent('jetta:go',{detail:name})),name);
   await page.goto(`http://127.0.0.1:${server.address().port}`);await page.locator('#dashboard').waitFor({state:'visible'});
-  await go('tablets');await page.getByRole('heading',{name:'Tablets cadastrados',exact:true}).waitFor();await page.reload();await page.getByRole('heading',{name:'Tablets cadastrados',exact:true}).waitFor();
+  await go('tablets');await page.getByRole('searchbox',{name:'Buscar tablet',exact:true}).waitFor();await page.reload();await page.getByRole('searchbox',{name:'Buscar tablet',exact:true}).waitFor();
   await go('contratacoes');await page.getByRole('button',{name:'Editar',exact:true}).click();await page.getByRole('tab',{name:'Entrada e saída',exact:true}).click();
   const readsBefore=detailReads;row.EntradaReal='2026-11-12T08:03:00';row.Versao=2;await page.reload();
   await page.getByRole('heading',{name:'Contratação #1842',exact:true}).waitFor().catch(async e=>{console.log({url:page.url(),errors,detailReads,message:await page.locator('#pc04Message').textContent()});throw e;});assert.equal(await page.getByRole('tab',{name:'Entrada e saída',exact:true}).getAttribute('aria-selected'),'true');assert.ok(detailReads>readsBefore);assert.match(await page.locator('#pc04Pane_tokens').textContent(),/08:03/);
