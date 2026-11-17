@@ -174,3 +174,17 @@
 #pc04Page #pc04Panel .pc04-provider-options button:is(:hover,[aria-selected=true]){background:#edf3f9}
 #pc04Page #pc04Panel .pc04-provider-options small{font-size:11px;color:#506780}
 #pc04Page #pc04Panel .pc04-provider-options p{padding:12px;margin:0;font-size:12px;color:#506780}
+
+/* Calendário apenas para a data; hora digitável, sem seletor nativo de horário. */
+#pc04Page #pc04Panel #pc04Dialog .pc04-datetime-field{min-width:0;display:flex;flex-direction:column;gap:8px}
+#pc04Page #pc04Panel #pc04Dialog .pc04-datetime-label{font-size:12px;color:#3a536c;font-weight:500}
+#pc04Page #pc04Panel #pc04Dialog .pc04-datetime-parts{display:grid;grid-template-columns:minmax(0,1fr) 112px;gap:12px}
+#pc04Page #pc04Panel #pc04Dialog .pc04-datetime-parts label{min-width:0;display:flex;flex-direction:column;gap:8px}
+#pc04Page #pc04Panel #pc04Dialog .pc04-datetime-field input{min-width:0;box-sizing:border-box;font-variant-numeric:tabular-nums}
+#pc04Page #pc04Panel #pc04Dialog .pc04-datetime-field input[type=text]{text-align:center;letter-spacing:.03em}
+#pc04Page #pc04Panel #pc04Dialog .pc04-datetime-compact{display:flex;align-items:center;min-width:0;border:1px solid #ced9e3;border-radius:7px;background:white}
+#pc04Page #pc04Panel #pc04Dialog .pc04-datetime-compact input{border:0;border-radius:6px;background:transparent;min-height:42px;padding:12px 10px;outline-offset:-3px}
+#pc04Page #pc04Panel #pc04Dialog .pc04-datetime-compact input[type=date]{flex:1;width:0}
+#pc04Page #pc04Panel #pc04Dialog .pc04-datetime-compact input[type=text]{flex:0 0 72px;width:72px;padding-left:4px;padding-right:10px}
+#pc04Page #pc04Panel #pc04Dialog .pc04-datetime-compact:focus-within{outline:2px solid #f68b28;outline-offset:2px}
+@media(max-width:700px){#pc04Page #pc04Panel #pc04Dialog .pc04-datetime-parts{grid-template-columns:minmax(0,1fr) 96px;gap:10px}}

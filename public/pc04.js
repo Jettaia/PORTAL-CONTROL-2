@@ -129,7 +129,21 @@
   for(const input of [amount,...watched]){input.addEventListener('input',update);input.addEventListener('change',update);}update();
  }
  function lock(value){busy=value;panel.querySelectorAll('button,input,select,textarea').forEach(el=>{el.disabled=value||el.dataset.unavailable==='true';});dialog.querySelectorAll('.pc04-close,.pc04-dialog-footer button').forEach(el=>el.disabled=writing);}
- function field(form,key,label,type='text',required=true){const l=make('label',label),el=make(type==='select'?'select':type==='textarea'?'textarea':'input');el.id='pc04_'+key;el.name=key;if(!['select','textarea'].includes(type))el.type=type;el.required=required;if(type==='textarea')el.maxLength=800;l.append(el);form.append(l);return el;}
+ function dateTimeField(form,key,label,required){
+  const compact=key==='inicioPrevisto'||key==='fimPrevisto',id='pc04_'+key;
+  const group=make('div'),title=make('span',label),controls=make('div');group.className='pc04-datetime-field';group.setAttribute('role','group');group.setAttribute('aria-labelledby',id+'_label');title.id=id+'_label';title.className='pc04-datetime-label';controls.className=compact?'pc04-datetime-compact':'pc04-datetime-parts';
+  const value=make('input');value.type='hidden';value.id=id;value.name=key;
+  const date=make('input'),time=make('input');date.type='date';date.id=id+'_date';date.required=required;date.min='0001-01-01';date.max='9999-12-31';date.setAttribute('aria-label',label+' — Data');
+  time.type='text';time.id=id+'_time';time.required=required;time.inputMode='numeric';time.placeholder='HH:mm';time.maxLength=5;time.pattern='([01][0-9]|2[0-3]):[0-5][0-9]';time.title='Digite a hora de 00:00 a 23:59';time.autocomplete='off';time.setAttribute('aria-label',label+' — Hora');
+  const sync=event=>{value.value=date.value&&date.validity.valid&&time.value&&time.validity.valid?date.value+'T'+time.value:'';if(event)value.dispatchEvent(new Event(event.type==='blur'?'change':event.type,{bubbles:true}));};
+  const normalize=()=>{const raw=time.value;if(/^\d{3,4}$/.test(raw))time.value=raw.padStart(4,'0').replace(/(\d{2})(\d{2})/,'$1:$2');else if(/^\d{1,2}$/.test(raw)&&Number(raw)<24)time.value=raw.padStart(2,'0')+':00';else if(/^\d:\d{2}$/.test(raw))time.value='0'+raw;};
+  date.addEventListener('input',sync);date.addEventListener('change',sync);
+  time.addEventListener('input',event=>{if(/^\d{4}$/.test(time.value))normalize();sync(event);});time.addEventListener('blur',event=>{normalize();sync(event);});time.addEventListener('change',sync);
+  if(compact)controls.append(date,time);else for(const [text,input]of [['Data',date],['Hora',time]]){const part=make('label',text);part.htmlFor=input.id;part.append(input);controls.append(part);}
+  group.append(title,controls,value);form.append(group);
+  return {get value(){return value.value;},set value(next){date.value=String(next||'').slice(0,10);time.value=String(next||'').slice(11,16);sync();}};
+ }
+ function field(form,key,label,type='text',required=true){if(type==='datetime-local')return dateTimeField(form,key,label,required);const l=make('label',label),el=make(type==='select'?'select':type==='textarea'?'textarea':'input');el.id='pc04_'+key;el.name=key;if(!['select','textarea'].includes(type))el.type=type;el.required=required;if(type==='textarea')el.maxLength=800;l.append(el);form.append(l);return el;}
  function options(select,rows,key,label){select.replaceChildren(new Option('Selecione',''),...rows.map(r=>new Option(r[label],String(r[key]))));}
  function form(title){const section=make('section');section.className='pc04-card';section.append(make('h3',title));const f=make('form');f.className='pc04-grid';section.append(f);return {section,form:f};}
  function disableSection(section){section.classList.add('pc04-locked');for(const control of section.querySelectorAll('button,input,select,textarea')){control.dataset.unavailable='true';control.disabled=true;}}
