@@ -187,4 +187,13 @@
 #pc04Page #pc04Panel #pc04Dialog .pc04-datetime-compact input[type=date]{flex:1;width:0}
 #pc04Page #pc04Panel #pc04Dialog .pc04-datetime-compact input[type=text]{flex:0 0 72px;width:72px;padding-left:4px;padding-right:10px}
 #pc04Page #pc04Panel #pc04Dialog .pc04-datetime-compact:focus-within{outline:2px solid #f68b28;outline-offset:2px}
+#pc04Page #pc04Panel #pc04Dialog .pc04-depot-change>button{margin-top:4px}
+#pc04Page #pc04Panel #pc04Dialog .pc04-depot-change form{margin-top:18px}
+#pc04Page #pc04Panel #pc04Dialog .pc04-depot-note{grid-column:1/-1;font-size:13px;line-height:1.7;margin:0;color:#506780}
+#pc04Page #pc04Panel #pc04Dialog .pc04-depot-note:empty{display:none}
+#pc04Page #pc04Panel #pc04Dialog .pc04-depot-reason{grid-column:1/-1}
+#pc04Page #pc04Panel #pc04Dialog .pc04-depot-actions{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end}
+#pc04Page #pc04Panel #pc04Dialog .pc04-depot-change{margin-top:24px}
+#pc04Page #pc04Panel #pc04Dialog .pc04-depot-actions button{width:auto;flex:none}
+@media(max-width:700px){#pc04Page #pc04Panel #pc04Dialog .pc04-depot-actions{flex-direction:column}#pc04Page #pc04Panel #pc04Dialog .pc04-depot-actions button{width:100%}}
 @media(max-width:700px){#pc04Page #pc04Panel #pc04Dialog .pc04-datetime-parts{grid-template-columns:minmax(0,1fr) 96px;gap:10px}}

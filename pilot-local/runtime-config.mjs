@@ -1,4 +1,9 @@
 import {pilotDatabase} from '../src/pilot-target.js';
+export async function assertContractDepotChangeReady(cfg,db){
+ if(!cfg.pc04)return;
+ const row=(await db.query("SELECT CASE WHEN OBJECT_ID(N'Operacao.ContratacaoNumeroTransferido',N'U') IS NOT NULL AND OBJECT_ID(N'Operacao.CK_PC04_DepositoEvento',N'C') IS NOT NULL THEN 1 ELSE 0 END Pronto"))[0];
+ if(Number(row?.Pronto)!==1)throw Error('Alteração de depósito pendente: aplique a migração 46 antes de iniciar o portal.');
+}
 export async function assertContractExclusionReady(cfg,db){
  if(!cfg.pc04)return;
  const row=(await db.query("SELECT CASE WHEN OBJECT_ID(N'Operacao.ContratacaoExclusaoSolicitacao',N'U') IS NOT NULL AND OBJECT_ID(N'Operacao.ContratacaoNumeroExcluido',N'U') IS NOT NULL THEN 1 ELSE 0 END Pronto"))[0];

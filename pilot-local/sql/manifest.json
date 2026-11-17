@@ -1,5 +1,5 @@
 {
-  "version": "1.24.0-contract-exclusion",
+  "version": "1.25.0-contract-depot-change",
   "purpose": "PILOTO_LOCAL_FINANCEIRO_CONTRATACOES",
   "files": [
     {
@@ -246,6 +246,11 @@
       "file": "45-contract-exclusion.sql",
       "source": "pilot-local/contract-exclusion.sql",
       "sha256": "306ac287d19518f830b6fdc898ddf4b8ae5069c725bd8b5219645d825cb37f76"
+    },
+    {
+      "file": "46-contract-depot-change.sql",
+      "source": "pilot-local/contract-depot-change.sql",
+      "sha256": "79c25a74eef7756e1d5e0162ef2e9272833960ec376d824ab3bd241b88ce98bb"
     }
   ]
 }
