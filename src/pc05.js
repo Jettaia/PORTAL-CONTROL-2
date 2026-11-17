@@ -10,6 +10,22 @@ const id=value=>{if(!/^[1-9]\d*$/.test(String(value)))fail('IDENTIFICADOR_INVALI
 const keys=(body,allowed)=>{if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).some(k=>!allowed.includes(k)))fail('CAMPOS_INVALIDOS');};
 const strong=value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
 const hash=(cfg,code)=>{if(!strong(cfg.token))throw Error('PC05 exige chave privada de 256 bits');return crypto.createHmac('sha256',cfg.token).update('PC05:'+code).digest('hex');};
+function pairingVerifier(cfg,value){
+ if(typeof value!=='string')fail('AUTORIZACAO_TABLET_INVALIDA',401);
+ const raw=value.trim();
+ // Existing long pairing codes remain valid only within their original five minutes.
+ if(strong(raw))return hashToken(raw);
+ if(!/^(?:\d{9}|\d{3}-\d{3}-\d{3})$/.test(raw))fail('AUTORIZACAO_TABLET_INVALIDA',401);
+ return hash(cfg,'PAIR:'+raw.replaceAll('-',''));
+}
+async function newPairing(db,cfg){
+ for(let attempt=0;attempt<10;attempt++){
+  const digits=String(crypto.randomInt(1000000000)).padStart(9,'0'),digest=hash(cfg,'PAIR:'+digits);
+  const exists=await db.query(`SELECT TabletId FROM Operacao.TabletPC05 WITH(UPDLOCK,HOLDLOCK) WHERE PareamentoHash='${digest}' AND ExcluidoEmUtc IS NULL AND RevogadoEmUtc IS NULL AND AtivadoEmUtc IS NULL AND PareamentoExpiraEmUtc>SYSUTCDATETIME()`);
+  if(!exists.length)return {code:digits.replace(/(\d{3})(\d{3})(\d{3})/,'$1-$2-$3'),hash:digest};
+ }
+ fail('OPERACAO_OCUPADA',409);
+}
 const utc=value=>String(value).replace(/Z$/,'')+'Z';
 const after=(value,now)=>value&&Date.parse(utc(value))>Date.parse(utc(now));
 const future=(now,minutes)=>new Date(Date.parse(utc(now))+minutes*60000).toISOString();
@@ -53,9 +69,9 @@ async function managedTablet(db,actor,user,tabletId){const r=(await db.query(`SE
 export async function pair(cfg,actor,session,body){
  const depots=tabletDepots(body),name=tabletName(body.nome),depot=depots[0];
  return transaction(cfg,actor,session,true,async(db,user)=>{
-  const now=await time(db),pairing=newToken(),expires=future(now.AgoraUtc,5);for(const value of depots)await checkDepot(db,actor,user,value);
-  const row=(await db.query(`INSERT Operacao.TabletPC05(Nome,EmissorId,DepositoId,PareamentoHash,PareamentoExpiraEmUtc,ExpiraEmUtc) OUTPUT inserted.TabletId VALUES(${s(name,80)},${id(actor)},${depot},'${hashToken(pairing)}',CONVERT(datetime2(3),${s(expires.slice(0,-1),30)},126),NULL)`))[0];
-  if(!row)throw Error('Tablet não persistido');if(depots.length>1)await saveExtraDepots(db,row.TabletId,depots);await audit(db,actor,row.TabletId,'PAREAR',{depositos:depots.map(String)});return {ok:true,tabletId:row.TabletId,pareamento:pairing,expiraEmUtc:expires};
+  const now=await time(db),expires=future(now.AgoraUtc,5);for(const value of depots)await checkDepot(db,actor,user,value);const pairing=await newPairing(db,cfg);
+  const row=(await db.query(`INSERT Operacao.TabletPC05(Nome,EmissorId,DepositoId,PareamentoHash,PareamentoExpiraEmUtc,ExpiraEmUtc) OUTPUT inserted.TabletId VALUES(${s(name,80)},${id(actor)},${depot},'${pairing.hash}',CONVERT(datetime2(3),${s(expires.slice(0,-1),30)},126),NULL)`))[0];
+  if(!row)throw Error('Tablet não persistido');if(depots.length>1)await saveExtraDepots(db,row.TabletId,depots);await audit(db,actor,row.TabletId,'PAREAR',{depositos:depots.map(String)});return {ok:true,tabletId:row.TabletId,pareamento:pairing.code,expiraEmUtc:expires};
  });
 }
 export async function tablets(cfg,actor){return transaction(cfg,actor,null,false,async(db,user)=>{
@@ -74,9 +90,9 @@ export async function tablets(cfg,actor){return transaction(cfg,actor,null,false
 });}
 export async function rePair(cfg,actor,session,tabletId,body){keys(body,[]);id(tabletId);return transaction(cfg,actor,session,true,async(db,user)=>{
  const now=await time(db),r=await managedTablet(db,actor,user,tabletId);if(!r.DepositoId)fail('DEPOSITO_OBRIGATORIO');await checkDepot(db,actor,user,r.DepositoId);const extras=await db.query(`SELECT DepositoId FROM Operacao.TabletPC05Deposito WHERE TabletId=${id(tabletId)}`);for(const extra of extras)await checkDepot(db,actor,user,extra.DepositoId);
- const pairing=newToken(),expires=future(now.AgoraUtc,5);
- await db.query(`UPDATE Operacao.TabletPC05 SET EmissorId=${id(actor)},SessaoHash=NULL,AtivadoEmUtc=NULL,RevogadoEmUtc=NULL,Falhas=0,ExpiraEmUtc=NULL,PareamentoHash='${hashToken(pairing)}',PareamentoExpiraEmUtc=CONVERT(datetime2(3),${s(expires.slice(0,-1),30)},126) WHERE TabletId=${id(tabletId)}`);
- await audit(db,actor,tabletId,'REPAREAR');return {ok:true,tabletId,pareamento:pairing,expiraEmUtc:expires};
+ const expires=future(now.AgoraUtc,5),pairing=await newPairing(db,cfg);
+ await db.query(`UPDATE Operacao.TabletPC05 SET EmissorId=${id(actor)},SessaoHash=NULL,AtivadoEmUtc=NULL,RevogadoEmUtc=NULL,Falhas=0,ExpiraEmUtc=NULL,PareamentoHash='${pairing.hash}',PareamentoExpiraEmUtc=CONVERT(datetime2(3),${s(expires.slice(0,-1),30)},126) WHERE TabletId=${id(tabletId)}`);
+ await audit(db,actor,tabletId,'REPAREAR');return {ok:true,tabletId,pareamento:pairing.code,expiraEmUtc:expires};
 });}
 export async function updateTablet(cfg,actor,session,tabletId,body){const depots=tabletDepots(body),name=tabletName(body.nome),depot=depots[0];id(tabletId);return transaction(cfg,actor,session,true,async(db,user)=>{
  await time(db);await managedTablet(db,actor,user,tabletId);for(const value of depots)await checkDepot(db,actor,user,value);
@@ -93,8 +109,8 @@ export async function deleteTablet(cfg,actor,session,tabletId,body){keys(body,[]
  await db.query(`UPDATE Operacao.TabletPC05 SET ExcluidoEmUtc=SYSUTCDATETIME(),RevogadoEmUtc=COALESCE(RevogadoEmUtc,SYSUTCDATETIME()),SessaoHash=NULL,PareamentoHash=NULL WHERE TabletId=${id(tabletId)} AND ExcluidoEmUtc IS NULL`);
  await audit(db,actor,tabletId,'EXCLUIR',{revogadoNaExclusao:!row.RevogadoEmUtc});return {ok:true};
 });}
-export async function activate(cfg,body){keys(body,['pareamento']);if(!strong(body.pareamento))fail('AUTORIZACAO_TABLET_INVALIDA',401);return tabletTx(cfg,async(db,now)=>{
- const r=(await db.query(`SELECT t.TabletId,t.DepositoId,t.EmissorId,t.Falhas,${dates} FROM Operacao.TabletPC05 t WITH(UPDLOCK,HOLDLOCK) WHERE t.ExcluidoEmUtc IS NULL AND t.PareamentoHash='${hashToken(body.pareamento)}' AND ${issuerActive('t')} AND ${activeLink()}`))[0];
+export async function activate(cfg,body){keys(body,['pareamento']);const pairingHash=pairingVerifier(cfg,body.pareamento);return tabletTx(cfg,async(db,now)=>{
+ const r=(await db.query(`SELECT t.TabletId,t.DepositoId,t.EmissorId,t.Falhas,${dates} FROM Operacao.TabletPC05 t WITH(UPDLOCK,HOLDLOCK) WHERE t.ExcluidoEmUtc IS NULL AND t.PareamentoHash='${pairingHash}' AND ${issuerActive('t')} AND ${activeLink()}`))[0];
  if(!r||!r.DepositoId||r.RevogadoEmUtc||r.AtivadoEmUtc||!after(r.PareamentoExpiraEmUtc,now.AgoraUtc)||(r.ExpiraEmUtc!==null&&!after(r.ExpiraEmUtc,now.AgoraUtc)))fail('AUTORIZACAO_TABLET_INVALIDA',401);
  const raw=newToken();await db.query(`UPDATE Operacao.TabletPC05 SET SessaoHash='${hashToken(raw)}',PareamentoHash=NULL,AtivadoEmUtc=SYSUTCDATETIME(),ExpiraEmUtc=NULL WHERE TabletId=${id(r.TabletId)}`);await audit(db,r.EmissorId,r.TabletId,'HABILITAR');return {token:raw};
 });}

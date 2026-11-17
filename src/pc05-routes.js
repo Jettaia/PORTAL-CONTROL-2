@@ -17,7 +17,11 @@ export function mountTokens(app,cfg,{session,sameOrigin}){
  app.post('/api/pc05/contratacoes/:id/tokens',sameOrigin,session,run(req=>service.issue(cfg,req.user.id,req.rawSession,req.params.id,req.body)));
  app.use('/api/pc05/tablet',(req,res,next)=>{if((req.get('cookie')||'').split(';').some(part=>part.trim().startsWith((cfg.cookieName||'jetta_session')+'=')))return res.status(403).json({erro:'UTILIZE_PERFIL_EXCLUSIVO_TABLET'});next();});
  const limiter=rateLimit({windowMs:60000,limit:20,standardHeaders:'draft-7',legacyHeaders:false,message:{erro:'TENTATIVAS_EXCEDIDAS'}});
- app.use(['/api/pc05/tablet/habilitar','/api/pc05/tablet/apontar'],limiter);
+ app.use('/api/pc05/tablet/apontar',limiter);
+ // Separate activation budget: short human codes must not share the clock-in quota.
+ const pairingIp=rateLimit({windowMs:300000,limit:5,skipSuccessfulRequests:true,standardHeaders:'draft-7',legacyHeaders:false,message:{erro:'TENTATIVAS_EXCEDIDAS'}});
+ const pairingGlobal=rateLimit({windowMs:300000,limit:50,keyGenerator:()=> 'tablet-pairing',standardHeaders:false,legacyHeaders:false,message:{erro:'TENTATIVAS_EXCEDIDAS'}});
+ app.use('/api/pc05/tablet/habilitar',pairingGlobal,pairingIp);
  const tabletName=cfg.production?'__Secure-jetta_chapa_tablet':'jetta_pc05_tablet';
  const raw=req=>parseSessionCookie(req.get('cookie')||'',{cookieName:tabletName});
  const cookie=(value,age)=>`${tabletName}=${value};${cfg.production?' Secure;':''} HttpOnly; SameSite=Strict; Path=${cfg.production?cfg.basePath:''}/api/pc05/tablet; Max-Age=${age}`;

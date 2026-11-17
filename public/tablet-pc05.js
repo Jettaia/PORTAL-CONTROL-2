@@ -8,6 +8,7 @@
  function lock(value){busy=value;document.querySelectorAll('button,input').forEach(el=>{el.disabled=value;});}
  async function api(action,body){const response=await fetch('/api/pc05/tablet/'+action,{credentials:'same-origin',cache:'no-store',...(body!==undefined?{method:'POST',headers:{'content-type':'application/json','x-jetta-request':'web'},body:JSON.stringify(body)}:{})});const result=await response.json().catch(()=>({}));if(!response.ok){if(response.status===401)state(false);throw Error(messages[result.erro]||(response.status===429?messages.TENTATIVAS_EXCEDIDAS:technical));}return result;}
  $('pairForm').addEventListener('submit',async e=>{e.preventDefault();if(busy)return;const pareamento=$('pairCode').value;$('pairCode').value='';lock(true);try{await api('habilitar',{pareamento});state(true);clearMessage();}catch(e){show(e.message,'error');}finally{lock(false);}});
+ $('pairCode').addEventListener('input',()=>{const raw=$('pairCode').value;if(/^[0-9-]*$/.test(raw)){const digits=raw.replaceAll('-','');if(digits.length<=9)$('pairCode').value=digits.replace(/(\d{3})(?=\d)/g,'$1-');}});
  $('code').addEventListener('input',()=>{$('code').value=$('code').value.replace(/\D/g,'').slice(0,4);});
  document.querySelectorAll('[data-digit]').forEach(el=>el.addEventListener('click',()=>{if(!busy&&$('code').value.length<4)$('code').value+=el.dataset.digit;}));
  $('clear').addEventListener('click',()=>{$('code').value='';});$('erase').addEventListener('click',()=>{$('code').value=$('code').value.slice(0,-1);});
