@@ -32,7 +32,7 @@ try{
  await page.getByRole('button',{name:'Criar contratação',exact:true}).waitFor();
  await page.getByRole('combobox',{name:'Prestador',exact:true}).fill('Prestador');await page.locator('#pc04ProviderOptions').getByRole('option').first().click();
  for(const [name,value]of [['tipoServicoId','1'],['gestorId','1']])await page.locator('#pc04_'+name).selectOption(value);
- for(const [name,value]of [['inicioPrevisto','2026-11-05T08:00'],['fimPrevisto','2026-11-05T18:00'],['valor','100,00']])await page.locator('#pc04_'+name).fill(value);
+ for(const [name,date,time]of [['inicioPrevisto','2026-11-05','08:00'],['fimPrevisto','2026-11-05','18:00']]){await page.locator('#pc04_'+name+'_date').fill(date);await page.locator('#pc04_'+name+'_time').fill(time);}await page.locator('#pc04_valor').fill('100,00');
  await page.getByRole('button',{name:'Criar contratação',exact:true}).click();
  await page.getByText('Contratação criada.',{exact:true}).waitFor();
  assert.equal(await page.locator('#pc04_dataServico').count(),0);
@@ -42,8 +42,8 @@ try{
  assert.equal(await summary.locator('dt').filter({hasText:'Depósito / atividade'}).count(),0);
  await page.getByRole('tab',{name:'Horários',exact:true}).click();
  const edit=page.locator('#pc04Detail section').filter({has:page.getByRole('heading',{name:'Horários previstos',exact:true})});
- await edit.getByLabel('Entrada prevista',{exact:true}).fill('2026-11-06T22:00');
- await edit.getByLabel('Saída prevista',{exact:true}).fill('2026-11-07T06:00');
+ await edit.getByLabel('Entrada prevista — Data',{exact:true}).fill('2026-11-06');await edit.getByLabel('Entrada prevista — Hora',{exact:true}).fill('22:00');
+ await edit.getByLabel('Saída prevista — Data',{exact:true}).fill('2026-11-07');await edit.getByLabel('Saída prevista — Hora',{exact:true}).fill('06:00');
  await edit.getByRole('button',{name:'Salvar horários previstos',exact:true}).click();
  await page.getByText('Horários previstos atualizados.',{exact:true}).waitFor();
  assert.equal(row.DataServico,'2026-11-06');
