@@ -20,3 +20,6 @@ Full serial regression, SQL transfer/concurrency/audit rollback and bootstrap, m
 ## Implementation Plan
 Wire existing guard into production startup and update migration count. Commit/package/build, rehearse migration, gate tests, push, stop only API, backup, migrate, candidate/start/live, copy backup and write private receipt.
 User authorized production deployment. Skills migration and tdd apply; Serena/Lad unavailable in tool catalog. No destructive reset.
+
+## Evidence
+Real SQL transfer test passed, including concurrency and audit rollback. Bootstrap red: expected migration count 45 vs actual 46; only update expected count, preserving admin/credential/empty-database assertions.
