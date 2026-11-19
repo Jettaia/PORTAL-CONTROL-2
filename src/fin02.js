@@ -6,6 +6,7 @@ import {PlanningError} from './b3.js';
 
 const fail=(message,status=400)=>{throw new PlanningError(message,status);};
 export function receiptId(value){if(!['string','number','bigint'].includes(typeof value)||! /^[1-9]\d*$/.test(String(value)))fail('IDENTIFICADOR_INVALIDO');try{return n(value);}catch{fail('IDENTIFICADOR_INVALIDO');}}
+export const canIssueReceipt=user=>user.admin||user.finance||user.coordinator;
 export const receiptScope=(actor,user)=>user.admin||user.finance&&!user.coordinator?'1=1':`EXISTS(SELECT 1 FROM Seguranca.UsuarioDeposito fd WHERE fd.UsuarioId=${receiptId(actor)} AND fd.DepositoId=c.DepositoId AND fd.RevogadoEmUtc IS NULL)`;
 export const receiptEligible="c.Status='LIBERADA' AND c.ValorLiberado IS NOT NULL AND c.LiberadoEmUtc IS NOT NULL";
 // FIN03 must require this full predicate under the same contract lock before settlement.
@@ -26,14 +27,14 @@ export async function read(cfg,actor,key,document=false){receiptId(key);return t
   }
   return renderReceipt(receipt);
  }
- return {recibo:unpack((await db.query(readSql(key)))[0]),podeOperar:user.admin||user.finance};
+ return {recibo:unpack((await db.query(readSql(key)))[0]),podeOperar:user.admin||user.finance,podeEmitirRecibo:canIssueReceipt(user)};
 });}
 export async function issue(cfg,actor,token,key,body,expected=null){
  receiptId(key);if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).length)fail('CAMPOS_INVALIDOS');
  // Use the existing actor/transaction boundary in read mode: PC04 write mode
  // intentionally excludes FINANCEIRO. Financial authorization and lock follow here.
  return transaction(cfg,actor,null,false,async(db,user)=>{
-  if(!user.admin&&!user.finance)fail('PERMISSAO_NEGADA',403);
+  if(!canIssueReceipt(user))fail('PERMISSAO_NEGADA',403);
   await assertMfa(db,actor,token,cfg);
   const lock=(await db.query("DECLARE @r int;EXEC @r=sys.sp_getapplock @Resource='JettaControl.PC04',@LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=5000;SELECT @r R;"))[0];
   if(!lock||Number(lock.R)<0)fail('OPERACAO_OCUPADA',409);
@@ -41,7 +42,7 @@ export async function issue(cfg,actor,token,key,body,expected=null){
   if(!origin)fail('CONTRATACAO_INDISPONIVEL',404);
   if(expected&&[['versao','Versao'],['depositoId','DepositoId'],['prestadorId','PrestadorId'],['tipoServicoId','TipoServicoId'],['dataServico','DataServico'],['valor','ValorLiberado'],['liberadoEmUtc','LiberadoEmUtc']].some(([key,column])=>String(expected[key])!==String(origin[column])))fail('PREVIA_ALTERADA',409);
   const previous=(await db.query(readSql(key)))[0];
-  if(previous){if(!(await db.query(`SELECT 1 V FROM Financeiro.ContratacaoRecibo r JOIN Operacao.Contratacao c ON c.ContratacaoId=r.ContratacaoId WHERE c.ContratacaoId=${receiptId(key)} AND ${receiptCompatible}`)).length)fail('RECIBO_ORIGEM_DIVERGENTE',409);return {recibo:unpack(previous),podeOperar:true,jaExistia:true};}
+  if(previous){if(!(await db.query(`SELECT 1 V FROM Financeiro.ContratacaoRecibo r JOIN Operacao.Contratacao c ON c.ContratacaoId=r.ContratacaoId WHERE c.ContratacaoId=${receiptId(key)} AND ${receiptCompatible}`)).length)fail('RECIBO_ORIGEM_DIVERGENTE',409);return {recibo:unpack(previous),podeOperar:user.admin||user.finance,podeEmitirRecibo:canIssueReceipt(user),jaExistia:true};}
   const instant=cfg.fin02Now?cfg.fin02Now():new Date();
   const local=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(instant);
   const snapshot={Numero:String(origin.Numero),ValorLiberado:origin.ValorLiberado,Prestador:origin.Prestador,Tipo:origin.Tipo,DataServico:origin.DataServico,Cidade:origin.Cidade,Estado:origin.Estado,CentroCusto:origin.CentroCusto,Deposito:origin.Deposito,Rua:origin.Rua,NumeroEndereco:origin.NumeroEndereco,Bairro:origin.Bairro,CEP:origin.CEP,Pagador:'JETTA TRANSPORTES E LOGISTICA LTDA',CnpjPagador:'15.387.508/0001-61'};
@@ -50,6 +51,6 @@ export async function issue(cfg,actor,token,key,body,expected=null){
   await db.query(`INSERT Financeiro.ContratacaoRecibo(ContratacaoId,VersaoOrigem,DepositoId,PrestadorId,TipoServicoId,DataServico,ValorLiberado,LiberadoEmUtc,DataEmissao,EmitidoEmUtc,EmitidoPor,SnapshotJson,DocumentoHtml) VALUES(${receiptId(key)},${receiptId(origin.Versao)},${receiptId(origin.DepositoId)},${receiptId(origin.PrestadorId)},${receiptId(origin.TipoServicoId)},'${origin.DataServico}',${origin.ValorLiberado},'${origin.LiberadoEmUtc}','${local}','${instant.toISOString().slice(0,23)}',${receiptId(actor)},${s(json,'max')},${s(document,'max')})`);
   const row=unpack((await db.query(readSql(key)))[0]);
   await db.query(`INSERT Seguranca.Auditoria(Entidade,EntidadeId,Acao,AtorUsuarioId,DetalhesJson) VALUES(N'ContratacaoRecibo',${receiptId(row.ReciboId)},N'FIN02_EMITIR',${receiptId(actor)},${s(JSON.stringify({contratacaoId:String(key),reciboId:String(row.ReciboId),versao:Number(origin.Versao),dataEmissao:local,snapshot}),'max')})`);
-  return {recibo:row,podeOperar:true};
+  return {recibo:row,podeOperar:user.admin||user.finance,podeEmitirRecibo:canIssueReceipt(user)};
  });
 }

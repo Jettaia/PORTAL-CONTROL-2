@@ -1,4 +1,4 @@
-import {receiptCompatible,receiptScope,receiptEligible} from './fin02.js';
+import {receiptCompatible,receiptScope,receiptEligible,canIssueReceipt} from './fin02.js';
 import {intLiteral as n} from './auth-db.js';
 import {transaction} from './pc04.js';
 import {PlanningError} from './b3.js';
@@ -47,7 +47,7 @@ export async function list(cfg,actor,q={}){
  const predicates=filters(q);return transaction(cfg,actor,null,false,async(db,user)=>{
   const rows=await db.query(`SELECT TOP(101) ${columns} FROM Operacao.Contratacao c${joins} WHERE ${[eligible,scope(actor,user),...predicates].join(' AND ')} ORDER BY c.LiberadoEmUtc,c.ContratacaoId`);
   const registros=rows.slice(0,100),last=registros.at(-1);
-  return {registros,proximaPagina:rows.length>100?Buffer.from(JSON.stringify([last.LiberadoEmUtc,String(last.ContratacaoId)])).toString('base64url'):null,podeOperar:user.admin||user.finance};
+  return {registros,proximaPagina:rows.length>100?Buffer.from(JSON.stringify([last.LiberadoEmUtc,String(last.ContratacaoId)])).toString('base64url'):null,podeOperar:user.admin||user.finance,podeEmitirRecibo:canIssueReceipt(user)};
  });
 }
 // A single consistent read uses the same eligibility, access and ordering as the queue.
@@ -78,11 +78,11 @@ export async function detail(cfg,actor,key){id(key);return transaction(cfg,actor
  CONVERT(varchar(16),c.EntradaReal,126) EntradaReal,CONVERT(varchar(16),c.SaidaReal,126) SaidaReal,
  c.EntradaOrigem,c.SaidaOrigem,c.CriadoPor,CONVERT(varchar(27),c.CriadoEmUtc,126) CriadoEmUtc
  FROM Operacao.Contratacao c${joins} WHERE c.ContratacaoId=${id(key)} AND ${eligible} AND ${scope(actor,user)}`))[0];
- if(!registro)fail('CONTRATACAO_INDISPONIVEL',404);return {registro,podeOperar:user.admin||user.finance};
+ if(!registro)fail('CONTRATACAO_INDISPONIVEL',404);return {registro,podeOperar:user.admin||user.finance,podeEmitirRecibo:canIssueReceipt(user)};
 });}
 export async function catalog(cfg,actor){return transaction(cfg,actor,null,false,async(db,user)=>{
  const where=`${eligible} AND ${scope(actor,user)}`;
- return {podeOperar:user.admin||user.finance,
+ return {podeOperar:user.admin||user.finance,podeEmitirRecibo:canIssueReceipt(user),
   depositos:await db.query(`SELECT DISTINCT d.DepositoId,d.Nome FROM Operacao.Contratacao c JOIN Cadastro.Deposito d ON d.DepositoId=c.DepositoId WHERE ${where} ORDER BY d.Nome,d.DepositoId`),
   prestadores:await db.query(`SELECT DISTINCT p.PrestadorId,p.Nome FROM Operacao.Contratacao c JOIN Cadastro.Prestador p ON p.PrestadorId=c.PrestadorId WHERE ${where} ORDER BY p.Nome,p.PrestadorId`)};
 });}

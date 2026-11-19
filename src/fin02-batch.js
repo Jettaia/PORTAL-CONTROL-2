@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import {transaction} from './pc04.js';
-import {issue,receiptId,receiptEligible,receiptScope} from './fin02.js';
+import {issue,receiptId,receiptEligible,receiptScope,canIssueReceipt} from './fin02.js';
 import {renderReceipt} from './fin02-document.js';
 import {assertMfa} from './b4.js';
 import {PlanningError} from './b3.js';
@@ -8,7 +8,7 @@ import {PlanningError} from './b3.js';
 export const printStyle=renderReceipt({DataEmissao:'2000-01-01',Snapshot:{ValorLiberado:'0.00'}}).match(/<style>([\s\S]*?)<\/style>/)[1]+'\n@media print{.receipt{break-after:page;page-break-after:always}.receipt:last-child{break-after:auto;page-break-after:auto}}';
 const fail=(code,status=400)=>{throw new PlanningError(code,status);};
 const fields=(body,allowed)=>{if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).some(k=>!allowed.includes(k)))fail('CAMPOS_INVALIDOS');};
-const operator=user=>{if(!user.admin&&!user.finance)fail('PERMISSAO_NEGADA',403);};
+const operator=user=>{if(!canIssueReceipt(user))fail('PERMISSAO_NEGADA',403);};
 const clock=cfg=>cfg.fin02BatchNow?cfg.fin02BatchNow():Date.now();
 function day(value){
  if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value)||value<'2000-01-01'||value>'9998-12-31')fail('DATA_INVALIDA');

@@ -73,10 +73,10 @@ test('COORDENADOR: cadastro, depósitos explícitos, supervisão, financeiro e r
   let queue=(await call('/api/pc04/horarios-pendentes',coord.cookie)).data.registros;assert.deepEqual(queue.map(r=>Number(r.ContratacaoId)),[Number(a.ContratacaoId)]);
   const decide=async(record,request,cookie=coord.cookie,status=200)=>(await call(base(record)+'/horarios/'+request.SolicitacaoId+'/decidir',cookie,{versao:Number(record.Versao),aprovar:true},status)).data.resultado;
   const pending=(await detail(a)).solicitacoesHorarios.find(r=>r.Status==='PENDENTE');a=await decide(a,pending);assert.equal(a.EntradaReal,hours(a).entradaReal);
-  b=await change(b,coord.cookie,'horarios',hours(b));assert.equal(b.HorarioSolicitado,true);assert.equal(b.EntradaReal,null);
-  let own=(await detail(b)).solicitacoesHorarios.find(r=>r.Status==='PENDENTE');
-  b=(await call(base(b)+'/horarios/'+own.SolicitacaoId+'/decidir',coord.cookie,{versao:Number(b.Versao),aprovar:false})).data.resultado;assert.equal(b.EntradaReal,null);
-  b=await change(b,coord.cookie,'horarios',hours(b));own=(await detail(b)).solicitacoesHorarios.find(r=>r.Status==='PENDENTE');b=await decide(b,own);assert.equal(b.EntradaReal,hours(b).entradaReal);
+  b=await change(b,coord.cookie,'horarios',hours(b));assert.equal(b.HorarioSolicitado,undefined);assert.equal(b.EntradaReal,hours(b).entradaReal);assert.equal(b.SaidaReal,hours(b).saidaReal);
+  const directDetail=await detail(b);assert.equal(directDetail.podeRegistrarHorariosDireto,true);assert.equal(directDetail.solicitacoesHorarios.length,0);
+  assert.ok(directDetail.eventos.some(e=>e.Acao==='HORARIOS'));
+  let own;
   a=await change(a,coord.cookie,'conferir');b=await change(b,coord.cookie,'conferir');
   own=(await detail(c,admin)).solicitacoesHorarios.find(r=>r.Status==='PENDENTE');c=await decide(c,own,admin);c=await change(c,admin,'conferir');
   await change(a,coord.cookie,'revisar',{valor:'200.00',motivo:'Bloqueada após liberação'},409);
@@ -88,8 +88,8 @@ test('COORDENADOR: cadastro, depósitos explícitos, supervisão, financeiro e r
    const workbook=Buffer.from(await response.arrayBuffer()).toString('utf8');assert.ok(workbook.includes('Depósito A'));assert.ok(workbook.includes('Depósito B'));assert.ok(!workbook.includes('Depósito C'));
   }
   await call('/api/financeiro/contratacoes/'+c.ContratacaoId,coord.cookie,undefined,404);
-  await call('/api/financeiro/contratacoes/'+a.ContratacaoId+'/recibo',coord.cookie,{},403);
-  await call('/api/financeiro/contratacoes/'+a.ContratacaoId+'/pagamento',coord.cookie,{},403);
+  await call('/api/financeiro/contratacoes/'+a.ContratacaoId+'/recibo',coord.cookie,{});
+  await call('/api/financeiro/contratacoes/'+a.ContratacaoId+'/pagamento',coord.cookie,{},400);
   // FINANCEIRO retains its existing global reach; COORDENADOR + FINANCEIRO remains scoped.
   assert.equal((await call('/api/financeiro/contratacoes?situacao=',finance.cookie)).data.registros.length,3);
   const combo=await make('combinado',['COORDENADOR','GESTOR','FINANCEIRO'],[1]);assert.equal((await call('/api/auth/me',combo.cookie)).data.usuario.perfil,'COORDENADOR');
@@ -111,11 +111,11 @@ test('COORDENADOR: cadastro, depósitos explícitos, supervisão, financeiro e r
   await call('/api/pc05/tablets',coord.cookie,{nome:'Fora escopo',depositoId:3},404);
   const today=(await db.query("SELECT CONVERT(varchar(10),CAST(SYSUTCDATETIME() AT TIME ZONE 'UTC' AT TIME ZONE 'E. South America Standard Time' AS date),23) D"))[0].D;
   const live=await create(coord.cookie,1,manager.id,today);
-  const entry=(await call('/api/pc05/contratacoes/'+live.ContratacaoId+'/tokens',coord.cookie,{versao:Number(live.Versao),tipo:'ENTRADA'})).data;
+  const entry={codigo:'1234'}; // Fixed CPF code replaces the retired token-generation endpoint.
   const activated=await call('/api/pc05/tablet/habilitar',null,{pareamento:tablet.pareamento});
   await call('/api/pc05/tablet/apontar',activated.cookie,{codigo:entry.codigo});
   assert.ok((await detail(live)).registro.EntradaReal);
-  await call('/api/pc05/tablet/apontar',activated.cookie,{codigo:entry.codigo},409);
+  await call('/api/pc05/tablet/apontar',activated.cookie,{codigo:'0000'},409);
   await call('/api/pc05/tablets/'+tablet.tabletId+'/excluir',coord.cookie,{});
   await call('/api/pc05/tablet/status',activated.cookie,undefined,401);
   // Coordinator catalog writes are scoped; only the creator inherits a new depot.

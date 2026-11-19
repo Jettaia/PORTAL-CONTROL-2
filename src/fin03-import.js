@@ -7,7 +7,7 @@ import * as payments from './fin03.js';
 import {inspectPdf,splitPdf} from './receipt-pdf.js';
 const previews=new Map(),TTL=15*60000,MAX_BYTES=50*1024*1024;
 const fail=(message,status=400)=>{throw new PlanningError(message,status);};
-const operator=user=>{if(!user.admin&&!user.finance)fail('PERMISSAO_NEGADA',403);};
+const operator=user=>{if(!payments.canConfirmPayment(user))fail('PERMISSAO_NEGADA',403);};
 function prune(){for(const [key,value] of previews)if(value.expires<Date.now()&&!value.busy)previews.delete(key);}
 async function gate(cfg,actor,session){await transaction(cfg,actor,null,false,async(db,user)=>{operator(user);await assertMfa(db,actor,session,cfg);});}
 export {gate as authorizeImport};

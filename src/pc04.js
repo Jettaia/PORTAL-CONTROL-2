@@ -37,7 +37,7 @@ async function actorDb(db,actor,write){
 export const scope=(actor,user,alias='c')=>user.admin?'1=1':`EXISTS(SELECT 1 FROM Seguranca.UsuarioDeposito uf WHERE uf.UsuarioId=${identifier(actor)} AND uf.DepositoId=${alias}.DepositoId AND uf.RevogadoEmUtc IS NULL)`;
 // Financial permission grants the released view only inside assigned depots.
 const visibility=(actor,user)=>user.finance&&!user.admin?`(${scope(actor,user)} AND (${user.operational?'1=1':"c.Status='LIBERADA'"}))`:scope(actor,user);
-export const responsibleScope=branch=>`((${roleSql('u.UsuarioId','ADMIN')} AND u.Perfil='ADMIN') OR (${roleSql('u.UsuarioId','GESTOR')} AND EXISTS(SELECT 1 FROM Seguranca.UsuarioDeposito rf WHERE rf.UsuarioId=u.UsuarioId AND rf.DepositoId=${branch} AND rf.RevogadoEmUtc IS NULL)))`;
+export const responsibleScope=branch=>`((${roleSql('u.UsuarioId','ADMIN')} AND u.Perfil='ADMIN') OR ((${roleSql('u.UsuarioId','GESTOR')} OR ${roleSql('u.UsuarioId','COORDENADOR')}) AND EXISTS(SELECT 1 FROM Seguranca.UsuarioDeposito rf WHERE rf.UsuarioId=u.UsuarioId AND rf.DepositoId=${branch} AND rf.RevogadoEmUtc IS NULL)))`;
 const columns=`c.ContratacaoId,c.Numero,c.DepositoId,c.PrestadorId,c.TipoServicoId,p.Nome Prestador,f.Nome Deposito,f.CentroCusto,t.Nome Tipo,
  CONVERT(varchar(10),c.DataServico,23) DataServico,CONVERT(varchar(16),c.InicioPrevisto,126) InicioPrevisto,CONVERT(varchar(16),c.FimPrevisto,126) FimPrevisto,
  CONVERT(varchar(16),c.EntradaReal,126) EntradaReal,CONVERT(varchar(16),c.SaidaReal,126) SaidaReal,c.EntradaOrigem,c.SaidaOrigem,
@@ -130,7 +130,7 @@ export async function exportData(cfg,actor,filters={},maxRows=100000){
  });
 }
 export async function detail(cfg,actor,id){identifier(id);return transaction(cfg,actor,null,false,async(db,user)=>{
- const row=await record(db,actor,user,id);return {registro:row,pc10:cfg.pc10===true&&!cfg.fin01,podeRegistrarHorariosDireto:user.admin,podeOperar:user.operational&&(user.admin||await branchAllowed(db,actor,row.DepositoId)),podeAprovarHorarios:user.admin||user.coordinator,solicitacoesHorarios:user.operational?await db.query(`SELECT hs.SolicitacaoId,CONVERT(varchar(16),hs.EntradaReal,126) EntradaReal,CONVERT(varchar(16),hs.SaidaReal,126) SaidaReal,hs.Motivo,hs.SolicitanteId,u.Nome Solicitante,hs.Status,hs.DecididoPor,CONVERT(varchar(23),hs.DecididoEmUtc,126) DecididoEmUtc FROM Operacao.ContratacaoHorarioSolicitacao hs JOIN Seguranca.Usuario u ON u.UsuarioId=hs.SolicitanteId WHERE hs.ContratacaoId=${identifier(id)} ORDER BY hs.SolicitacaoId DESC`):[],...(cfg.pc05?{pc05:true,codigoRegistro:user.operational?(await db.query(`SELECT LEFT(REPLACE(REPLACE(REPLACE(p.CPF,'.',''),'-',''),' ',''),4) CodigoRegistro FROM Cadastro.Prestador p WHERE p.PrestadorId=${identifier(row.PrestadorId)} AND LEN(REPLACE(REPLACE(REPLACE(p.CPF,'.',''),'-',''),' ',''))=11`))[0]?.CodigoRegistro||null:null}:{}),eventos:await contractHistory(db,id)};
+ const row=await record(db,actor,user,id);return {registro:row,pc10:cfg.pc10===true&&!cfg.fin01,podeRegistrarHorariosDireto:user.admin||user.coordinator,podeOperar:user.operational&&(user.admin||await branchAllowed(db,actor,row.DepositoId)),podeAprovarHorarios:user.admin||user.coordinator,solicitacoesHorarios:user.operational?await db.query(`SELECT hs.SolicitacaoId,CONVERT(varchar(16),hs.EntradaReal,126) EntradaReal,CONVERT(varchar(16),hs.SaidaReal,126) SaidaReal,hs.Motivo,hs.SolicitanteId,u.Nome Solicitante,hs.Status,hs.DecididoPor,CONVERT(varchar(23),hs.DecididoEmUtc,126) DecididoEmUtc FROM Operacao.ContratacaoHorarioSolicitacao hs JOIN Seguranca.Usuario u ON u.UsuarioId=hs.SolicitanteId WHERE hs.ContratacaoId=${identifier(id)} ORDER BY hs.SolicitacaoId DESC`):[],...(cfg.pc05?{pc05:true,codigoRegistro:user.operational?(await db.query(`SELECT LEFT(REPLACE(REPLACE(REPLACE(p.CPF,'.',''),'-',''),' ',''),4) CodigoRegistro FROM Cadastro.Prestador p WHERE p.PrestadorId=${identifier(row.PrestadorId)} AND LEN(REPLACE(REPLACE(REPLACE(p.CPF,'.',''),'-',''),' ',''))=11`))[0]?.CodigoRegistro||null:null}:{}),eventos:await contractHistory(db,id)};
 });}
 async function branchAllowed(db,actor,branch){return (await db.query(`SELECT 1 V FROM Seguranca.UsuarioDeposito WHERE UsuarioId=${identifier(actor)} AND DepositoId=${identifier(branch)} AND RevogadoEmUtc IS NULL`)).length>0;}
 export async function create(cfg,actor,token,body){const v=creationInput(body);return transaction(cfg,actor,token,true,async(db,user)=>{
@@ -165,7 +165,7 @@ export async function change(cfg,actor,token,id,action,body){
    set=`DataServico='${serviceDate}',InicioPrevisto='${body.inicioPrevisto}:00',FimPrevisto='${body.fimPrevisto}:00'`;
   }else if(action==='horarios'){
    period(body.entradaReal,body.saidaReal,previous.DataServico);
-   if(!user.admin){
+   if(!user.admin&&!user.coordinator){
     const request=(await db.query(`INSERT Operacao.ContratacaoHorarioSolicitacao(ContratacaoId,EntradaReal,SaidaReal,Motivo,SolicitanteId) OUTPUT inserted.SolicitacaoId VALUES(${identifier(id)},'${body.entradaReal}:00','${body.saidaReal}:00',${s(why,800)},${identifier(actor)})`))[0];
     if(!request)throw Error('Solicitacao nao persistida');
     await db.query(`UPDATE Operacao.Contratacao SET Versao=Versao+1 WHERE ContratacaoId=${identifier(id)} AND Versao=${body.versao}`);
