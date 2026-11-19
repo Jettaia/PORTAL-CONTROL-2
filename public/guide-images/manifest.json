@@ -1,0 +1,525 @@
+{
+  "created": "2026-11-19T13:11:47.477Z",
+  "source": "Actual portal HTML/CSS/JS rendered in Edge, deterministic in-memory HTTP fixtures; DOM highlights added before capture. No operational API requests.",
+  "sourceHashes": {
+    "public/index.html": "01497075b081dff711554ee443adb1a061b408e460a21b9e4413d684a0eb7d14",
+    "public/b24c.js": "c705698e0a423d981faaac29c0315cb4b26d8fde0b6f8bc8c6b0e13f2d87c256",
+    "public/pc03.js": "e84459fe3d3901c36489e01bb64fad45a8aaca74030ee40fd5c68ee9bc7d8173",
+    "public/activity-types.js": "9962ba4e4450d20f2b211c80852e4f3185065952658f1171474a0e50f5d0590a",
+    "public/tablets.js": "3e1104ff8d2dd1fc27d9059ef5a77974c3172afd191238a3602d8ed68e92431b",
+    "public/tablet-pc05.html": "53b76bf85abd1ffbb5d60698a5a0715abbb36cc91991754ac825f9acfe6b5ac3",
+    "public/tablet-pc05.js": "033002298c82f0dba99d8aca14eb65b21bd39d3b2158e2e6902d36a814ccd680",
+    "public/pc04.js": "37a83032260bad1b6acb277ae5dc69c291c41fd5bfabcb02f5e57e1f2fb4bc3d",
+    "public/fin01.js": "b7822bb8a4a91c1e9fff848117e34c35fa3c7ea61022d0deda3c28dcbf6b5425",
+    "public/pilot-design.css": "e2b495dd896de7bf0c77337c106fafe4f2ca7bae9e5dce483ac26f29d948370b"
+  },
+  "images": [
+    {
+      "topic": "depositos",
+      "step": 1,
+      "file": "depositos-1.png",
+      "caption": "Clique em Novo depósito para abrir o cadastro.",
+      "external": false,
+      "width": 1120,
+      "height": 733,
+      "focusX": 1019.0703125,
+      "focusY": 199.59375
+    },
+    {
+      "topic": "depositos",
+      "step": 2,
+      "file": "depositos-2.png",
+      "caption": "Preencha o nome e o centro de custo da unidade.",
+      "external": false,
+      "width": 604,
+      "height": 814,
+      "focusX": 302,
+      "focusY": 176.6171875
+    },
+    {
+      "topic": "depositos",
+      "step": 3,
+      "file": "depositos-3.png",
+      "caption": "Confira os campos de endereço antes de salvar.",
+      "external": false,
+      "width": 604,
+      "height": 814,
+      "focusX": 302,
+      "focusY": 417.203125
+    },
+    {
+      "topic": "depositos",
+      "step": 4,
+      "file": "depositos-4.png",
+      "caption": "Após revisar os dados, clique em Cadastrar depósito.",
+      "external": false,
+      "width": 604,
+      "height": 814,
+      "focusX": 485.96875,
+      "focusY": 746.5625
+    },
+    {
+      "topic": "prestadores",
+      "step": 1,
+      "file": "prestadores-1.png",
+      "caption": "Pesquise o documento para evitar um cadastro duplicado.",
+      "external": false,
+      "width": 1120,
+      "height": 971,
+      "focusX": 200.5,
+      "focusY": 340.59375
+    },
+    {
+      "topic": "prestadores",
+      "step": 2,
+      "file": "prestadores-2.png",
+      "caption": "No formulário Novo prestador, preencha nome e documento.",
+      "external": false,
+      "width": 604,
+      "height": 558,
+      "focusX": 302,
+      "focusY": 322.9296875
+    },
+    {
+      "topic": "prestadores",
+      "step": 3,
+      "file": "prestadores-3.png",
+      "caption": "Selecione ao menos um depósito autorizado.",
+      "external": false,
+      "width": 604,
+      "height": 558,
+      "focusX": 302,
+      "focusY": 368.6640625
+    },
+    {
+      "topic": "prestadores",
+      "step": 4,
+      "file": "prestadores-4.png",
+      "caption": "Clique em Cadastrar prestador após conferir os vínculos.",
+      "external": false,
+      "width": 604,
+      "height": 558,
+      "focusX": 481.1640625,
+      "focusY": 488.859375
+    },
+    {
+      "topic": "atividades",
+      "step": 1,
+      "file": "atividades-1.png",
+      "caption": "Busque no catálogo antes de criar um novo tipo.",
+      "external": false,
+      "width": 1120,
+      "height": 927,
+      "focusX": 205.5,
+      "focusY": 282.59375
+    },
+    {
+      "topic": "atividades",
+      "step": 2,
+      "file": "atividades-2.png",
+      "caption": "Clique em Nova atividade e preencha nome e descrição.",
+      "external": false,
+      "width": 1076,
+      "height": 652,
+      "focusX": 703,
+      "focusY": 371.3359375
+    },
+    {
+      "topic": "atividades",
+      "step": 3,
+      "file": "atividades-3.png",
+      "caption": "Clique em Criar atividade para salvar o tipo.",
+      "external": false,
+      "width": 1076,
+      "height": 652,
+      "focusX": 961.859375,
+      "focusY": 497.671875
+    },
+    {
+      "topic": "atividades",
+      "step": 4,
+      "file": "atividades-4.png",
+      "caption": "Confira a situação Ativo no item salvo.",
+      "external": false,
+      "width": 1076,
+      "height": 698,
+      "focusX": 1003.3984375,
+      "focusY": 198.796875
+    },
+    {
+      "topic": "tablets",
+      "step": 1,
+      "file": "tablets-1.png",
+      "caption": "Abra Novo tablet e dê um nome ao aparelho.",
+      "external": false,
+      "width": 644,
+      "height": 519,
+      "focusX": 322,
+      "focusY": 171.390625
+    },
+    {
+      "topic": "tablets",
+      "step": 2,
+      "file": "tablets-2.png",
+      "caption": "Selecione os depósitos autorizados para este aparelho.",
+      "external": false,
+      "width": 644,
+      "height": 519,
+      "focusX": 322,
+      "focusY": 283.0859375
+    },
+    {
+      "topic": "tablets",
+      "step": 3,
+      "file": "tablets-3.png",
+      "caption": "Clique em Cadastrar e gerar código. O código ativa o aparelho.",
+      "external": false,
+      "width": 644,
+      "height": 519,
+      "focusX": 511.1640625,
+      "focusY": 450.5625
+    },
+    {
+      "topic": "tablets",
+      "step": 4,
+      "file": "tablets-4.png",
+      "caption": "Na tela do aparelho, informe o código recebido e clique em Autorizar tablet.",
+      "external": false,
+      "width": 584,
+      "height": 525,
+      "focusX": 292,
+      "focusY": 355
+    },
+    {
+      "topic": "tablets",
+      "step": 5,
+      "file": "tablets-5.png",
+      "caption": "O prestador informa os quatro primeiros dígitos do CPF e confirma o registro.",
+      "external": false,
+      "width": 584,
+      "height": 656,
+      "focusX": 292,
+      "focusY": 387.5
+    },
+    {
+      "topic": "contratacoes",
+      "step": 1,
+      "file": "contratacoes-1.png",
+      "caption": "Clique em Nova contratação.",
+      "external": false,
+      "width": 1120,
+      "height": 806,
+      "focusX": 1010.8125,
+      "focusY": 232.59375
+    },
+    {
+      "topic": "contratacoes",
+      "step": 2,
+      "file": "contratacoes-2.png",
+      "caption": "Escolha depósito, prestador, atividade e gestor no formulário.",
+      "external": false,
+      "width": 604,
+      "height": 676,
+      "focusX": 168,
+      "focusY": 172.890625
+    },
+    {
+      "topic": "contratacoes",
+      "step": 3,
+      "file": "contratacoes-3.png",
+      "caption": "Preencha os horários e o valor; depois clique em Criar contratação.",
+      "external": false,
+      "width": 604,
+      "height": 676,
+      "focusX": 493.3203125,
+      "focusY": 607.203125
+    },
+    {
+      "topic": "contratacoes",
+      "step": 4,
+      "file": "contratacoes-4.png",
+      "caption": "Na aba Entrada e saída, acompanhe o código e os registros do serviço.",
+      "external": false,
+      "width": 924,
+      "height": 1063,
+      "focusX": 457,
+      "focusY": 467.9921875
+    },
+    {
+      "topic": "contratacoes",
+      "step": 5,
+      "file": "contratacoes-5.png",
+      "caption": "Use Horários para consultar ou informar ajustes com justificativa.",
+      "external": false,
+      "width": 924,
+      "height": 1063,
+      "focusX": 457,
+      "focusY": 588.984375
+    },
+    {
+      "topic": "contratacoes",
+      "step": 6,
+      "file": "contratacoes-6.png",
+      "caption": "Revise horários e valor antes de confirmar a liberação para o financeiro.",
+      "external": false,
+      "width": 924,
+      "height": 1063,
+      "focusX": 215.265625,
+      "focusY": 781.6875
+    },
+    {
+      "topic": "financeiro",
+      "step": 1,
+      "file": "financeiro-1.png",
+      "caption": "Use os filtros para localizar a contratação liberada.",
+      "external": false,
+      "width": 1120,
+      "height": 852,
+      "focusX": 566,
+      "focusY": 300.890625
+    },
+    {
+      "topic": "financeiro",
+      "step": 2,
+      "file": "financeiro-2.png",
+      "caption": "Confira o valor e clique em Gerar recibo. Isso ainda não confirma o pagamento.",
+      "external": false,
+      "width": 1076,
+      "height": 586,
+      "focusX": 955.4609375,
+      "focusY": 468.5859375
+    },
+    {
+      "topic": "financeiro",
+      "step": 3,
+      "file": "financeiro-3.png",
+      "caption": "Documento real do portal com dados de treinamento. Pagamento e assinatura acontecem fora do sistema.",
+      "external": true,
+      "width": 818,
+      "height": 1080,
+      "focusX": 408.84375,
+      "focusY": 862.28125
+    },
+    {
+      "topic": "financeiro",
+      "step": 4,
+      "file": "financeiro-4.png",
+      "caption": "Selecione o arquivo do recibo assinado, legível, em PDF, PNG ou JPEG.",
+      "external": false,
+      "width": 674,
+      "height": 1063,
+      "focusX": 332,
+      "focusY": 987.390625
+    },
+    {
+      "topic": "financeiro",
+      "step": 5,
+      "file": "financeiro-5.png",
+      "caption": "Após conferir o recibo assinado, clique em Confirmar pagamento integral.",
+      "external": false,
+      "width": 674,
+      "height": 1063,
+      "focusX": 173.484375,
+      "focusY": 887.1875
+    }
+  ],
+  "errors": [],
+  "requests": [
+    {
+      "path": "/api/auth/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/notificacoes",
+      "method": "GET"
+    },
+    {
+      "path": "/api/auth/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/b24a/depositos",
+      "method": "GET"
+    },
+    {
+      "path": "/api/auth/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/b24a/chapas",
+      "method": "GET"
+    },
+    {
+      "path": "/api/b24a/servicos",
+      "method": "GET"
+    },
+    {
+      "path": "/api/mfa/status",
+      "method": "GET"
+    },
+    {
+      "path": "/api/b24a/servicos",
+      "method": "POST"
+    },
+    {
+      "path": "/api/b24a/servicos",
+      "method": "GET"
+    },
+    {
+      "path": "/api/pc05/tablets",
+      "method": "GET"
+    },
+    {
+      "path": "/api/mfa/status",
+      "method": "GET"
+    },
+    {
+      "path": "/api/mfa/status",
+      "method": "GET"
+    },
+    {
+      "path": "/api/pc05/tablets",
+      "method": "POST"
+    },
+    {
+      "path": "/api/pc05/tablets",
+      "method": "GET"
+    },
+    {
+      "path": "/api/pc05/tablet/status",
+      "method": "GET"
+    },
+    {
+      "path": "/api/pc05/tablet/habilitar",
+      "method": "POST"
+    },
+    {
+      "path": "/api/auth/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/auth/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/notificacoes",
+      "method": "GET"
+    },
+    {
+      "path": "/api/pc04/catalogo",
+      "method": "GET"
+    },
+    {
+      "path": "/api/pc05/status",
+      "method": "GET"
+    },
+    {
+      "path": "/api/pc04/contratacoes",
+      "method": "GET"
+    },
+    {
+      "path": "/api/pc04/exclusoes-pendentes",
+      "method": "GET"
+    },
+    {
+      "path": "/api/pc04/horarios-pendentes",
+      "method": "GET"
+    },
+    {
+      "path": "/api/auth/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/mfa/status",
+      "method": "GET"
+    },
+    {
+      "path": "/api/mfa/status",
+      "method": "GET"
+    },
+    {
+      "path": "/api/pc04/contratacoes",
+      "method": "POST"
+    },
+    {
+      "path": "/api/notificacoes",
+      "method": "GET"
+    },
+    {
+      "path": "/api/pc04/contratacoes",
+      "method": "GET"
+    },
+    {
+      "path": "/api/pc04/exclusoes-pendentes",
+      "method": "GET"
+    },
+    {
+      "path": "/api/pc04/horarios-pendentes",
+      "method": "GET"
+    },
+    {
+      "path": "/api/pc04/contratacoes/1",
+      "method": "GET"
+    },
+    {
+      "path": "/api/pc04/media",
+      "method": "GET"
+    },
+    {
+      "path": "/api/financeiro/catalogo",
+      "method": "GET"
+    },
+    {
+      "path": "/api/financeiro/contratacoes",
+      "method": "GET"
+    },
+    {
+      "path": "/api/financeiro/contratacoes/1/recibo",
+      "method": "POST"
+    },
+    {
+      "path": "/api/financeiro/contratacoes",
+      "method": "GET"
+    },
+    {
+      "path": "/api/financeiro/contratacoes/1",
+      "method": "GET"
+    },
+    {
+      "path": "/api/financeiro/contratacoes/1/pagamento",
+      "method": "GET"
+    },
+    {
+      "path": "/api/financeiro/contratacoes/1/recibo/impressao",
+      "method": "GET"
+    },
+    {
+      "path": "/api/auth/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/auth/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/notificacoes",
+      "method": "GET"
+    },
+    {
+      "path": "/api/financeiro/catalogo",
+      "method": "GET"
+    },
+    {
+      "path": "/api/financeiro/contratacoes",
+      "method": "GET"
+    },
+    {
+      "path": "/api/financeiro/contratacoes/1",
+      "method": "GET"
+    },
+    {
+      "path": "/api/financeiro/contratacoes/1/pagamento",
+      "method": "GET"
+    }
+  ]
+}

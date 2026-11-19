@@ -50,6 +50,11 @@ test('HTTP real isola /chapa, recusa origem/proxy e serve recursos prefixados',a
   assert.match(page.headers.get('content-security-policy'),/default-src 'self'/);assert.match(page.headers.get('strict-transport-security'),/max-age=/);
   const js=await (await request(base+'/chapa/app.js',{headers})).text();assert.match(js,/\/chapa\/api\/auth\/login/);
   const fin=await (await request(base+'/chapa/fin01.js',{headers})).text();assert.match(fin,/join\('\/'\)/);
+  const guide=await request(base+'/chapa/guide.js',{headers});assert.equal(guide.status,200);const guideJs=await guide.text();assert.ok(guideJs.includes("'/chapa/guide-images/'"));assert.ok(!guideJs.includes("'/guide-images/'"));
+  assert.equal((await request(base+'/chapa/guide.css',{headers})).status,200);
+  const images=fs.readdirSync('public/guide-images').filter(name=>name.endsWith('.png'));assert.equal(images.length,28);
+  for(const name of images){const response=await request(base+'/chapa/guide-images/'+name,{headers});assert.equal(response.status,200,name);assert.deepEqual(Buffer.from(await response.arrayBuffer()),fs.readFileSync(path.join('public/guide-images',name)),name);}
+
   assert.equal((await request(base+'/chapa',{headers,redirect:'manual'})).headers.get('location'),'/chapa/');
   for(const p of ['/api/health','/','/chapax/api/health','/chapa/pilot/setup','/chapa/api/admin/diagnostico','/chapa/api/final-lab/status'])assert.equal((await request(base+p,{headers})).status,404,p);
   assert.equal((await request(base+'/chapa/api/health',{headers})).status,200);

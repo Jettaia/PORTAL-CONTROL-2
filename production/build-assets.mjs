@@ -11,10 +11,19 @@ export function buildAssets(destination){
  const names=entries.filter(e=>e.isFile()).map(e=>escape(e.name)).join('|');
  const absolute=new RegExp('([\'"`])/(api(?=/|[\'"`])|(?:'+names+')(?=[?#\'"`]))','g');
  for(const entry of entries){
+  if(entry.isDirectory()&&entry.name==='guide-images'){
+   const imageSource=path.join(source,entry.name),imageTarget=path.join(destination,entry.name);fs.mkdirSync(imageTarget,{recursive:true});
+   for(const image of fs.readdirSync(imageSource,{withFileTypes:true})){
+    if(!image.isFile()||!/^[-a-z0-9]+\.(?:png|json)$/.test(image.name))throw Error('Asset de guia não revisado');
+    fs.copyFileSync(path.join(imageSource,image.name),path.join(imageTarget,image.name));
+   }
+   continue;
+  }
   if(!entry.isFile())throw Error('Asset público em diretório exige revisão de prefixo');
   const from=path.join(source,entry.name),to=path.join(destination,entry.name);
   if(!/\.(?:js|css|html)$/.test(entry.name)){fs.copyFileSync(from,to);continue;}
   let text=fs.readFileSync(from,'utf8').replace(absolute,(_match,quote,resource)=>quote+'/chapa/'+resource);
+  text=text.replace(/(['"`])\/guide-images\//g,'$1/chapa/guide-images/');
   if(entry.name.endsWith('.html'))text=text.replace(/((?:href|src|action)=["'])\/(?!\/|chapa(?:\/|["']))/g,'$1/chapa/');
   if(entry.name.endsWith('.css'))text=text.replace(/(url\(\s*["']?)\/(?!\/|chapa\/)/g,'$1/chapa/');
   if(entry.name==='index.html')text=text.replaceAll('Ambiente local · Homologação','Produção · Portal Control').replaceAll('● Homologação','● Produção').replaceAll('Acesso local','Acesso seguro').replace('UX-01 Refinado v1.1.0 · Não liberado para produção','Gestão de serviços e prestadores').replace('</head>','<link rel="stylesheet" href="/chapa/production.css"></head>');
